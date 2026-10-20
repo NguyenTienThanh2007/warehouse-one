@@ -117,7 +117,7 @@ Two further attempts (corridor locking with refuge/yield) fixed individual trace
 | Playwright e2e on GPU, retries disabled | PASS 18/18 |
 | Playwright e2e under `CI=1` (SwiftShader), retries disabled | PASS 18/18 (3.9 min) |
 | Phase 0 golden fixture | unchanged (byte-identical to base) |
-| GitHub Actions | NOT RUN (branch not pushed) |
+| GitHub Actions | Run 39463588226 on `1be594a` (manual dispatch): TypeScript, Python + migrations, Docker Compose PASS; e2e FAILED 22/23 (see below). Re-run on the fix: see the commit message / PR |
 
 ### Unresolved risks and open work
 
@@ -254,14 +254,26 @@ Unchanged: camera presets, quality tiers, scenarios, the Phase 0 golden fixture 
 | Playwright e2e, `CI=1` (SwiftShader), retries disabled | PASS 23/23 (6.3 min), on the final tree |
 | Phase 0 golden fixture | byte-identical (`git diff data/fixtures/foundation-demo` empty; golden test passes) |
 | Python (no Python changes) | ruff, ruff format, mypy: pass; pytest 20 passed; integration readiness (PostgreSQL) 1 passed; migration round-trip not run locally |
-| GitHub Actions | NOT RUN (branch not pushed) |
+| GitHub Actions | Run 39463588226 on `1be594a` (manual dispatch): TypeScript, Python + migrations, Docker Compose PASS; e2e FAILED 22/23 (see below). Re-run on the fix: see the commit message / PR |
 
 New browser tests (`tests/e2e/operations.spec.ts`, state-based waits only):
 - Vehicles, trucks and carried pallets are drawn exactly at their simulated poses (paused, so no interpolation offset).
 - A truck can be selected from the trucks panel and inspected.
 - A rejected order shows `INSUFFICIENT_STOCK` with its explanation, and nothing changes.
-- A relocation requested in the bay inspector is completed by a vehicle.
+- Stock received through the bay inspector and relocated from it is moved by a vehicle (empty facility).
 - **Complete order through the UI:** inbound truck → unload → put-away → outbound order → pick → load → ship → truck departs. The final state reconciles: no pallets, orders, tasks or trucks on site, all docks free, the stock KPI and the scene both at 0. This test sets a 180 s timeout: the flow measures ~3,430 ticks in the engine, at least 43 s at the UI's maximum 8× speed (measured 42.9 s on GPU, 53.9 s on SwiftShader).
+
+**CI failure on `1be594a` and fix.** On the GitHub runner the relocation test timed out
+(60 s poll, 90 s test) with the pallet on a vehicle's forks: the workflow was progressing, slowly.
+The runner executed the whole e2e suite in 17.1 min (6.3 min locally under `CI=1`) and the UI only
+~24 ticks/s at 8× (3,430 ticks in 2.4 min): when frames take longer than 250 ms, simulated time per
+frame is capped. The test also ran in the showcase, whose full scene renders slowest under
+SwiftShader and whose queued work delays dispatch. It now runs in the empty facility (stock received
+through the inspector, then relocated: 563 ticks, measured) with a 120 s poll and 180 s test budget,
+derived from the measured CI rate (~24 s needed). Running it locally under `CI=1` then exposed a race
+in the test itself: the pallet reaches its slot halfway through the drop, and the task completes a
+few ticks later. The test now waits for both (pallet in the target slot and no open task) in one
+state condition.
 
 Existing browser tests changed: no fixed sleep in "pallets follow the simulation" (it waits for 400 ticks); rendered pallets are compared with the simulation state while paused; the vehicle inspector checks live status instead of "Parked".
 

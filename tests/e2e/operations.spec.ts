@@ -112,48 +112,60 @@ test.describe("operator commands", () => {
     expect(s.ops.trucks).toEqual({});
   });
 
-  test("a relocation requested in the bay inspector is carried out by a vehicle", async ({
+  test("stock received and relocated from the bay inspector is moved by a vehicle", async ({
     page,
   }) => {
-    await openWorld(page);
+    // Budget from measurements: this relocation takes 563 ticks in the engine. On the GitHub
+    // runner (SwiftShader) the UI executed ~24 ticks/s at 8× (3,430 ticks in 2.4 min, CI run
+    // 39463588226), i.e. ~24 s; the poll allows 120 s. The empty facility keeps the scene cheap to
+    // render and leaves no competing work, so the time measured is this workflow's.
+    test.setTimeout(180_000);
+    await openWorld(page, "?scenario=empty");
     await pause(page);
-    // A bay holding a free pallet (not allocated, not moving), and an empty bay to move it to.
-    const before = await simState(page);
-    const free = palletsOf(before).find((p) => p.at.kind === "slot" && !p.order_id)!;
-    const from = free.at.kind === "slot" ? free.at.location_id : "";
-    const config = await page.evaluate(() =>
-      (
-        window as unknown as {
-          __WAREHOUSE_ONE_SIM__: { config(): { locations: { id: string }[] } };
-        }
-      ).__WAREHOUSE_ONE_SIM__.config(),
+    await page.getByTestId("location-picker").selectOption("loc-02-003");
+    await expect(page.getByTestId("inspector")).toContainText("loc-02-003");
+
+    // 1. Receive one pallet into the bay.
+    await page.getByTestId("receive-form").locator("select").selectOption("sku-cold-chain");
+    await page.getByRole("button", { name: "Receive into bay" }).click();
+    await page.getByRole("button", { name: /Advance one tick/ }).click();
+    await expect(page.getByTestId("command-row").first()).toHaveAttribute(
+      "data-status",
+      "accepted",
     );
-    const target = config.locations.find((l) => !before.inventory[l.id])!.id;
-    await page.getByTestId("location-picker").selectOption(from);
-    await expect(page.getByTestId("inspector")).toContainText(from);
-    await page.getByTestId("relocate-pallet").selectOption(free.id);
-    const pallet = await page.getByTestId("relocate-pallet").inputValue();
-    expect(pallet).toBe(free.id);
-    await page.getByTestId("relocate-target").selectOption(target);
+    const received = palletsOf(await simState(page));
+    expect(received).toHaveLength(1);
+    const pallet = received[0]!.id;
+    expect(received[0]!.at).toMatchObject({ kind: "slot", location_id: "loc-02-003" });
+
+    // 2. Relocate it to another bay.
+    await expect(page.getByTestId("relocate-pallet")).toHaveValue(pallet);
+    await page.getByTestId("relocate-target").selectOption("loc-01-003");
     await page.getByRole("button", { name: "Create relocation task" }).click();
     await page.getByRole("button", { name: /Advance one tick/ }).click();
     await expect(page.getByTestId("command-row").first()).toHaveAttribute(
       "data-status",
       "accepted",
     );
-    // A relocation task exists for that pallet, and the run completes it.
     const task = Object.values((await simState(page)).ops.tasks).find(
       (t) => t.type === "relocate" && t.pallet_id === pallet,
     );
     expect(task).toBeDefined();
+
+    // 3. A vehicle carries it out. The pallet reaches the slot halfway through the drop (it
+    //    changes hands at full lift); the task completes when the drop finishes, a few ticks later.
     await page.getByTestId("sim-toggle").click();
     await page.locator("body").press("5");
     await expect
-      .poll(async () => (await simState(page)).ops.pallets[pallet]?.at, {
-        timeout: 60_000,
-        intervals: [250],
-      })
-      .toMatchObject({ kind: "slot", location_id: target });
+      .poll(
+        async () => {
+          const s = await simState(page);
+          return { at: s.ops.pallets[pallet]?.at, tasks: Object.keys(s.ops.tasks).length };
+        },
+        { timeout: 120_000, intervals: [250] },
+      )
+      .toMatchObject({ at: { kind: "slot", location_id: "loc-01-003" }, tasks: 0 });
+    expect((await simState(page)).inventory).toEqual({ "loc-01-003": { "sku-cold-chain": 1 } });
   });
 
   test("inbound truck → put-away → outbound order → pick → load → ship, through the UI", async ({
