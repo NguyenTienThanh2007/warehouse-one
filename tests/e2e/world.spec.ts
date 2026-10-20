@@ -114,9 +114,23 @@ test.describe("selection and camera", () => {
 
   test("camera presets produce distinct, sensible poses", async ({ page }) => {
     await openWorld(page);
+    /**
+     * Wait for the camera to come to rest after a preset click (camera-controls 'rest' event, via
+     * the read-only scene hook). Sampling the pose cannot tell "stopped" from "no frame rendered
+     * yet" on GPU-less CI runners, where a frame can take longer than the sampling interval.
+     */
     const pose = async (preset: string) => {
+      const before = (await scene(page))?.cameraMotion?.rests ?? 0;
       await page.getByTestId(`camera-${preset}`).click();
-      await page.waitForTimeout(1800);
+      await expect
+        .poll(
+          async () => {
+            const m = (await scene(page))?.cameraMotion;
+            return !!m && m.rests > before && !m.moving;
+          },
+          { timeout: 45_000, intervals: [250] },
+        )
+        .toBe(true);
       return (await scene(page))!.camera!;
     };
     const top = await pose("top");

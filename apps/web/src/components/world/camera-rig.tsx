@@ -146,6 +146,33 @@ export function CameraRig({
     c.setBoundary(bounds);
   }, [bounds]);
 
+  // Report camera motion so automated tests can wait for a transition to finish instead of
+  // sleeping (frame time varies by orders of magnitude between GPU and software rendering).
+  useEffect(() => {
+    const c = controls.current;
+    if (!c) return;
+    let rests = 0;
+    const snapshot = () => {
+      const t = c.getTarget(new Vector3());
+      return {
+        position: camera.position.toArray() as [number, number, number],
+        target: t.toArray() as [number, number, number],
+      };
+    };
+    const onWake = () => publishSceneDebug({ cameraMotion: { moving: true, rests } });
+    const onRest = () => {
+      rests += 1;
+      publishSceneDebug({ camera: snapshot(), cameraMotion: { moving: false, rests } });
+    };
+    publishSceneDebug({ cameraMotion: { moving: false, rests } });
+    c.addEventListener("wake", onWake);
+    c.addEventListener("rest", onRest);
+    return () => {
+      c.removeEventListener("wake", onWake);
+      c.removeEventListener("rest", onRest);
+    };
+  }, [camera]);
+
   const target = useMemo(() => new Vector3(), []);
   const scratch = useMemo(() => new Vector3(), []);
   const lastPublish = useRef(0);
