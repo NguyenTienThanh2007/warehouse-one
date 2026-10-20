@@ -9,7 +9,8 @@ GPU string, viewport, scene, sample duration). Estimates are never reported as r
 |------------|------------------|---------|
 | `packages/simulation/scripts/bench.ts` | Headless `step()` cost (mean and p95 µs/tick, ticks/s) for 100 / 300 / 1,000 locations with the synthetic workload | `pnpm bench:sim [-- --ticks N]` |
 | In-app probe (`apps/web/src/lib/perf`) | Rolling 240-frame window: FPS, p50/p95/p99 frame time, long frames (> 25 ms), draw calls, triangles. Shown in the HUD and exposed read-only at `window.__WAREHOUSE_ONE_PERF__` | Always on |
-| `tests/performance/render-benchmark.ts` | Drives Chromium through scene sizes (`?aisles=&bays=`), 3 s warm-up, N s sample, records the GPU string, writes JSON to `test-results/performance/` | `pnpm bench:render [-- --seconds 10 --headed]` (needs a running `next start` on :3100) |
+| `tests/performance/render-benchmark.ts` | Drives Chromium through the benchmark scenarios (`?scenario=bench-100/300/1000`, `?quality=`), waits for the world to be ready, 3 s warm-up, N s sample, records GPU string, entity counts, draw calls and triangles, writes JSON to `test-results/performance/` | `pnpm bench:render [-- --seconds 10 --headed]` (needs a running `next start` on :3100) |
+| `tests/performance/capture-bookmarks.ts` | Visual-review captures (5 bookmarks × desktop/phone) | `pnpm capture:bookmarks` |
 
 **Pitfalls handled:** hidden or background tabs throttle `requestAnimationFrame` (we observed
 ~1 FPS in a hidden browser pane, which is an artifact, not a result). The benchmark disables
@@ -25,7 +26,7 @@ SwiftShader. Their FPS is never compared with GPU numbers.
 | 1,000 entities | ≥ 45 FPS on the High tier; adaptive quality must keep ≥ 30 FPS on the Low tier |
 | Simulation | `step()` p95 well under 1 ms at 1,000 entities, so the sim never dominates a 16.7 ms frame |
 
-## Phase 0 results (2026-10-20)
+## Phase 0 results (2026-10-20, diagnostic scene; superseded by Phase 1)
 
 **Machine:** Apple M2, 8 GB, macOS 26.6.2, Node 24.16.0.
 
@@ -54,3 +55,26 @@ Chromium 153.0.8010.12 headless, GPU `ANGLE (Apple, ANGLE Metal Renderer: Apple 
 **Interpretation:** the renderer holds the 60 Hz vsync cap with this schematic scene. That
 validates the measurement pipeline and the instancing path. It is **not** evidence about Phase 1
 visual quality or performance, which will have far more geometry, materials and shadow casters.
+
+## Phase 1 results (2026-10-20)
+
+Production 3D world, overview camera, simulation running. Entities = pallets (exact, state-driven)
++ 6 parked vehicles. Apple M2 · Chromium 153 headless · ANGLE Metal · 1440×900 @2x. Two runs;
+raw JSON in `docs/phases/evidence/phase-1/benchmarks/`.
+
+| Scene | Tier | FPS (run 1 / 2) | p95 ms (run 1 / 2) | Long frames | Draw calls | Triangles (incl. shadow pass) |
+|-------|------|-----------------|--------------------|------------:|-----------:|------------------------------:|
+| 100 pallets | High | 60.0 / 58.8 | 18.0 / 18.0 | 0 / 1 | 106 | 117,875 |
+| 300 pallets | High | 60.0 / 60.0 | 18.7 / 18.7 | 0 / 0 | 112 | 396,587 |
+| 1,000 pallets | High | 60.0 / 60.0 | 20.6 / 20.1 | 0 / 0 | 120 | 1,272,203 |
+| 1,000 pallets | Medium | 60.0 / 60.0 | 20.4 / 20.4 | 0 / 0 | 106 | 1,272,173 |
+| 1,000 pallets | Low | 60.0 / 60.0 | 20.8 / 20.5 | 0 / 0 | 56 | 639,386 |
+| Showcase (399 pallets) | High | 60.0 / 60.0 | 19.1 / 19.1 | 0 / 0 | 116 | 491,843 |
+
+Against the targets: standard scene 60 FPS, p95 ≤ 20 ms ✔ (19.1). 300 entities ≥ 55 FPS ✔.
+1,000 entities ≥ 45 FPS on High ✔ (60, vsync-capped; p95 20.1–20.6 ms is above the 20 ms
+standard-scene target, which does not apply to this scene).
+
+Optimisations that were **measured** before being kept: DPR cap 1.5 on High (42–44 → 60 FPS,
+DEC-016); plain boxes instead of rounded boxes for small parts (showcase 2.84 M → 489 K triangles).
+Under SwiftShader (CI) the app starts on Low (DEC-017); CI FPS is not comparable and not reported.

@@ -1,8 +1,7 @@
 # Visual Design Specification
 
-**Status:** v1.0 (Phase 0). This document governs Phase 1 (3D world) and all later UI work.
-Phase 0 implements the tokens, the HUD shell and a *diagnostic* scene only. The diagnostic scene is
-schematic on purpose and is not an accepted visual asset.
+**Status:** v1.1. Phase 1 implemented the 3D world described here. Deviations and the checklist
+review are recorded in `docs/phases/PHASE_1.md` §6. Asset sources are listed in `docs/design/ASSETS.md`.
 
 ## 1. Direction: "Night shift control room"
 
@@ -63,12 +62,12 @@ in-browser contrast audit over the rendered scene is still required in Phase 1.
 | Aspect | Target |
 |--------|--------|
 | Key light | One shadow-casting directional "skylight" plus hemispheric fill, with baked or SSAO contact shadows |
-| Interior | High-bay fixtures as emissive meshes; no per-fixture real-time lights beyond a small budget |
+| Interior | High-bay fixtures as emissive meshes; no per-fixture real-time lights beyond a small budget. *Deferred: the dollhouse view has no roof to hang fixtures from* |
 | Tone mapping | ACES Filmic or AgX, exposure tuned so the concrete floor reads mid-grey |
-| Post-processing | Subtle SSAO, SMAA, very restrained bloom on emissives only. Each effect must be toggleable and justified by a before/after capture |
+| Post-processing | Subtle SSAO, SMAA, very restrained bloom on emissives only. Each effect must be toggleable and justified by a before/after capture. *Implemented: N8AO (half-res) + SMAA + AgX; no bloom (no emissives yet)* |
 | Shadows | PCF soft, 2048² on desktop, 1024² on low tier |
 | Draw-call budget | ≤ 150 for the standard scene (instancing for racks, pallets, boxes) |
-| Adaptive quality | Tiers High / Medium / Low switch DPR, shadows and post-FX from measured frame time |
+| Adaptive quality | Tiers High / Medium / Low switch DPR, shadows and post-FX from measured frame time. *Implemented; High caps DPR at 1.5 (DEC-016); software WebGL starts on Low (DEC-017)* |
 
 ## 5. Camera
 

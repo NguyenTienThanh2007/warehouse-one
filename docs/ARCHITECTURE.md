@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** describes what exists after Phase 0, then the target architecture. Components marked
+**Status:** describes what exists after Phase 1, then the target architecture. Components marked
 *(planned)* do not exist yet.
 
 ## 1. System overview
@@ -39,14 +39,15 @@ Mutation attempts throw, and a test covers this.
 ## 3. Monorepo layout (actual)
 
 ```text
-apps/web            Next.js app: HUD, R3F scene, in-browser simulation loop
+apps/web            Next.js app: HUD, 3D world (src/world: pure derivation, geometry, materials;
+                    src/components/world: R3F scene, camera, lighting, effects), simulation loop
 apps/api            FastAPI service, SQLAlchemy/Alembic, Pydantic contract mirror, Dockerfile
 packages/contracts  Zod schemas for commands and events; JSON Schema generation
 packages/simulation Deterministic engine, runner, snapshots, replay, scenarios, benchmarks
 data/schemas        Generated JSON Schemas (language-neutral contract)
 data/fixtures       Golden deterministic run used by TS and Python tests
 tests/e2e           Playwright browser tests (production build)
-tests/performance   Renderer frame-time benchmark
+tests/performance   Renderer frame-time benchmark, visual bookmark capture
 docs/               Product, architecture, data, design, phase records
 .github/workflows   CI
 ```
@@ -79,11 +80,33 @@ See DEC-007.
 - **Systems:** Phase 0 has one, an optional seeded *synthetic workload* for demos and benchmarks.
   It goes through the same command handlers, so every invariant still applies.
 
-Phase 2 adds orders, pallets, forklifts, pathfinding, workers and trucks as additional systems and
-aggregates. Heavy runs may move into a Web Worker. The pure `step()` contract makes that a
+Phase 1 added optional facility master data (DEC-014) and a scenario registry; neither changes the
+simulation rules. Phase 2 adds orders, pallets, forklifts, pathfinding, workers and trucks as
+additional systems and aggregates. Heavy runs may move into a Web Worker. The pure `step()` contract makes that a
 transport change, not a redesign.
 
-## 5. Backend
+## 5. 3D world (Phase 1)
+
+```text
+SimulationConfig (locations, facility master data) ─┐
+SimulationState.inventory (frozen) ─────────────────┼─► world/derive.ts (pure, unit-tested)
+                                                    │     rack parts · pallet instances · pick volumes · counts
+                                                    ▼
+                          components/world/*  ─►  instanced meshes per material (≈110 draw calls)
+                                                    │
+               camera-rig (presets, framing.ts) ◄───┤──► scene-debug hook (read-only, tests/benchmarks)
+```
+
+- **No invented data:** a pallet instance exists only for a stored unit; docks and vehicles only for
+  `facility` entries (DEC-014). Beam-level placement is a disclosed display convention (DEC-015).
+- **Assets:** procedural, real-scale, merged per material and instanced (DEC-018, `docs/design/ASSETS.md`).
+- **Picking:** invisible volumes per bay, vehicle and dock. Detailed meshes never raycast.
+- **Quality:** High / Medium / Low tiers (DPR, shadows, N8AO, SMAA). Auto mode steps down via
+  `PerformanceMonitor`, and software WebGL starts on Low (DEC-016, DEC-017).
+- **States:** `useView().status` drives the loading overlay. Error boundary and context-loss
+  handler give a recoverable error state while the simulation keeps running.
+
+## 6. Backend
 
 FastAPI app factory (`create_app(settings)`), configured by `WAREHOUSE_*` environment variables
 through pydantic-settings. JSON logs to stdout with request IDs: accepted from `X-Request-ID` when
@@ -92,7 +115,7 @@ PostgreSQL with a 3 s connect timeout and returns 503 when it is down, hiding er
 production. Alembic manages schema changes. The baseline migration creates the `operations` schema
 only, and Phase 3 adds the outbox and event-log tables.
 
-## 6. Data platform (planned, Phase 3)
+## 7. Data platform (planned, Phase 3)
 
 1. API persists commands and events in one transaction (event log + **transactional outbox**).
 2. Relay publishes outbox rows to Kafka (key = `simulation_id`), marks them sent, and retries with backoff.
@@ -103,7 +126,7 @@ only, and Phase 3 adds the outbox and event-log tables.
    and dimensions, with tests for uniqueness, relationships, not-null, accepted values and source freshness.
 6. Airflow orchestrates batch loads, backfills and reconciliation reports.
 
-## 7. Cross-cutting
+## 8. Cross-cutting
 
 - **Config:** environment variables only. `.env.example` documents them. No secrets in the repo.
   `NEXT_PUBLIC_*` values are public by definition.

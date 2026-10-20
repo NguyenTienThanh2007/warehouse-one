@@ -5,9 +5,9 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
 
 ## Current state
 
-- **Active phase:** 0 (Foundation), in review on `feature/p0-foundation`. **Do not start Phase 1
-  until the owner approves Phase 0.**
-- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_0.md`.
+- **Active phase:** 1 (Premium 3D world), in review on `feature/p1-3d-world`. Phase 0 is merged.
+  **Do not start Phase 2 until the owner approves Phase 1.**
+- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_1.md`.
 
 ## Architecture (one screen)
 
@@ -16,6 +16,8 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
   imperative shell and publishes deep-frozen state.
 - `packages/contracts`: Zod schemas for commands and events → `data/schemas/*.json` (generated).
 - `apps/web`: Next.js 16 + R3F. Zustand is a *read-only projection* of the runner. Rendering never writes state.
+  `src/world/derive.ts` maps config + state to instances (pure, tested); `components/world/*` draws them.
+  Facility geometry comes from `config.facility` (DEC-014). Never render entities that are not in config/state.
 - `apps/api`: FastAPI + SQLAlchemy + Alembic + PostgreSQL. Pydantic mirror of the event contract.
 - Details: `docs/ARCHITECTURE.md`, `docs/data/EVENT_CONTRACT.md`, `docs/DECISIONS.md`.
 
@@ -27,7 +29,7 @@ pnpm check                                   # format, lint, typecheck, test, bu
 pnpm test:e2e                                # Playwright, needs `pnpm --filter @warehouse-one/web build`
 cd apps/api && uv run ruff check . && uv run mypy && uv run pytest [-m integration]
 docker compose up -d --build --wait          # postgres + migrate + api
-pnpm schemas:generate / pnpm fixtures:generate / pnpm bench:sim / pnpm bench:render
+pnpm schemas:generate / pnpm fixtures:generate / pnpm bench:sim / pnpm bench:render / pnpm capture:bookmarks
 ```
 
 ## Invariants (tested; never weaken a test to make it pass)
@@ -55,3 +57,5 @@ pnpm schemas:generate / pnpm fixtures:generate / pnpm bench:sim / pnpm bench:ren
 - Local ports 3000/8000/5432 may be taken on the dev machine; use `WEB_PORT`, `API_PORT`, `POSTGRES_PORT`.
 - Hidden browser panes throttle rAF, so FPS from them is meaningless. Use `pnpm bench:render`.
 - TypeScript is pinned to 6.0 and ESLint to 9 (DEC-008).
+- Playwright uses the real GPU on macOS and SwiftShader in CI; the app starts on Low quality under software WebGL (DEC-017).
+- Keep per-asset triangle budgets (`world/geometry.test.ts`); measure before and after any rendering change.
