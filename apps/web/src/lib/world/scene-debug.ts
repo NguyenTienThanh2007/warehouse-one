@@ -11,6 +11,11 @@ export interface SceneDebug {
   counts?: SceneCounts;
   pickables?: { kind: string; id: string; center: [number, number, number] }[];
   camera?: { position: [number, number, number]; target: [number, number, number] };
+  /**
+   * Camera motion from camera-controls events: `moving` between 'wake' and 'rest'; `rests` counts
+   * rest events. `camera` is republished exactly at each rest, so a waiter can read a settled pose.
+   */
+  cameraMotion?: { moving: boolean; rests: number };
   /** Pickable centres projected to normalised screen coordinates (x, y in [-1, 1] when visible). */
   projected?: { kind: string; id: string; x: number; y: number; visible: boolean }[];
 }
