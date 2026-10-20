@@ -1,7 +1,7 @@
 # Phase 1 — Premium 3D World
 
 **Branch:** `feature/p1-3d-world` (from `main` @ `c512733`) · **PR:** draft, see `docs/PROJECT_STATUS.md`
-**Status:** implementation complete; local acceptance checks PASS; awaiting CI on the PR and owner review.
+**Status:** ready for owner review. CI green on PR #2 (run 39421534969, head `8de7aeb`, all 4 jobs). Later commits on the branch change documentation only. Two visual-checklist items remain NOT RUN (§6).
 
 ## 1. Starting point
 
@@ -134,7 +134,7 @@ comparison is possible.
 | Regression | PASS | Phase 0 golden fixture byte-identical; schema drift tests |
 | Security | PASS (scope) | No new endpoints. URL parameters are allow-listed (`scenario`, `quality`). Scene debug hooks are read-only |
 | Performance | PASS | §4 |
-| GitHub Actions | PENDING | First run on the Phase 1 PR |
+| GitHub Actions | PASS | Run 39421534969 on `8de7aeb`: TypeScript, Python + PostgreSQL integration, Docker Compose, Playwright e2e **18/18** (SwiftShader, no retries, 10.1 min) |
 
 ## 8. Known limitations
 
@@ -149,6 +149,7 @@ comparison is possible.
    Web Worker.
 7. Not yet done: an in-browser contrast audit, per-bookmark FPS, and uncapped (non-vsync) GPU timing.
 8. A `THREE.Clock` deprecation warning comes from React Three Fiber internals (not our code).
+9. CI e2e duration grew to 10.1 min (from about 1.7 min in Phase 0) because the GPU-less runners render with SwiftShader. Still well within the 20 min job timeout; Phase 2 should watch this.
 
 ## 9. Handoff to Phase 2
 
