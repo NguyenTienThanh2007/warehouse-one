@@ -1,0 +1,49 @@
+# Local development stack for WAREHOUSE ONE.
+# Phase 0 services only. Kafka, MinIO, Airflow etc. are added in Phase 3 when they have real jobs.
+# Credentials below are local-development defaults, overridable via .env (see .env.example).
+name: warehouse-one
+
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-warehouse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-warehouse_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-warehouse_one}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # PostgreSQL 18 images keep data under /var/lib/postgresql/<major>/; mount the parent.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build: ./apps/api
+    command: ["alembic", "upgrade", "head"]
+    environment: &api-env
+      WAREHOUSE_ENV: ${WAREHOUSE_ENV:-development}
+      WAREHOUSE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-warehouse}:${POSTGRES_PASSWORD:-warehouse_dev}@postgres:5432/${POSTGRES_DB:-warehouse_one}
+      WAREHOUSE_CORS_ORIGINS: ${WAREHOUSE_CORS_ORIGINS:-["http://localhost:3000"]}
+      WAREHOUSE_GIT_SHA: ${GIT_SHA:-unknown}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: ./apps/api
+    environment: *api-env
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-data:

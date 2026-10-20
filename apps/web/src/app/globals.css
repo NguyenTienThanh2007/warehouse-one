@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/*
+ * WAREHOUSE ONE design tokens (see docs/design/VISUAL_DESIGN_SPEC.md).
+ * Dark "control room" theme: graphite neutrals, safety-amber for actions and attention,
+ * teal for live data. Status colours are reserved for operational state only.
+ */
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+
+  --color-ink-950: #0c0f14;
+  --color-ink-900: #11151b;
+  --color-ink-850: #151a21;
+  --color-ink-800: #1a2029;
+  --color-ink-700: #252d38;
+  --color-ink-600: #343e4b;
+
+  --color-fog-50: #f2f5f8;
+  --color-fog-200: #c9d1db;
+  --color-fog-400: #8d98a6;
+  --color-fog-500: #808b99;
+
+  --color-signal-300: #f8cc6e;
+  --color-signal-400: #f5b83d;
+  --color-signal-500: #e09e1c;
+
+  --color-data-300: #7fe0d8;
+  --color-data-400: #3fb8af;
+
+  --color-ok-400: #4ade80;
+  --color-warn-400: #fbbf24;
+  --color-critical-400: #f87171;
+
+  --radius-panel: 14px;
+  --shadow-panel: 0 1px 0 0 rgb(255 255 255 / 0.04) inset, 0 12px 32px -12px rgb(0 0 0 / 0.6);
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+    background: var(--color-ink-950);
+    color: var(--color-fog-50);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-signal-400);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .panel {
+    background: color-mix(in srgb, var(--color-ink-900) 82%, transparent);
+    border: 1px solid rgb(255 255 255 / 0.07);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-panel);
+    backdrop-filter: blur(14px) saturate(1.2);
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-fog-400);
+  }
+
+  .metric {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "simulation_id": "6c0b7c8e-2f43-4a59-9a3e-5d1f0c2b7a10",
+  "ticks": 600,
+  "final_simulation_time_ms": 60000,
+  "event_count": 150,
+  "event_counts_by_type": {
+    "inventory.adjusted": 1,
+    "inventory.moved": 60,
+    "inventory.received": 89
+  },
+  "rejection_codes": {
+    "op-0002": "CAPACITY_EXCEEDED",
+    "op-0004": "INSUFFICIENT_STOCK",
+    "op-0006": "UNKNOWN_LOCATION"
+  },
+  "final_totals_by_sku": {
+    "sku-bulk-bags": 35,
+    "sku-cold-chain": 39,
+    "sku-electronics": 52,
+    "sku-std-pallet": 41
+  },
+  "final_state_hash": "4d6546fae08b82a31c7dcc1062605b05"
+}

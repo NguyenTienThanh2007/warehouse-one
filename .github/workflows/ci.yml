@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+
+jobs:
+  typescript:
+    name: TypeScript · format, lint, typecheck, test, build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      # Includes contract drift (data/schemas) and golden-fixture determinism checks.
+      - run: pnpm test
+      - run: pnpm build
+      - name: Simulation benchmark (informational, CI hardware)
+        run: pnpm bench:sim -- --ticks 1000
+
+  python:
+    name: Python API · ruff, mypy, pytest, migrations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_USER: warehouse
+          POSTGRES_PASSWORD: warehouse_ci
+          POSTGRES_DB: warehouse_one
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U warehouse -d warehouse_one"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      WAREHOUSE_ENV: test
+      WAREHOUSE_DATABASE_URL: postgresql+psycopg://warehouse:warehouse_ci@localhost:5432/warehouse_one
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.12.21"
+          enable-cache: true
+      - run: uv sync --locked --python 3.12
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest
+      - run: uv run pytest -m integration
+
+  e2e:
+    name: Browser end-to-end (Playwright)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: typescript
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @warehouse-one/web build
+      - run: pnpm exec playwright install --with-deps chromium
+      # The API is not started here, so the status panel is expected to report "offline".
+      - run: pnpm test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            tests/e2e/playwright-report
+            test-results/e2e
+          retention-days: 7
+
+  docker:
+    name: Docker Compose stack
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: docker compose config --quiet
+      - run: GIT_SHA=${GITHUB_SHA::7} docker compose up -d --build --wait
+      - name: Verify health, readiness and version
+        run: |
+          curl -fsS http://localhost:8000/health
+          curl -fsS http://localhost:8000/health/ready
+          curl -fsS http://localhost:8000/version | grep -q "${GITHUB_SHA::7}"
+          test "$(docker compose ps -a migrate --format '{{.ExitCode}}')" = "0"
+      - if: always()
+        run: docker compose logs --no-color
+      - if: always()
+        run: docker compose down -v

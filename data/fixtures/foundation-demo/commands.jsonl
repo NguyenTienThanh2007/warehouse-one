@@ -1,0 +1,6 @@
+{"tick":1,"command":{"command_id":"op-0001","type":"inventory.receive","payload":{"location_id":"loc-00-001","sku":"sku-std-pallet","quantity":6}}}
+{"tick":1,"command":{"command_id":"op-0002","type":"inventory.receive","payload":{"location_id":"loc-00-001","sku":"sku-cold-chain","quantity":4}}}
+{"tick":5,"command":{"command_id":"op-0003","type":"inventory.move","payload":{"from_location_id":"loc-00-001","to_location_id":"loc-01-012","sku":"sku-std-pallet","quantity":2}}}
+{"tick":5,"command":{"command_id":"op-0004","type":"inventory.move","payload":{"from_location_id":"loc-00-001","to_location_id":"loc-01-011","sku":"sku-std-pallet","quantity":5}}}
+{"tick":9,"command":{"command_id":"op-0005","type":"inventory.adjust","payload":{"location_id":"loc-00-001","sku":"sku-std-pallet","delta":-1,"reason":"damage"}}}
+{"tick":12,"command":{"command_id":"op-0006","type":"inventory.receive","payload":{"location_id":"loc-99-999","sku":"sku-std-pallet","quantity":1}}}

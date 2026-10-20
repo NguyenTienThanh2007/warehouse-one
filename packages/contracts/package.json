@@ -1,0 +1,22 @@
+{
+  "name": "@warehouse-one/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed, versioned contracts (commands, domain events, envelope) shared by the simulation, web app, and data pipeline.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "generate:schemas": "tsx scripts/generate-json-schemas.ts"
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15",
+    "vitest": "5.0.3"
+  }
+}
