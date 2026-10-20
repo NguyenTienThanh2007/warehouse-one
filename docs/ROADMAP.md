@@ -5,16 +5,16 @@ Each phase is developed on `feature/p<N>-…`, reviewed through a pull request, 
 
 | Phase | Branch | Theme | Status |
 |-------|--------|-------|--------|
-| 0 | `feature/p0-foundation` | Foundation & architecture | **In review** (see `docs/phases/PHASE_0.md`) |
-| 1 | `feature/p1-3d-world` | Premium 3D world | Not started; blocked on Phase 0 approval |
-| 2 | `feature/p2-simulation` | Living warehouse simulation | Not started |
+| 0 | `feature/p0-foundation` | Foundation & architecture | **Accepted**, merged (`c512733`) |
+| 1 | `feature/p1-3d-world` | Premium 3D world | **In review** (see `docs/phases/PHASE_1.md`) |
+| 2 | `feature/p2-simulation` | Living warehouse simulation | Not started; blocked on Phase 1 approval |
 | 3 | `feature/p3-data-engineering` | Real data engineering | Not started |
 | 4 | `feature/p4-analytics` | Advanced operations analytics | Not started |
 | 5 | `feature/p5-ai-brain` | AI logistics brain | Not started |
 | 6 | `feature/p6-digital-twin` | Advanced digital twin | Not started |
 | 7 | `feature/p7-production` | Production & portfolio release | Not started |
 
-## Phase 1 — Premium 3D world (next)
+## Phase 1 — Premium 3D world (in review)
 
 **Deliverables:** procedural or licensed assets for the building shell, racks, pallets, docks,
 forklift and truck; lighting and materials per the visual spec; camera presets and follow mode;
@@ -24,7 +24,13 @@ attribution file); adaptive quality tiers; HUD polish; responsive camera framing
 **Acceptance:** scene renders correctly; smooth camera; selectable objects; no obvious clipping;
 desktop flows pass in Playwright; five bookmark screenshots captured; FPS and p95 measured at 100,
 300 and 1,000 entities with the GPU string; visual review against the spec checklist; reference
-comparison recorded honestly.
+comparison recorded honestly. Results are in `docs/phases/PHASE_1.md`.
+
+## Phase 2 — Living warehouse simulation (next)
+
+Starts from the Phase 1 handoff: equipment becomes stateful (tasks, routing, battery), pallets get
+exact slots, docks gain door cycles and truck arrivals, and the renderer interpolates movement
+between ticks.
 
 ## Phases 2–7
 

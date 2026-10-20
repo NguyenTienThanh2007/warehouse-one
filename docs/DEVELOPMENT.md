@@ -40,6 +40,8 @@ port other than 3000, also allow it in the API's CORS list, for example:
 | Regenerate JSON Schemas | `pnpm schemas:generate` (required after changing `packages/contracts`) |
 | Regenerate golden fixture | `pnpm fixtures:generate` (only for an *intended* engine behaviour change; explain why in the commit) |
 | Benchmarks | `pnpm bench:sim`, `pnpm bench:render` (see `docs/architecture/PERFORMANCE.md`) |
+| Visual bookmarks | `pnpm capture:bookmarks` (needs `next start -p 3100`) → `docs/phases/evidence/phase-1/` |
+| Scenario / quality | open `/?scenario=bench-1000&quality=low` (scenarios: showcase, empty, bench-100/300/1000) |
 
 ## Conventions
 

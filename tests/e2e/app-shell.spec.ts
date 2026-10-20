@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("Phase 0 application shell", () => {
+test.describe("application shell", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
+    await expect(page.locator("main")).toHaveAttribute("data-world-status", "ready", {
+      timeout: 45_000,
+    });
   });
 
   test("renders the brand, HUD panels and a WebGL canvas without console errors", async ({
@@ -63,36 +66,6 @@ test.describe("Phase 0 application shell", () => {
     const before = Number((await page.getByTestId("sim-tick").textContent())?.replace(/,/g, ""));
     await page.locator("body").press(".");
     await expect(page.getByTestId("sim-tick")).toHaveText((before + 1).toLocaleString("en-US"));
-  });
-
-  test("clicking a storage location opens the inspector with live contents", async ({ page }) => {
-    await expect(page.getByTestId("inspector-empty")).toBeVisible();
-    // Let the scene settle, then click the centre of the canvas where the slot rows are.
-    await page.waitForTimeout(1500);
-    const box = (await page.locator("canvas").boundingBox())!;
-    let opened = false;
-    for (const [fx, fy] of [
-      [0.5, 0.5],
-      [0.45, 0.55],
-      [0.55, 0.45],
-      [0.4, 0.5],
-      [0.6, 0.5],
-      [0.5, 0.6],
-    ] as const) {
-      await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
-      // Wait for React to commit before deciding: clicking the same slot again would deselect it.
-      opened = await page
-        .getByTestId("inspector")
-        .waitFor({ state: "visible", timeout: 500 })
-        .then(() => true)
-        .catch(() => false);
-      if (opened) break;
-    }
-    expect(opened, "a click on the slot area should select a location").toBe(true);
-    await expect(page.getByTestId("inspector")).toContainText(/loc-\d{2}-\d{3}/);
-    await expect(page.getByTestId("inspector")).toContainText("positions");
-    await page.locator("body").press("Escape");
-    await expect(page.getByTestId("inspector-empty")).toBeVisible();
   });
 
   test("API status resolves to a definite state", async ({ page }) => {

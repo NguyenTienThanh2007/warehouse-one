@@ -6,11 +6,13 @@ export interface RendererInfo {
   drawCalls: number;
   triangles: number;
   dpr: number;
+  /** Unmasked GPU renderer string, when the browser exposes it. */
+  gpu: string;
 }
 
 /** Shared, non-reactive renderer metrics (written every frame, read by the panel a few times/sec). */
 export const frameStats = new FrameStats(240);
-export const rendererInfo: RendererInfo = { drawCalls: 0, triangles: 0, dpr: 1 };
+export const rendererInfo: RendererInfo = { drawCalls: 0, triangles: 0, dpr: 1, gpu: "unknown" };
 
 declare global {
   interface Window {

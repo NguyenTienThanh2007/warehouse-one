@@ -1,7 +1,7 @@
 # Phase 0 — Foundation & Architecture
 
 **Branch:** `feature/p0-foundation` · **PR:** https://github.com/NguyenTienThanh2007/warehouse-one/pull/1 (draft)
-**Status:** implementation complete; local acceptance checks PASS; awaiting CI confirmation and owner approval.
+**Status:** ACCEPTED. Merged to `main` as `c512733` on 2026-10-20 after owner approval; CI green on the PR head and on `main`.
 
 ## 1. Starting state (inspected 2026-10-20)
 
@@ -44,7 +44,7 @@
 | Typecheck passes | **PASS** | `pnpm typecheck` (3 packages + tests) exit 0; `mypy --strict` clean |
 | Build passes | **PASS** | `next build` (Next 16.3.8, Turbopack) succeeds; Docker image builds |
 | Required Docker services can start | **PASS** | `docker compose up -d --build --wait` exit 0: postgres healthy, migrate exited 0, api healthy |
-| CI validated by an actual run | **PENDING** | Recorded in §4 after the first GitHub Actions run on PR #1 |
+| CI validated by an actual run | **PASS** | GitHub Actions run 39414680150 (PR head `7bcf7ed`): all 4 jobs green; run 39415222348 on `main` (`c512733`): all 4 jobs green. An earlier run (39414560916) was cancelled by the workflow's concurrency rule when `7bcf7ed` was pushed |
 | Documentation matches implementation | **PASS** (self-review) | Paths, commands and numbers in docs were taken from the runs above |
 
 ## 4. Quality gates
@@ -61,7 +61,7 @@
 | 8 | Security checks | PASS (scope-limited) | ruff `S` (bandit) rules; no secrets committed (`.env` ignored, dev-only defaults labelled); CORS allow-list; request-ID sanitisation tests; error details hidden in production; security headers on web. **No dependency vulnerability audit run yet** (planned for CI in Phase 1) |
 | 9 | Performance checks | PASS (baseline recorded) | See `docs/architecture/PERFORMANCE.md`. Diagnostic scene ~60 FPS (vsync-capped), p95 18.6–21.2 ms at 24–1,000 locations on Apple M2 / ANGLE Metal |
 | 10 | Documentation review | PASS (self-review) | Owner review pending |
-| — | GitHub Actions CI | PENDING | First run on PR #1 |
+| — | GitHub Actions CI | PASS | Runs 39414680150 and 39415222348: TypeScript, Python + PostgreSQL integration, Playwright e2e (SwiftShader), Docker Compose |
 
 ## 5. Evidence
 

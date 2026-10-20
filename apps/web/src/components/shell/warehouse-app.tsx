@@ -2,70 +2,102 @@
 
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
+import { CameraToolbar } from "@/components/panels/camera-toolbar";
 import { InspectorPanel } from "@/components/panels/inspector-panel";
+import { KpiBar } from "@/components/panels/kpi-bar";
 import { RendererPanel } from "@/components/panels/renderer-panel";
+import { ScenarioPicker } from "@/components/panels/scenario-picker";
 import { SimulationPanel } from "@/components/panels/simulation-panel";
 import { SystemStatus } from "@/components/panels/system-status";
-import { createFoundationDemoConfig } from "@warehouse-one/simulation";
-import { layoutFromSearch, SPEED_PRESETS, useSimulation } from "@/lib/sim/store";
+import { scenarioFromSearch, SPEED_PRESETS, useSimulation } from "@/lib/sim/store";
 import { useSimulationLoop } from "@/lib/sim/use-simulation-loop";
+import { qualityFromSearch, useView, type CameraPreset } from "@/lib/world/view-store";
+import { EmptyStockNotice, SceneErrorBoundary, SceneStatusOverlay } from "./scene-states";
 import { TopBar } from "./top-bar";
 
-// WebGL only exists in the browser; render a stable placeholder on the server.
-const SceneCanvas = dynamic(() => import("@/components/viewport/scene-canvas"), {
-  ssr: false,
-  loading: () => (
-    <div className="grid h-full place-items-center text-sm text-fog-500" role="status">
-      Initializing renderer…
-    </div>
-  ),
-});
+// WebGL only exists in the browser; the status overlay covers the canvas until it is ready.
+const SceneCanvas = dynamic(() => import("@/components/viewport/scene-canvas"), { ssr: false });
+
+const CAMERA_KEYS: Record<string, CameraPreset> = {
+  o: "overview",
+  d: "docks",
+  a: "aisle",
+  t: "top",
+  f: "focus",
+};
 
 function useKeyboardShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      )
+        return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const sim = useSimulation.getState();
+      const camera = CAMERA_KEYS[e.key.toLowerCase()];
       if (e.code === "Space") {
         e.preventDefault();
         sim.togglePause();
       } else if (e.key === ".") sim.stepOnce();
       else if (e.key === "Escape") sim.select(null);
       else if (/^[1-5]$/.test(e.key)) sim.setSpeed(SPEED_PRESETS[Number(e.key) - 1] ?? 1);
+      else if (camera && (camera !== "focus" || sim.selection))
+        useView.getState().requestCamera(camera);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 }
 
-function useScenarioFromUrl() {
+function useUrlOptions() {
   useEffect(() => {
-    const layout = layoutFromSearch(window.location.search);
-    if (layout) useSimulation.getState().loadScenario(createFoundationDemoConfig(layout));
+    const scenario = scenarioFromSearch(window.location.search);
+    if (scenario && scenario !== useSimulation.getState().scenarioId)
+      useSimulation.getState().loadScenario(scenario);
+    const quality = qualityFromSearch(window.location.search);
+    if (quality) useView.getState().setQualityMode(quality);
   }, []);
 }
 
 export function WarehouseApp() {
-  useScenarioFromUrl();
+  useUrlOptions();
   useSimulationLoop();
   useKeyboardShortcuts();
+  const status = useView((s) => s.status.kind);
 
   return (
-    <main className="relative h-dvh w-full overflow-hidden bg-ink-950">
+    <main className="relative h-dvh w-full overflow-hidden bg-ink-950" data-world-status={status}>
       <div className="absolute inset-0">
-        <SceneCanvas />
+        <SceneErrorBoundary>
+          <SceneCanvas />
+        </SceneErrorBoundary>
       </div>
+      <SceneStatusOverlay />
 
-      <div className="pointer-events-none absolute inset-0 flex flex-col gap-3 p-3 sm:p-4">
-        <TopBar />
-        <div className="flex min-h-0 flex-1 items-start justify-end">
-          <InspectorPanel />
+      <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-3 sm:gap-3 sm:p-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-col gap-2">
+            <TopBar />
+            <KpiBar />
+          </div>
+          <div className="hidden sm:block">
+            <ScenarioPicker />
+          </div>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex min-h-0 flex-1 items-start justify-end gap-3">
+          <InspectorPanel />
+          <CameraToolbar />
+        </div>
+        <EmptyStockNotice />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
           <SimulationPanel />
           <div className="flex flex-col items-start gap-3 sm:items-end">
-            <SystemStatus />
+            <div className="hidden sm:block">
+              <SystemStatus />
+            </div>
             <RendererPanel />
           </div>
         </div>

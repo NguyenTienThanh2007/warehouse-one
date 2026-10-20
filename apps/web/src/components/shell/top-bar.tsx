@@ -1,5 +1,5 @@
 const MODES = [
-  { id: "explore", label: "Explore", phase: 1 },
+  { id: "explore", label: "Explore", phase: 1, active: true },
   { id: "build", label: "Build", phase: 2 },
   { id: "operate", label: "Operate", phase: 2 },
   { id: "analytics", label: "Analytics", phase: 4 },
@@ -13,26 +13,38 @@ export function TopBar() {
         <Logo />
         <div className="leading-tight">
           <h1 className="text-[13px] font-semibold tracking-[0.18em]">WAREHOUSE ONE</h1>
-          <p className="text-[11px] text-fog-400">Intelligent Logistics. Living Data.</p>
+          <p className="hidden text-[11px] text-fog-400 sm:block">
+            Intelligent Logistics. Living Data.
+          </p>
         </div>
-        <span className="ml-1 rounded-full border border-signal-400/30 bg-signal-400/10 px-2 py-0.5 text-[10px] font-medium text-signal-300">
-          Phase 0 · Foundation
+        <span className="ml-1 rounded-full border border-signal-400/30 bg-signal-400/10 px-2 py-0.5 text-[11px] font-medium text-signal-300">
+          Phase 1 · 3D world
         </span>
       </div>
 
       <nav aria-label="Modes" className="panel hidden items-center gap-1 p-1 md:flex">
-        {MODES.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            disabled
-            title={`${m.label} mode arrives in Phase ${m.phase}`}
-            className="cursor-not-allowed rounded-[10px] px-3 py-1.5 text-xs text-fog-500"
-          >
-            {m.label}
-            <span className="ml-1.5 text-[10px] text-fog-500/70">P{m.phase}</span>
-          </button>
-        ))}
+        {MODES.map((m) =>
+          "active" in m ? (
+            <span
+              key={m.id}
+              aria-current="page"
+              className="rounded-[10px] bg-ink-700 px-3 py-1.5 text-xs font-medium text-fog-50"
+            >
+              {m.label}
+            </span>
+          ) : (
+            <button
+              key={m.id}
+              type="button"
+              disabled
+              title={`${m.label} mode arrives in Phase ${m.phase}`}
+              className="cursor-not-allowed rounded-[10px] px-3 py-1.5 text-xs text-fog-500"
+            >
+              {m.label}
+              <span className="ml-1.5 text-[11px] text-fog-500/70">P{m.phase}</span>
+            </button>
+          ),
+        )}
       </nav>
     </header>
   );

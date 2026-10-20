@@ -1,6 +1,6 @@
 /**
- * Renderer frame-time benchmark. Loads the production web build in Chromium for several scene
- * sizes, discards a warm-up period, samples frame times via the in-app probe
+ * Renderer frame-time benchmark. Loads the production web build in Chromium for the benchmark
+ * scenarios (exactly 100 / 300 / 1,000 pallets + 6 vehicles) and the showcase, discards a warm-up period, samples frame times via the in-app probe
  * (window.__WAREHOUSE_ONE_PERF__) and prints a JSON + table report including the GPU string,
  * so results are never quoted without their hardware/software context.
  *
@@ -20,10 +20,12 @@ const SECONDS = Number(arg("seconds", "10"));
 const HEADED = process.argv.includes("--headed");
 
 const SCENES = [
-  { label: "demo (24 locations)", query: "" },
-  { label: "100 locations", query: "?aisles=4&bays=25" },
-  { label: "300 locations", query: "?aisles=6&bays=50" },
-  { label: "1,000 locations", query: "?aisles=10&bays=100" },
+  { label: "bench-100 · high", query: "?scenario=bench-100&quality=high" },
+  { label: "bench-300 · high", query: "?scenario=bench-300&quality=high" },
+  { label: "bench-1000 · high", query: "?scenario=bench-1000&quality=high" },
+  { label: "bench-1000 · medium", query: "?scenario=bench-1000&quality=medium" },
+  { label: "bench-1000 · low", query: "?scenario=bench-1000&quality=low" },
+  { label: "showcase · high", query: "?scenario=showcase&quality=high" },
 ];
 
 const browser = await chromium.launch({
@@ -44,8 +46,8 @@ const results = [];
 
 for (const scene of SCENES) {
   await page.goto(`${BASE}/${scene.query}`);
-  await page.waitForFunction(() => !!window.__WAREHOUSE_ONE_PERF__, null, { timeout: 30_000 });
-  await page.waitForTimeout(3000); // warm-up: shader compile, first shadow maps
+  await page.waitForSelector('[data-world-status="ready"]', { timeout: 60_000 });
+  await page.waitForTimeout(3000); // warm-up: shader compile, first shadow maps, camera settle
   await page.evaluate(() => window.__WAREHOUSE_ONE_PERF__!.reset());
   await page.waitForTimeout(SECONDS * 1000);
   const r = await page.evaluate(() => {
@@ -55,6 +57,7 @@ for (const scene of SCENES) {
     return {
       frame: window.__WAREHOUSE_ONE_PERF__!.summary(),
       renderer: window.__WAREHOUSE_ONE_PERF__!.renderer(),
+      counts: window.__WAREHOUSE_ONE_SCENE__?.counts ?? null,
       gpu: ext && gl ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : "unknown",
     };
   });
@@ -80,11 +83,13 @@ const file = `test-results/performance/render-${report.measured_at.replace(/[:.]
 writeFileSync(file, JSON.stringify(report, null, 2));
 
 console.log(`${report.browser} on ${report.machine.cpu}; GPU: ${results[0]?.gpu}`);
-console.log("scene                 | fps   | p50 ms | p95 ms | p99 ms | long | draws | tris");
+console.log(
+  "scene              | pallets | vehicles | fps   | p50 ms | p95 ms | p99 ms | long | draws | tris",
+);
 for (const r of results) {
   const f = r.frame;
   console.log(
-    `${r.scene.padEnd(21)} | ${f ? f.fps.toFixed(1).padStart(5) : "  n/a"} | ${f ? f.p50Ms.toFixed(1).padStart(6) : "   n/a"} | ${f ? f.p95Ms.toFixed(1).padStart(6) : "   n/a"} | ${f ? f.p99Ms.toFixed(1).padStart(6) : "   n/a"} | ${String(f?.longFrames ?? "-").padStart(4)} | ${String(r.renderer.drawCalls).padStart(5)} | ${r.renderer.triangles}`,
+    `${r.scene.padEnd(18)} | ${String(r.counts?.pallets ?? "?").padStart(7)} | ${String(r.counts?.vehicles ?? "?").padStart(8)} | ${f ? f.fps.toFixed(1).padStart(5) : "  n/a"} | ${f ? f.p50Ms.toFixed(1).padStart(6) : "   n/a"} | ${f ? f.p95Ms.toFixed(1).padStart(6) : "   n/a"} | ${f ? f.p99Ms.toFixed(1).padStart(6) : "   n/a"} | ${String(f?.longFrames ?? "-").padStart(4)} | ${String(r.renderer.drawCalls).padStart(5)} | ${r.renderer.triangles}`,
   );
 }
 console.log(`saved ${file}`);

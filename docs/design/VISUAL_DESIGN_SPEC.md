@@ -1,8 +1,7 @@
 # Visual Design Specification
 
-**Status:** v1.0 (Phase 0). This document governs Phase 1 (3D world) and all later UI work.
-Phase 0 implements the tokens, the HUD shell and a *diagnostic* scene only. The diagnostic scene is
-schematic on purpose and is not an accepted visual asset.
+**Status:** v1.1. Phase 1 implemented the 3D world described here. Deviations and the checklist
+review are recorded in `docs/phases/PHASE_1.md` §6. Asset sources are listed in `docs/design/ASSETS.md`.
 
 ## 1. Direction: "Night shift control room"
 
@@ -20,8 +19,8 @@ a toy and not like a generic SaaS dashboard.
 
 ### Explicitly avoid
 
-Excess bloom, neon gradients, purple "AI" aesthetics, unlabelled 3D decoration, text under
-11 px for data, unbounded drop shadows, placeholder cubes in accepted features, and colour as the
+Excess bloom, neon gradients, purple "AI" aesthetics, unlabelled 3D decoration, any HUD text
+under 11 px, unbounded drop shadows, placeholder cubes in accepted features, and colour as the
 only carrier of meaning.
 
 ## 2. Design tokens (implemented in `apps/web/src/app/globals.css`)
@@ -39,8 +38,15 @@ only carrier of meaning.
 | `radius-panel` | 14 px | Panels; controls use 8–10 px |
 
 **Typography:** Geist Sans for UI and Geist Mono for metrics and identifiers (SIL OFL, self-hosted
-via the `geist` package, so no runtime font requests). Scale: 10/11 px for labels in uppercase with
-0.08em tracking, 12–13 px for body, 18 px for inspector titles, 30 px for the hero metric.
+via the `geist` package, so no runtime font requests). Scale: 11 px for uppercase labels (0.08em
+tracking), footnotes and secondary metadata; 12–13 px for body; 18 px for inspector titles; 24 px
+(phone) / 30 px (desktop) for the hero metric.
+
+**Minimum text size rule: 11 px for all HUD and panel text, with no exceptions.** It covers labels,
+units, footnotes, badges and disabled controls. Text drawn inside the 3D world (floor stencils, row
+labels, trailer livery) scales with the camera and is not covered; it must never carry information
+that is unavailable in the HUD. *Phase 1 status: enforced. All `text-[Npx]` utilities in
+`apps/web/src` are ≥ 11 px, after seven 10 px instances were raised in Phase 1.*
 
 **Contrast (computed with the WCAG 2.x formula against opaque `ink-900`):** fog-50 16.7:1,
 fog-200 11.9:1, fog-400 6.3:1, fog-500 5.3:1, signal-400 10.3:1, data-300 11.8:1. Button text
@@ -63,12 +69,12 @@ in-browser contrast audit over the rendered scene is still required in Phase 1.
 | Aspect | Target |
 |--------|--------|
 | Key light | One shadow-casting directional "skylight" plus hemispheric fill, with baked or SSAO contact shadows |
-| Interior | High-bay fixtures as emissive meshes; no per-fixture real-time lights beyond a small budget |
+| Interior | High-bay fixtures as emissive meshes; no per-fixture real-time lights beyond a small budget. *Deferred: the dollhouse view has no roof to hang fixtures from* |
 | Tone mapping | ACES Filmic or AgX, exposure tuned so the concrete floor reads mid-grey |
-| Post-processing | Subtle SSAO, SMAA, very restrained bloom on emissives only. Each effect must be toggleable and justified by a before/after capture |
+| Post-processing | Subtle SSAO, SMAA, very restrained bloom on emissives only. Each effect must be toggleable and justified by a before/after capture. *Implemented: N8AO (half-res) + SMAA + AgX; no bloom (no emissives yet)* |
 | Shadows | PCF soft, 2048² on desktop, 1024² on low tier |
 | Draw-call budget | ≤ 150 for the standard scene (instancing for racks, pallets, boxes) |
-| Adaptive quality | Tiers High / Medium / Low switch DPR, shadows and post-FX from measured frame time |
+| Adaptive quality | Tiers High / Medium / Low switch DPR, shadows and post-FX from measured frame time. *Implemented; High caps DPR at 1.5 (DEC-016); software WebGL starts on Low (DEC-017)* |
 
 ## 5. Camera
 
@@ -114,7 +120,8 @@ side-by-side captures at comparable framing. Those will be judged on the followi
 1. Five fixed camera bookmarks captured at 1440×900 and 390×844: overview, dock, aisle, forklift
    close-up, inspector open.
 2. No visible z-fighting, clipping, floating objects or texture stretching in any bookmark.
-3. All text in HUD ≥ 11 px; data contrast passes AA (automated check).
+3. (a) All HUD text ≥ 11 px. (b) Data contrast passes AA, measured by an automated check over the live,
+   translucent panels and the rendered scene (not only the computed token ratios in §2).
 4. Every rendered entity corresponds to simulation state (spot-check five entities against the inspector).
 5. Measured FPS and p95 frame time per bookmark recorded with the GPU string.
 6. Side-by-side with the reference on: entity readability, selection clarity, material quality,

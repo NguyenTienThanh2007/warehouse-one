@@ -26,7 +26,7 @@ export function SimulationPanel() {
   return (
     <section
       aria-labelledby="sim-title"
-      className="panel pointer-events-auto w-full p-4 sm:w-[380px]"
+      className="panel pointer-events-auto w-full p-3 sm:w-[380px] sm:p-4"
       data-testid="simulation-panel"
     >
       <div className="flex items-center justify-between">
@@ -45,12 +45,15 @@ export function SimulationPanel() {
 
       <div className="mt-3 flex items-end justify-between">
         <div>
-          <p className="text-[11px] text-fog-400">Simulated clock (UTC)</p>
-          <p className="metric text-3xl font-medium tracking-tight" data-testid="sim-clock">
+          <p className="hidden text-[11px] text-fog-400 sm:block">Simulated clock (UTC)</p>
+          <p
+            className="metric text-2xl font-medium tracking-tight sm:text-3xl"
+            data-testid="sim-clock"
+          >
             {formatSimClock(s.config.epoch, s.simTimeMs)}
           </p>
         </div>
-        <dl className="metric grid grid-cols-2 gap-x-4 gap-y-0.5 text-right text-xs">
+        <dl className="metric hidden grid-cols-2 gap-x-4 gap-y-0.5 text-right text-xs sm:grid">
           <dt className="text-fog-500">tick</dt>
           <dd data-testid="sim-tick">{s.tick.toLocaleString("en-US")}</dd>
           <dt className="text-fog-500">events</dt>
@@ -118,7 +121,7 @@ export function SimulationPanel() {
         </ol>
       </div>
 
-      <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2.5 text-[11px] text-fog-500">
+      <div className="mt-3 hidden items-center justify-between border-t border-white/5 pt-2.5 text-[11px] text-fog-500 sm:flex">
         <span title="Fingerprint of the authoritative state; identical seeds and commands give identical hashes">
           state <span className="metric text-fog-400">{s.stateHash.slice(0, 12)}</span>
         </span>

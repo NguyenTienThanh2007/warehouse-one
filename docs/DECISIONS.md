@@ -73,3 +73,32 @@ Phase 2 replaces it with real inbound/outbound processes.
 ### DEC-013 — `httpx2` for FastAPI's TestClient
 Starlette 1.9 deprecates `httpx` in its TestClient in favour of `httpx2` (maintained by the
 Pydantic organisation). It is used in tests only.
+
+### DEC-014 — Facility master data lives in the simulation config (Phase 1)
+**Context:** the 3D world needs a building, racking dimensions, docks and vehicles, which Phase 0
+data did not contain. Letting the renderer make them up would break "rendering never invents
+operational data". **Decision:** an optional `SimulationConfig.facility` (building, site, rack spec,
+docks, equipment) plus `LocationConfig.yaw`. Neither affects simulation rules in Phase 1; both are
+validated. **Consequences:** inspectors and renderers read one source; configs without facility data
+get a plain building and no docks or vehicles. Phase 2 promotes equipment to stateful aggregates.
+
+### DEC-015 — Beam-level placement is a display convention until per-pallet tracking
+Inventory is tracked per bay (location × SKU quantity), not per beam position. The renderer assigns
+units to slots deterministically (SKU order, bottom-up) and the inspector discloses this. Phase 2
+adds pallet entities with exact slots, and the convention is retired.
+
+### DEC-016 — High quality tier caps the device pixel ratio at 1.5
+**Measured:** at DPR 2 on an Apple M2 (1440×900 @2x) the High tier ran at 42–44 FPS regardless of
+scene size (fill-rate-bound: AO + shadows + SMAA at 5.2 MP). At DPR 1.5 every benchmark scene holds
+60 FPS with zero long frames. The visual difference at 1.5 vs 2 is minor with SMAA enabled.
+
+### DEC-017 — Software WebGL starts on the Low tier
+Unmasked renderer strings matching SwiftShader, llvmpipe, softpipe or the Basic Render Driver set
+the Low tier at startup in Auto mode. Without this, the High tier took over a second per frame and
+starved the main thread, freezing input and slowing the simulation loop (observed in e2e under
+software rendering). Users can still pick a tier manually.
+
+### DEC-018 — Procedural assets only; picking through invisible volumes
+All 3D assets are generated in code (`docs/design/ASSETS.md`), which avoids licensing risk and
+download weight. Detailed instanced meshes skip raycasting. One invisible box per bay, vehicle and
+dock makes picking precise and O(entities), independent of triangle count.
