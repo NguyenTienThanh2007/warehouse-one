@@ -13,10 +13,16 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
+  reporter: process.env.CI
+    ? [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]]
+    : "list",
   outputDir: "../../test-results/e2e",
   use: {
     baseURL,
+    // Linux CI runners have no GPU: allow Chromium's software WebGL (SwiftShader) there.
+    launchOptions: process.env.CI
+      ? { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] }
+      : {},
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
