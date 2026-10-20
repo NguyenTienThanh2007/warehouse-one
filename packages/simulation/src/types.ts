@@ -9,8 +9,13 @@ export interface LocationConfig {
   readonly zone: string;
   /** Maximum units (pallet positions) the location can hold across all SKUs. */
   readonly capacity: number;
-  /** Floor-plan position in metres, used only by rendering adapters. */
+  /** Floor-plan position in metres (bay centre), used only by rendering adapters. */
   readonly position: { readonly x: number; readonly z: number };
+  /**
+   * Rotation about the vertical axis in radians; the bay's pick face points along
+   * (sin(yaw), cos(yaw)). Rendering only. Default 0 (pick face towards +z).
+   */
+  readonly yaw?: number;
 }
 
 export interface SkuConfig {
@@ -37,6 +42,66 @@ export interface SimulationConfig {
   readonly skus: readonly SkuConfig[];
   /** Optional seeded workload generator for demos and benchmarks. Disabled when absent. */
   readonly synthetic_workload?: SyntheticWorkloadConfig;
+  /**
+   * Physical facility master data (building, racking spec, docks, equipment). It does not affect
+   * simulation rules in Phase 1; renderers and inspectors read it so they never invent geometry
+   * or assets. Equipment becomes stateful (moving, tasked) in Phase 2.
+   */
+  readonly facility?: FacilityConfig;
+}
+
+export interface Point2 {
+  readonly x: number;
+  readonly z: number;
+}
+
+export interface RackSpec {
+  /** Clear bay width along the beam, centre-to-centre of uprights (m). */
+  readonly bay_width: number;
+  /** Rack depth front-to-back (m). */
+  readonly depth: number;
+  /** Vertical pitch between beam levels (m); level 0 stores on the floor. */
+  readonly level_height: number;
+  /** Pallet positions per level; levels = ceil(capacity / positions_per_level). */
+  readonly positions_per_level: number;
+}
+
+export interface DockConfig {
+  readonly id: string;
+  /** Centre of the door opening on the wall line. */
+  readonly position: Point2;
+  /** Outward-facing direction of the door (radians, same convention as LocationConfig.yaw). */
+  readonly yaw: number;
+}
+
+export type EquipmentKind = "counterbalance_forklift" | "reach_truck" | "truck";
+
+export interface EquipmentConfig {
+  readonly id: string;
+  readonly kind: EquipmentKind;
+  readonly label: string;
+  /** Parking position and heading. Static in Phase 1. */
+  readonly position: Point2;
+  readonly yaw: number;
+  /** Rated capacity in kg (vehicle spec, informational). */
+  readonly rated_capacity_kg: number;
+  /** For trucks: the dock they are reversed onto. */
+  readonly dock_id?: string;
+}
+
+export interface FacilityConfig {
+  readonly name: string;
+  /** Interior footprint of the building (m). */
+  readonly building: {
+    readonly min: Point2;
+    readonly max: Point2;
+    readonly height: number;
+  };
+  /** Outdoor paved area (yard) including the building footprint (m). */
+  readonly site: { readonly min: Point2; readonly max: Point2 };
+  readonly rack: RackSpec;
+  readonly docks: readonly DockConfig[];
+  readonly equipment: readonly EquipmentConfig[];
 }
 
 /** location_id -> sku -> quantity. Zero quantities are never stored. */

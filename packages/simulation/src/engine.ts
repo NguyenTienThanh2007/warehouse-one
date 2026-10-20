@@ -59,6 +59,7 @@ export function validateConfig(config: SimulationConfig): string[] {
     if (skus.has(s.id)) problems.push(`duplicate sku id '${s.id}'`);
     skus.add(s.id);
   }
+  if (config.facility) problems.push(...validateFacility(config));
   const w = config.synthetic_workload;
   if (w) {
     for (const p of [w.inbound_probability, w.move_probability]) {
@@ -67,6 +68,58 @@ export function validateConfig(config: SimulationConfig): string[] {
     }
     if (!Number.isInteger(w.max_quantity) || w.max_quantity < 1)
       problems.push("synthetic max_quantity must be >= 1");
+  }
+  return problems;
+}
+
+const EQUIPMENT_KINDS = new Set(["counterbalance_forklift", "reach_truck", "truck"]);
+
+function validateFacility(config: SimulationConfig): string[] {
+  const f = config.facility;
+  if (!f) return [];
+  const problems: string[] = [];
+  const { min, max, height } = f.building;
+  if (!(max.x > min.x && max.z > min.z && height > 0))
+    problems.push("facility building bounds are empty");
+  if (!(
+    f.site.min.x <= min.x &&
+    f.site.min.z <= min.z &&
+    f.site.max.x >= max.x &&
+    f.site.max.z >= max.z
+  )) {
+    problems.push("facility site must contain the building");
+  }
+  const r = f.rack;
+  if (
+    !(r.bay_width > 0 && r.depth > 0 && r.level_height > 0) ||
+    !Number.isInteger(r.positions_per_level) ||
+    r.positions_per_level < 1
+  ) {
+    problems.push(
+      "facility rack spec must have positive dimensions and integer positions_per_level",
+    );
+  }
+  const inside = (p: { x: number; z: number }) =>
+    p.x >= min.x && p.x <= max.x && p.z >= min.z && p.z <= max.z;
+  for (const l of config.locations) {
+    if (!inside(l.position)) problems.push(`location '${l.id}' lies outside the building`);
+  }
+  const ids = new Set<string>();
+  for (const d of f.docks) {
+    if (!EntityId.safeParse(d.id).success) problems.push(`dock id '${d.id}' is not a valid slug`);
+    if (ids.has(d.id)) problems.push(`duplicate facility id '${d.id}'`);
+    ids.add(d.id);
+  }
+  for (const e of f.equipment) {
+    if (!EntityId.safeParse(e.id).success)
+      problems.push(`equipment id '${e.id}' is not a valid slug`);
+    if (ids.has(e.id)) problems.push(`duplicate facility id '${e.id}'`);
+    ids.add(e.id);
+    if (!EQUIPMENT_KINDS.has(e.kind))
+      problems.push(`equipment '${e.id}' has unknown kind '${e.kind}'`);
+    if (e.dock_id !== undefined && !f.docks.some((d) => d.id === e.dock_id)) {
+      problems.push(`equipment '${e.id}' references unknown dock '${e.dock_id}'`);
+    }
   }
   return problems;
 }
