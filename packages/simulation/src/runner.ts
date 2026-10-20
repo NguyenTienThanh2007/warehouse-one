@@ -84,6 +84,13 @@ export class SimulationRunner {
   get simulationTimeMs(): number {
     return this.current.tick * this.config.tick_ms;
   }
+  /**
+   * Real time already fed towards the next tick, as a fraction of a tick in [0, 1). Renderers use
+   * it to interpolate between the last two published states; it never affects simulation state.
+   */
+  get tickProgress(): number {
+    return Math.min(this.accumulatorMs / this.config.tick_ms, 1);
+  }
 
   pause(): void {
     this.isPaused = true;

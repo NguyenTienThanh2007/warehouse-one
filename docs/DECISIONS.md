@@ -117,3 +117,18 @@ as scenarios later.
 The dispatcher does not start a task whose pick-up or drop-off is in a dock path that already has an
 active task, so vehicles never queue on the front aisle for a busy dock. This caps per-dock
 throughput, a policy to revisit with measured scenario comparisons.
+
+### DEC-021 — Renderer draws operational state one tick behind, interpolated (Phase 2)
+**Context:** the simulation advances in fixed 100 ms ticks; drawing only the latest tick makes
+vehicles jump. **Decision:** the store keeps the latest published state and the state one tick
+earlier; the renderer draws `lerp(previous, latest, tickProgress)` from the simulation's own pose
+functions (`equipmentPose`, `truckPose`, `palletWorld`). A paused run draws the latest tick
+exactly. **Consequences:** smooth motion with at most one tick (100 ms simulated) of display lag;
+interpolation is visual only and never feeds back into state. Browser tests compare rendered poses
+with authoritative poses while paused, where they must be identical.
+
+### DEC-022 — Operator commands use the same command path as every other input (Phase 2)
+UI forms build commands and submit them to the runner (`submitCommand`): schema errors are rejected
+at submit, business rules by the engine on the next tick, and accepted commands enter the replayable
+command log. The UI shows the engine's rejection code and message, plus an operator explanation per
+code (`REJECTION_EXPLANATION`). Nothing in the UI changes state directly.

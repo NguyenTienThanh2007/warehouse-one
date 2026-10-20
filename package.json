@@ -21,7 +21,8 @@
     "fixtures:generate": "pnpm --filter @warehouse-one/simulation generate:fixtures",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "bench:render": "tsx tests/performance/render-benchmark.ts",
-    "capture:bookmarks": "tsx tests/performance/capture-bookmarks.ts"
+    "capture:bookmarks": "tsx tests/performance/capture-bookmarks.ts",
+    "capture:operations": "tsx tests/performance/capture-operations.ts"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

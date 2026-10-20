@@ -48,8 +48,10 @@ describe("one-way circulation (root cause: head-on meetings in single-lane aisle
 function run(id: ScenarioId, seed: string, ticks: number) {
   const scenario = createScenario(id);
   const config: SimulationConfig = { ...scenario.config, seed };
-  let s = step(config, createInitialState(config), scenario.openingCommands).state;
-  let created = 0;
+  const opened = step(config, createInitialState(config), scenario.openingCommands);
+  let s = opened.state;
+  // Tasks created by the opening commands count too: their completions are counted below.
+  let created = opened.events.filter((e) => e.event_type === "task.created").length;
   let completed = 0;
   let longestWait = 0;
   const windows = new Set<number>();

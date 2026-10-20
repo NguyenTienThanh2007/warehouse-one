@@ -121,13 +121,14 @@ Two further attempts (corridor locking with refuge/yield) fixed individual trace
 
 ### Unresolved risks and open work
 
-1. **Renderer integration is not done (milestone D).** The 3D view still draws vehicles at their
+1. *(Resolved in §5.)* **Renderer integration is not done (milestone D).** The 3D view still draws vehicles at their
    chargers and pallets with the Phase 1 bottom-up convention, while the simulation now moves
    vehicles and tracks exact slots. Until D lands, the view does **not** show vehicle positions
    or in-flight pallets from authoritative state. The e2e vehicle-count assertion was updated from
    6 to 4 (trucks are now dynamic and not yet rendered).
-2. Operator UI (task queue, orders and trucks, rejection explanations), screenshots, render and
-   simulation benchmarks for operations, and an operations golden fixture are not done.
+2. *(Resolved in §5.)* Operator UI (task queue, orders and trucks, rejection explanations),
+   screenshots, render and simulation benchmarks for operations, and an operations golden fixture
+   are not done.
 3. **Deadlock freedom is argued and tested, not proven.** The one-way design removes head-on
    conflicts; the evidence is 16 sweep runs, 5 regression seeds and the soak. Exotic congestion
    (e.g. many more vehicles than aisles) is untested.
@@ -138,3 +139,191 @@ Two further attempts (corridor locking with refuge/yield) fixed individual trace
    and this Python release skips hidden `.pth` files, so `uv run pytest` fails locally with
    `ModuleNotFoundError`. Workaround: `chflags -R nohidden apps/api/.venv` and
    `apps/api/.venv/bin/python -m pytest`. CI (Linux) is unaffected.
+
+## 5. Milestone D: 3D world and operator UI on `state.ops` (2026-10-20, third session)
+
+### 5.1 Longest-task target (soak test)
+
+The stabilisation commit `c4518dc` relaxed the soak assertion `longestService < 1800` to `< 2500`
+without owner approval. **It is restored to 1,800** (`ops/workflows.test.ts`, showcase soak) and
+passes. Evidence (assigned → completed, 20,000 ticks):
+
+| Scenario | Seeds | Longest task | Tasks over 1,800 |
+|----------|------:|-------------:|-----------------:|
+| showcase | 12 | 1,549 ticks | 0 |
+| bench-1000 | 2 | 1,864 ticks (`regression-1`), 1,822 (`regression-2`) | 1 per run |
+
+**The two bench-1000 tasks are not congestion.** Both are relocations across the layout, traced
+phase by phase:
+
+| Task | Empty trip to pick-up | Loaded trip | Distance driven | Ticks spent waiting |
+|------|----------------------:|------------:|----------------:|--------------------:|
+| `tsk-000030` (fl-03, seed 1), 1,864 ticks | 700 ticks, 138.5 m | 1,108 ticks | 308 m | 55 (3%) |
+| `tsk-000050` (fl-01, seed 2), 1,822 ticks | 740 ticks, 148.1 m | 1,038 ticks | 303 m | 67 (4%) |
+
+Routes are shortest paths (travel / shortest path = 1.00). With one-way circulation (DEC-019) the
+longest pick-face-to-pick-face trip is 193.7 m in bench-1000 and 174.5 m in the showcase. At
+200 / 160 mm per tick that is ~2,180 and ~1,960 ticks of *pure driving* in the worst case, before
+handling. So a 1,800-tick bound is a property of the current layout and workload, not a guarantee
+of the routing. The showcase meets it with ~250 ticks of margin; bench-1000 cannot always.
+
+**Owner decision needed:** keep 1,800 ticks for the showcase only (current state, no assertion on
+bench-1000), or adopt a layout-derived target (for example, free-flow trip time + a congestion
+allowance). No bench-1000 service-time assertion was added in either direction.
+
+**Completed-task floor (150 → 60 in `c4518dc`).** The floor is tied to how much work the seeded
+workload generates, and `c4518dc` re-calibrated that workload for one-way routing:
+
+| Workload (showcase) | Inbound trucks | Outbound orders | Relocations | Pallets per truck/order | Tasks generated per 20,000 ticks |
+|---------------------|----------------|-----------------|-------------|-------------------------|---------------------------------|
+| Before (`eba129e`) | every 1,800 ticks | every 1,800 | every 600 | 3–5 | ~210 (estimated from rates) |
+| Now | every 3,600 | every 3,600 | every 1,800 | 2–4 | 77–94 measured (12 seeds), +4 from opening commands |
+
+150 was ~72% of the old demand; 60 is ~73–78% of the new measured demand (completed: 78–93 across 12
+seeds; all 5 orders shipped in every seed). So the number moved with the workload, not to hide a
+failure. It is still a loose, hand-picked floor.
+
+**What the soak detects, and how** (showcase, 20,000 ticks):
+
+| Failure | Assertion |
+|---------|-----------|
+| Stalled progress / deadlock / livelock | a task completes in every 2,000-tick window (10 windows); longest wait at one node < 300 ticks |
+| Work left undone | completed / created > 0.85; tasks open at the end < 20 |
+| Slow tasks | longest assigned → completed < 1,800 ticks |
+| Inventory, pallet, reservation, dock and vehicle invariants | `checkInvariants` every 100 ticks (throws) and at the end |
+| Workload generator producing too little work | completed > 60 |
+
+**Accounting fix (this review).** The soak and the multi-seed liveness test counted tasks *completed*
+from the opening commands but not tasks *created* by them, which overstated the completion ratio by
+up to ~5% (measured ratios ranged 0.95–1.01, above 1 being impossible). Both now count the opening
+step's tasks. This makes the ratio check stricter; all tests still pass.
+
+**Workflow-completion assertions (approved and applied).** The soak now runs on all 12 seeds
+(20,000 ticks each) and checks outcomes from events and the final state, in addition to everything
+above:
+
+- every outbound order created at least **6,000** ticks before the end has shipped and left state;
+- every inbound truck that entered the yard at least **3,500** ticks before the end has departed and
+  left state;
+- every task type (unload, put-away, pick, load, relocate) completed at least once;
+- tasks from the opening commands count in both created and completed totals;
+- longest task < 1,800 ticks (showcase only); completed > 60 kept as a secondary sanity check on the
+  workload generator, not as the proof of liveness.
+
+Measured on the 12 seeds: orders take 1,575–5,511 ticks from creation to shipping (90th percentile
+4,757); inbound trucks take 352–3,125 ticks from arrival to departure. Orders are slow because the
+dispatcher lets one task at a time touch a dock (DEC-020): an order's 4–8 picks and loads run in
+series, and 72% of their task time is spent waiting for dispatch. No order or truck was stuck.
+
+An earlier attempt with a 3,000-tick margin for both failed on 10 of 12 seeds: the order created at
+tick 16,800 was still loading at the end. That margin had been derived from a 4-pallet order in an
+**idle** facility (~2,050 ticks), the wrong reference for a loaded one.
+
+**The 6,000 / 3,500 margins are regression guards derived from the observed 12-seed showcase
+workload, not universal performance guarantees.** They catch orders or trucks that never finish
+(or slow down markedly); they do not bound lead time. Changing the workload, layout or dispatcher
+(including any revision of DEC-020) requires re-measuring and revalidating them.
+
+### 5.2 What changed
+
+| Area | Change |
+|------|--------|
+| Vehicles | Drawn every frame from `equipmentPose`, interpolated between the last two ticks (DEC-021); forks are a separate part lifted to the simulated fork height |
+| Pallets | Rack and staging pallets at `palletWorld` positions (exact slot / lane); pallets on forks follow the interpolated vehicle; pallets inside trailers are hidden. The Phase 1 bottom-up convention remains only for configs without facility data |
+| Trucks and docks | Trucks drawn from `truckPose` (yard → docking → docked → departing); departed trucks disappear; door lights show free (green) or occupied (amber) from `ops.docks` |
+| Picking | Vehicles and trucks have moving pick volumes and outlines; trucks are selectable |
+| Operations panel | Tabs: task queue (status, vehicle, age), orders (progress, cancel, recently finished from events), trucks & docks, new work (outbound order, inbound truck) |
+| Commands | `submitCommand` through the runner (DEC-022): order.create, order.cancel, truck.schedule_inbound, pallet.relocate and inventory.receive (bay inspector). Results show Queued / Accepted / Rejected with code, engine message and an operator explanation |
+| Inspectors | Bay: pallets by slot, reserved slots, relocate / receive. Vehicle: live status, task, load, battery, position, odometer, waits. Dock: truck and staging lane. Truck: status, time in status, dock, pallets aboard, order |
+| KPIs | Stock in racks, utilisation, bays in use, fleet busy (from `ops.equipment`), open tasks, trucks on site / docks occupied. Trucks are no longer counted from config |
+| Runner | `tickProgress` (read-only, for interpolation) |
+| Read-only hooks | `window.__WAREHOUSE_ONE_SIM__` (state, config, commands, finished orders, authoritative poses) and `window.__WAREHOUSE_ONE_SCENE__.moving` (what was drawn), for tests |
+
+Unchanged: camera presets, quality tiers, scenarios, the Phase 0 golden fixture (byte-identical).
+
+### 5.3 Verification (local, Apple M2)
+
+| Check | Result |
+|-------|--------|
+| `pnpm format:check`, `lint`, `typecheck`, `build` | PASS |
+| Unit tests | PASS: contracts 26, simulation 121 (was 102; includes the 12-seed soak), web 56 (was 39) |
+| `git diff --check` | clean |
+| New unit tests | `world/ops-view.test.ts` (11): poses at alpha 0/1 equal the authoritative poses, interpolation never exceeds the simulated speed, forks rise while handling, static pallets equal `palletWorld` and the inventory table, carried pallets sit on the carrying vehicle's forks, trucks equal `truckPose`, docked trucks match their dock, scene counts, free stock equals what an order may take. `lib/sim/store.test.ts` (+6): accepted, engine-rejected and schema-rejected commands, finished orders, previous-tick tracking. `runner.test.ts` (+1). `operations-golden.test.ts` (7) |
+| Operations reference fixture | `data/fixtures/operations-demo`: 6,000 ticks, 197 events; order shipped, both trucks departed, 15 tasks completed, 4 scripted rejections, no invariant violations |
+| Playwright e2e, GPU, retries disabled | PASS 23/23 (1.1 min), on the final tree |
+| Playwright e2e, `CI=1` (SwiftShader), retries disabled | PASS 23/23 (6.3 min), on the final tree |
+| Phase 0 golden fixture | byte-identical (`git diff data/fixtures/foundation-demo` empty; golden test passes) |
+| Python (no Python changes) | ruff, ruff format, mypy: pass; pytest 20 passed; integration readiness (PostgreSQL) 1 passed; migration round-trip not run locally |
+| GitHub Actions | NOT RUN (branch not pushed) |
+
+New browser tests (`tests/e2e/operations.spec.ts`, state-based waits only):
+- Vehicles, trucks and carried pallets are drawn exactly at their simulated poses (paused, so no interpolation offset).
+- A truck can be selected from the trucks panel and inspected.
+- A rejected order shows `INSUFFICIENT_STOCK` with its explanation, and nothing changes.
+- A relocation requested in the bay inspector is completed by a vehicle.
+- **Complete order through the UI:** inbound truck → unload → put-away → outbound order → pick → load → ship → truck departs. The final state reconciles: no pallets, orders, tasks or trucks on site, all docks free, the stock KPI and the scene both at 0. This test sets a 180 s timeout: the flow measures ~3,430 ticks in the engine, at least 43 s at the UI's maximum 8× speed (measured 42.9 s on GPU, 53.9 s on SwiftShader).
+
+Existing browser tests changed: no fixed sleep in "pallets follow the simulation" (it waits for 400 ticks); rendered pallets are compared with the simulation state while paused; the vehicle inspector checks live status instead of "Parked".
+
+### 5.4 Benchmarks
+
+**Simulation** (`pnpm bench:sim -- --ticks 5000`, Node 24, Apple M2):
+
+| Scenario | mean µs/tick | p95 | p99 | ticks/s |
+|----------|------------:|----:|----:|--------:|
+| showcase (operations) | 135.1 | 264.1 | 364.3 | 7,401 |
+| bench-100 (operations) | 9.6 | 13.3 | 40.8 | 103,718 |
+| bench-300 (operations) | 24.9 | 35.2 | 110.3 | 40,095 |
+| bench-1000 (operations) | 189.0 | 305.4 | 514.3 | 5,292 |
+
+A later run (`evidence/phase-2/benchmarks/sim-2026-10-20.txt`) measured bench-1000 at
+157.8 µs/tick (6,336 ticks/s) and the showcase at 124.6 µs/tick: runs differ by 10–20% on this laptop.
+The UI at 8× needs 80 ticks/s; the slowest scenario has at least ~66× headroom.
+
+**Render** (`pnpm bench:render`, Chromium 153 headless, ANGLE Metal, 1440×900 @2x, simulation
+running, 4 moving vehicles, trucks on site in the showcase). Four runs were made; all reports are kept
+in `docs/phases/evidence/phase-2/benchmarks/`.
+
+| Run (report) | Samples | Conditions | bench-1000 High FPS |
+|--------------|---------|------------|---------------------|
+| A `16-24-10` | 10 s | the app was also open in the in-app preview browser, running at High on the same GPU | 38.1 |
+| B `16-25-58` | 10 s | same as A (closing the preview failed; it was still open) | 38.0 |
+| C `16-27-23` | 8 s | preview browser closed | **55.1** |
+| D `16-28-51` | 10 s | preview browser closed | 60.0 |
+
+Runs C and D:
+
+| Scene | Tier | FPS C / D | p95 ms C / D | Long frames C / D | Draw calls |
+|-------|------|-----------|--------------|-------------------|-----------:|
+| bench-100 | High | 60.0 / 60.0 | 18.5 / 18.5 | 0 / 0 | 97 |
+| bench-300 | High | 60.0 / 60.0 | 19.7 / 19.7 | 0 / 0 | 103 |
+| bench-1000 | High | **55.1** / 60.0 | 25.4 / 23.4 | 19 / 2 | 111 |
+| bench-1000 | Medium | 60.0 / 60.0 | 23.9 / 24.0 | 3 / 1 | 99 |
+| bench-1000 | Low | 60.0 / 60.0 | 23.7 / 24.0 | 1 / 0 | 52 |
+| showcase | High | 60.0 / 60.0 | 20.7 / 20.7 | 0 / 0 | 122 |
+
+**Reading the results.** The first run with the preview closed (C) measured 55.1 FPS on
+bench-1000 High; the next (D) measured 60.0. Both are real measurements; two runs are not enough to
+say which is typical. Compared with Phase 1 (`PHASE_1.md` §4: 60 FPS, p95 20.1–20.8 ms), p95 on
+bench-1000 is 3–5 ms higher on every tier in C and D. Runs A and B (~40 FPS on every High scene) are
+*attributed* to GPU contention from the preview browser: closing it is the only change before C.
+That is a correlation, not a proven cause. Medium and Low held 60 FPS in all four runs.
+
+### 5.5 Screenshots
+
+`docs/phases/evidence/phase-2/` (from `pnpm capture:operations`, each taken at a real simulated
+moment, waited for on state): operating overview, docks with trucks, vehicle inspector, truck
+inspector with the trucks panel, orders panel, rejected order with explanation, phone overview.
+
+### 5.6 Limitations and open items
+
+1. **bench-1000 longest-task target:** owner decision (§5.1).
+2. **Workers (§4.6)** are not implemented (deferred in the plan).
+3. **Phone layout:** the operations panel is hidden below 768 px wide; the inspector still works.
+4. **Focus framing** can put racks between the camera and a vehicle in a narrow aisle (seen in screenshot 3).
+5. **Render interpolation** shows motion up to one tick (100 ms simulated) behind the simulation (DEC-021).
+6. Orders and trucks that finished are kept only from the events seen by this browser session (the last 8 orders); there is no history store yet.
+7. `inventory.move` and `inventory.adjust` have no operator forms (still available through the command contract).
+8. GitHub CI has not run on this branch.
+9. bench-1000 High frame rate: one of two valid runs measured 55 FPS (§5.4).
+10. Order lead time is not bounded by any test: the soak margins are completion guards (§5.1); dock serialisation (DEC-020) makes 4-pallet orders take up to ~5,500 ticks.

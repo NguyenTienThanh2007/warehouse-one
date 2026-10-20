@@ -1,4 +1,4 @@
-import type { DomainEvent, SimulationCommand } from "@warehouse-one/contracts";
+import { TASK_TYPES, type DomainEvent, type SimulationCommand } from "@warehouse-one/contracts";
 import { DomainEvent as DomainEventSchema } from "@warehouse-one/contracts";
 import { describe, expect, it } from "vitest";
 import {
@@ -229,38 +229,85 @@ interface SoakResult {
   created: number;
   completed: number;
   completedAt: number[];
+  completedTypes: Set<string>;
   longestWait: number;
   longestService: number;
   backlog: number;
+  /** Outbound orders: creation tick and final status, from `order.status_changed`. */
+  orders: Map<string, { createdAt: number; status: string }>;
+  /** Inbound trucks: arrival tick (entered the yard) and last status, from `truck.status_changed`. */
+  inbound: Map<string, { arrivedAt: number; status: string }>;
+  ticks: number;
+  final: SimulationState;
 }
 
-/** Run a scenario for `ticks`, checking invariants every 100 ticks, and measure liveness. */
+/**
+ * Run a scenario for `ticks`, checking invariants every 100 ticks, and measure liveness and
+ * workflow outcomes from the event stream. Events of the opening step (tick 1) are included, so
+ * tasks, orders and trucks created by opening commands are counted like any others.
+ */
 function soak(config: SimulationConfig, opening: readonly unknown[], ticks: number): SoakResult {
-  let s = step(config, createInitialState(config), opening).state;
   const r: SoakResult = {
     created: 0,
     completed: 0,
     completedAt: [],
+    completedTypes: new Set(),
     longestWait: 0,
     longestService: 0,
     backlog: 0,
+    orders: new Map(),
+    inbound: new Map(),
+    ticks: 0,
+    final: createInitialState(config),
   };
   const assignedAt = new Map<string, number>();
+  const taskType = new Map<string, string>();
+  const record = (events: readonly DomainEvent[], tick: number) => {
+    for (const e of events) {
+      switch (e.event_type) {
+        case "task.created":
+          r.created++;
+          taskType.set(e.payload.task_id, e.payload.task_type);
+          break;
+        case "task.assigned":
+          assignedAt.set(e.aggregate_id, tick);
+          break;
+        case "task.completed":
+          r.completed++;
+          r.completedAt.push(tick);
+          r.completedTypes.add(taskType.get(e.payload.task_id) ?? "unknown");
+          r.longestService = Math.max(
+            r.longestService,
+            tick - (assignedAt.get(e.aggregate_id) ?? tick),
+          );
+          break;
+        case "order.status_changed": {
+          const o = r.orders.get(e.payload.order_id);
+          r.orders.set(e.payload.order_id, {
+            createdAt: o?.createdAt ?? tick,
+            status: e.payload.to,
+          });
+          break;
+        }
+        case "truck.status_changed": {
+          if (e.payload.direction !== "inbound") break;
+          const t = r.inbound.get(e.payload.truck_id);
+          r.inbound.set(e.payload.truck_id, {
+            arrivedAt: t?.arrivedAt ?? tick,
+            status: e.payload.to,
+          });
+          break;
+        }
+      }
+    }
+  };
+  const opened = step(config, createInitialState(config), opening);
+  let s = opened.state;
+  record(opened.events, s.tick);
   for (let i = 0; i < ticks; i++) {
     const out = step(config, s, []);
     s = out.state;
-    for (const e of out.events) {
-      if (e.event_type === "task.created") r.created++;
-      if (e.event_type === "task.assigned") assignedAt.set(e.aggregate_id, s.tick);
-      if (e.event_type === "task.completed") {
-        r.completed++;
-        r.completedAt.push(s.tick);
-        r.longestService = Math.max(
-          r.longestService,
-          s.tick - (assignedAt.get(e.aggregate_id) ?? s.tick),
-        );
-      }
-    }
+    record(out.events, s.tick);
     for (const e of Object.values(s.ops!.equipment))
       r.longestWait = Math.max(r.longestWait, e.wait_ticks);
     if (i % 100 === 0) {
@@ -270,6 +317,8 @@ function soak(config: SimulationConfig, opening: readonly unknown[], ticks: numb
   }
   expect(checkInvariants(config, s)).toEqual([]);
   r.backlog = Object.keys(s.ops!.tasks).length;
+  r.ticks = s.tick;
+  r.final = s;
   return r;
 }
 
@@ -285,15 +334,64 @@ function expectLive(r: SoakResult, ticks: number) {
   expect(r.backlog).toBeLessThan(20);
   // Waits are queueing behind a vehicle that is moving or handling, never a standstill.
   expect(r.longestWait).toBeLessThan(300);
-  expect(r.longestService).toBeLessThan(2500);
 }
 
-describe("showcase soak run", () => {
+/**
+ * Completion margins: regression guards derived from the observed 12-seed showcase workload, not
+ * universal performance guarantees. Measured (20,000 ticks × 12 seeds): orders take 1,575–5,511
+ * ticks from creation to shipping, inbound trucks 352–3,125 ticks from arrival to departure. Orders
+ * are slow because one task at a time may touch a dock (DEC-020), so an order's picks and loads run
+ * in series. Changing the workload, layout or dispatcher requires revalidating these margins
+ * (PHASE_2.md §5.1).
+ */
+const ORDER_MARGIN_TICKS = 6000;
+const INBOUND_MARGIN_TICKS = 3500;
+
+/**
+ * Workflow completion, from events and the final authoritative state: orders created long enough
+ * before the end have shipped, inbound trucks that arrived long enough before the end have left,
+ * and every task type has completed at least once.
+ */
+function expectWorkflowsComplete(r: SoakResult) {
+  const ops = r.final.ops!;
+  const dueOrders = [...r.orders].filter(([, o]) => o.createdAt <= r.ticks - ORDER_MARGIN_TICKS);
+  expect(dueOrders.length).toBeGreaterThan(0);
+  for (const [id, o] of dueOrders) {
+    expect(o.status, `order ${id} created at tick ${o.createdAt}`).toBe("shipped");
+    expect(ops.orders[id], `shipped order ${id} still in state`).toBeUndefined();
+  }
+  const dueTrucks = [...r.inbound].filter(([, t]) => t.arrivedAt <= r.ticks - INBOUND_MARGIN_TICKS);
+  expect(dueTrucks.length).toBeGreaterThan(0);
+  for (const [id, t] of dueTrucks) {
+    expect(t.status, `inbound truck ${id} arrived at tick ${t.arrivedAt}`).toBe("departed");
+    expect(ops.trucks[id], `departed truck ${id} still in state`).toBeUndefined();
+  }
+  expect([...r.completedTypes].sort()).toEqual([...TASK_TYPES].sort());
+}
+
+/** The 12 seeds of the stabilisation sweep (PHASE_2.md §4, §5.1). */
+const SOAK_SEEDS = [
+  "warehouse-one-showcase",
+  ...Array.from({ length: 11 }, (_, i) => `s-${i + 1}`),
+];
+
+describe("showcase soak run (12 seeds × 20,000 ticks)", () => {
   const scenario = createScenario("showcase");
 
-  it("keeps every invariant, never deadlocks, and keeps completing work for 20,000 ticks", () => {
-    const r = soak(scenario.config, scenario.openingCommands, 20000);
-    expectLive(r, 20000);
-    expect(r.completed).toBeGreaterThan(60);
-  });
+  it.each(SOAK_SEEDS)(
+    "seed %s: keeps every invariant, never stalls, and completes its workflows",
+    (seed) => {
+      const config: SimulationConfig = { ...scenario.config, seed };
+      const r = soak(config, scenario.openingCommands, 20000);
+      expectLive(r, 20000);
+      expectWorkflowsComplete(r);
+      // Acceptance target for the showcase: no assigned task takes more than 3 simulated minutes
+      // (1,800 ticks). Not applied to bench-1000, whose longest free-flow trip exceeds it (§5.1).
+      expect(r.longestService).toBeLessThan(1800);
+      // Secondary sanity check on the workload generator, not the proof of liveness (the window,
+      // ratio, backlog, wait and workflow assertions above are): 12 seeds complete 78–93 tasks.
+      expect(r.completed).toBeGreaterThan(60);
+    },
+    30_000,
+  );
 });

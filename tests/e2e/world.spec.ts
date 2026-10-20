@@ -1,16 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-
-/** Read-only scene introspection published by the app (see apps/web/src/lib/world/scene-debug.ts). */
-const scene = (page: Page) => page.evaluate(() => window.__WAREHOUSE_ONE_SCENE__ ?? null);
-const kpi = async (page: Page, id: string) =>
-  Number((await page.getByTestId(id).locator(".metric").textContent())?.replace(/[^0-9]/g, ""));
-
-async function openWorld(page: Page, query = "") {
-  await page.goto(`/${query}`);
-  await expect(page.locator("main")).toHaveAttribute("data-world-status", "ready", {
-    timeout: 45_000,
-  });
-}
+import { drawnPallets, inventoryUnits, kpi, openWorld, pause, scene, simState } from "./helpers";
 
 /** Click an entity at its projected screen position (pick volumes make this precise). */
 async function clickEntity(page: Page, kind: string, id: string) {
@@ -27,19 +16,24 @@ async function clickEntity(page: Page, kind: string, id: string) {
 }
 
 test.describe("3D world reflects authoritative simulation state", () => {
-  test("rendered pallets equal stock on hand, and bays/vehicles/docks equal facility data", async ({
+  test("rendered pallets, vehicles, trucks, bays and docks equal simulation state and facility data", async ({
     page,
   }) => {
     await openWorld(page);
     await expect(page.getByTestId("scene-loading")).toHaveCount(0);
+    await pause(page);
+    const s = await simState(page);
+    await expect.poll(async () => (await scene(page))?.counts?.pallets).toBe(drawnPallets(s));
     const counts = (await scene(page))!.counts!;
     expect(counts.pallets).toBeGreaterThan(0);
-    expect(counts.pallets).toBe(await kpi(page, "kpi-stock"));
+    // Rack pallets are the stock-on-hand KPI and the inventory table.
+    expect(counts.palletsByPlace!.slot).toBe(inventoryUnits(s));
+    expect(counts.palletsByPlace!.slot).toBe(await kpi(page, "kpi-stock"));
     expect(counts.bays).toBe(84);
     expect(counts.docks).toBe(4);
-    // 3 forklifts + 1 reach truck from facility data. Trucks are scheduled at run time in Phase 2
-    // and are not rendered yet (renderer integration is Phase 2 milestone D).
+    // 3 forklifts + 1 reach truck, and every truck on site.
     expect(counts.vehicles).toBe(4);
+    expect(counts.trucks).toBe(Object.keys(s.ops.trucks).length);
     expect(Object.values(counts.palletsByArchetype).reduce((a, b) => a + b, 0)).toBe(
       counts.pallets,
     );
@@ -47,19 +41,25 @@ test.describe("3D world reflects authoritative simulation state", () => {
 
   test("pallets follow the simulation as it runs", async ({ page }) => {
     await openWorld(page);
+    const start = (await simState(page)).tick;
     await page.locator("body").press("5"); // 8× speed
-    await page.waitForTimeout(4000);
-    await page.locator("body").press("Space");
+    // Wait for the run to progress (pallets move in the first few hundred ticks), not for a time.
     await expect
-      .poll(async () => (await scene(page))!.counts!.pallets)
-      .toBe(await kpi(page, "kpi-stock"));
+      .poll(async () => (await simState(page)).tick, { timeout: 30_000 })
+      .toBeGreaterThan(start + 400);
+    await pause(page);
+    const s = await simState(page);
+    await expect.poll(async () => (await scene(page))!.counts!.pallets).toBe(drawnPallets(s));
+    expect((await scene(page))!.counts!.palletsByPlace!.slot).toBe(await kpi(page, "kpi-stock"));
   });
 
   for (const n of [100, 300, 1000]) {
     test(`benchmark scenario bench-${n} renders exactly ${n} pallets`, async ({ page }) => {
       await openWorld(page, `?scenario=bench-${n}`);
+      await pause(page);
+      // Relocations keep every pallet on site; one may be on forks rather than in a rack.
       await expect.poll(async () => (await scene(page))?.counts?.pallets).toBe(n);
-      expect(await kpi(page, "kpi-stock")).toBe(n);
+      expect(await kpi(page, "kpi-stock")).toBe(inventoryUnits(await simState(page)));
     });
   }
 
@@ -76,21 +76,30 @@ test.describe("3D world reflects authoritative simulation state", () => {
 });
 
 test.describe("selection and camera", () => {
-  test("clicking a forklift opens its inspector from facility data", async ({ page }) => {
+  test("clicking a forklift opens its inspector with live simulation state", async ({ page }) => {
     await openWorld(page);
-    await page.locator("body").press("Space");
+    await pause(page);
     await clickEntity(page, "equipment", "fl-01");
     const inspector = page.getByTestId("inspector");
     await expect(inspector).toContainText("fl-01");
     await expect(inspector).toContainText("Counterbalance forklift");
-    await expect(page.getByTestId("inspector-status")).toHaveText("Parked");
+    const status = (await simState(page)).ops.equipment["fl-01"]!.status;
+    const label = {
+      idle: "Idle",
+      travelling: "Travelling",
+      handling: "Handling a pallet",
+      charging: "Charging",
+    };
+    await expect(page.getByTestId("inspector-status")).toHaveText(
+      label[status as keyof typeof label],
+    );
     await page.locator("body").press("Escape");
     await expect(page.getByTestId("inspector")).toHaveCount(0);
   });
 
   test("clicking a rack bay shows its live occupancy", async ({ page }) => {
     await openWorld(page);
-    await page.locator("body").press("Space");
+    await pause(page);
     await clickEntity(page, "location", "loc-05-007");
     await expect(page.getByTestId("inspector")).toContainText("loc-05-007");
     await expect(page.getByTestId("inspector-occupancy")).toHaveText(/^\d+ \/ 8 positions$/);

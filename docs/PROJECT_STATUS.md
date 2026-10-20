@@ -13,9 +13,16 @@ _Last updated: 2026-10-20_
 - CI on `main` @ `0463395`: TypeScript, Python + PostgreSQL integration, Docker Compose, Playwright e2e 18/18 (no flaky results)
 - Phase 1 checks recorded as not done: live-scene contrast audit (visual checklist 3b), per-bookmark FPS (checklist 5)
 
+## Phase 2 progress (local, not pushed)
+
+- Engine (milestones A, B, C, E) and stabilisation: done, tested locally
+- Milestone D (3D world and operator UI on `state.ops`): done, tested locally (`PHASE_2.md` §5)
+- Not done: workers (§4.6, deferred), GitHub CI on the branch, owner review
+
 ## Pending
 
-- Phase 2 implementation and review (`docs/phases/PHASE_2.md`)
+- Owner review of Phase 2; push and CI after approval (`docs/phases/PHASE_2.md`)
+- Owner decision: bench-1000 longest-task target (`PHASE_2.md` §5.1)
 - Owner decisions: repository licence, public-demo hosting (Phase 7)
 
 ## Known blockers

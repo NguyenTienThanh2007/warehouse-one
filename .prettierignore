@@ -9,3 +9,4 @@ apps/api
 data/schemas
 data/fixtures
 *.md
+docs/phases/evidence

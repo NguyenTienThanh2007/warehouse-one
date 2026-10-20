@@ -10,6 +10,7 @@ import { publishSceneDebug } from "@/lib/world/scene-debug";
 import { useView, type CameraPreset } from "@/lib/world/view-store";
 import { bayBounds, rackRows, VEHICLE_SIZE, YARD_LEVEL } from "@/world/derive";
 import { facilityFrame, fitBox, overviewPose, type CameraPose } from "@/world/framing";
+import { truckViews, vehicleViews } from "@/world/ops-view";
 
 function selectionBox(
   sel: Selection,
@@ -23,15 +24,22 @@ function selectionBox(
     const b = bayBounds(loc, f.rack);
     return new Box3(new Vector3(b.min.x, 0, b.min.z), new Vector3(b.max.x, rackHeight, b.max.z));
   }
-  if (sel.kind === "equipment") {
-    const e = f.equipment.find((v) => v.id === sel.id);
-    if (!e) return null;
-    const s = VEHICLE_SIZE[e.kind];
+  if (sel.kind === "equipment" || sel.kind === "truck") {
+    // Moving entities are framed where the simulation has them now.
+    const state = useSimulation.getState().state;
+    const ops = state.ops;
+    if (!ops) return null;
+    const v =
+      sel.kind === "equipment"
+        ? vehicleViews(config, undefined, ops, 1).find((x) => x.id === sel.id)
+        : truckViews(config, undefined, ops, 1).find((x) => x.id === sel.id);
+    if (!v) return null;
+    const s = VEHICLE_SIZE["kind" in v ? v.kind : "truck"];
     const r = Math.max(s.length, s.width) / 2;
-    const y0 = e.kind === "truck" ? YARD_LEVEL : 0;
+    const y0 = sel.kind === "truck" ? YARD_LEVEL : 0;
     return new Box3(
-      new Vector3(e.position.x - r, y0, e.position.z - r),
-      new Vector3(e.position.x + r, y0 + s.height, e.position.z + r),
+      new Vector3(v.pose.x - r, y0, v.pose.z - r),
+      new Vector3(v.pose.x + r, y0 + s.height, v.pose.z + r),
     );
   }
   const d = f.docks.find((k) => k.id === sel.id);
@@ -181,7 +189,8 @@ export function CameraRig({
     if (!c || state.clock.elapsedTime - lastPublish.current < 0.25) return;
     lastPublish.current = state.clock.elapsedTime;
     c.getTarget(target);
-    const pickables = window.__WAREHOUSE_ONE_SCENE__?.pickables ?? [];
+    const debug = window.__WAREHOUSE_ONE_SCENE__;
+    const pickables = [...(debug?.pickables ?? []), ...(debug?.moving?.pickables ?? [])];
     publishSceneDebug({
       camera: {
         position: camera.position.toArray() as [number, number, number],

@@ -1,0 +1,16 @@
+$ tsx scripts/bench.ts -- --ticks 5000
+node v24.16.0 darwin/arm64 — 5000 ticks per size (after 200 warm-up)
+Phase 0 · inventory only
+scenario                   | mean µs/tick | p95 µs/tick | p99 µs/tick | ticks/sec  | events
+100 locations              |          4.4 |        10.5 |        21.9 |    228,257 |    658
+300 locations              |         14.6 |        35.6 |       110.0 |     68,465 |   1288
+1,000 locations            |         40.3 |       108.4 |       400.8 |     24,811 |   1254
+
+Phase 2 · operations (vehicles, routing, tasks, trucks; seeded workload)
+scenario                   | mean µs/tick | p95 µs/tick | p99 µs/tick | ticks/sec  | events | tasks open
+showcase                   |        124.6 |       251.3 |       294.4 |      8,029 |    370 | 3
+bench-100                  |          8.7 |        10.1 |        30.3 |    115,535 |    170 | 1
+bench-300                  |         26.4 |        37.6 |       114.7 |     37,846 |    160 | 1
+bench-1000                 |        157.8 |       221.1 |       313.4 |      6,336 |    144 | 3
+
+Real time at 1× needs 10 ticks/sec; the UI's 8× needs 80. Laptop runs can differ by 10–20%; compare runs side by side.

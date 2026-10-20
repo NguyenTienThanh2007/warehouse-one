@@ -2,6 +2,21 @@
 
 import type { SceneCounts } from "../../world/derive";
 
+export interface DebugPickable {
+  kind: string;
+  id: string;
+  center: [number, number, number];
+}
+
+/** What the moving layer drew in the last frame (rounded to millimetres). */
+export interface MovingDebug {
+  vehicles: { id: string; x: number; z: number; yaw: number; fork: number }[];
+  trucks: { id: string; x: number; z: number }[];
+  carried: { id: string; x: number; y: number; z: number }[];
+  /** Pick volumes of vehicles and trucks, which follow them every frame. */
+  pickables: DebugPickable[];
+}
+
 /**
  * Read-only scene introspection for automated tests and benchmarks
  * (`window.__WAREHOUSE_ONE_SCENE__`). It reports what is rendered so tests can compare it with
@@ -9,7 +24,9 @@ import type { SceneCounts } from "../../world/derive";
  */
 export interface SceneDebug {
   counts?: SceneCounts;
-  pickables?: { kind: string; id: string; center: [number, number, number] }[];
+  /** Static pick volumes: rack bays and docks. */
+  pickables?: DebugPickable[];
+  moving?: MovingDebug;
   camera?: { position: [number, number, number]; target: [number, number, number] };
   /**
    * Camera motion from camera-controls events: `moving` between 'wake' and 'rest'; `rests` counts

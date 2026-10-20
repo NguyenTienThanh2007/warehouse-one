@@ -1,23 +1,63 @@
 "use client";
 
-import type { DomainEvent } from "@warehouse-one/contracts";
+import type {
+  CargoLine,
+  DomainEvent,
+  SimulationCommand,
+  SimulationCommandType,
+} from "@warehouse-one/contracts";
 import {
   createScenario,
   isScenarioId,
   SimulationRunner,
   stateHash,
+  type CommandRejection,
+  type RejectionCode,
   type Scenario,
   type ScenarioId,
   type SimulationConfig,
   type SimulationState,
 } from "@warehouse-one/simulation";
 import { create } from "zustand";
+import { truckViews, vehicleViews } from "../../world/ops-view";
 
 /** What the user has selected in the world. IDs always refer to config/state entities. */
 export type Selection =
   | { readonly kind: "location"; readonly id: string }
   | { readonly kind: "equipment"; readonly id: string }
-  | { readonly kind: "dock"; readonly id: string };
+  | { readonly kind: "dock"; readonly id: string }
+  | { readonly kind: "truck"; readonly id: string };
+
+/** A command as the operator UI builds it; the store adds the command id. */
+export type CommandInput = {
+  [K in SimulationCommandType]: {
+    readonly type: K;
+    readonly payload: Extract<SimulationCommand, { type: K }>["payload"];
+  };
+}[SimulationCommandType];
+
+/** An operator command and what the simulation did with it. */
+export interface CommandRecord {
+  readonly command_id: string;
+  readonly type: SimulationCommandType;
+  readonly summary: string;
+  /** Tick shown when the command was submitted; it applies on the next tick. */
+  readonly submittedAtTick: number;
+  readonly status: "pending" | "accepted" | "rejected";
+  readonly appliedTick?: number;
+  /** Rejection code from the engine, or INVALID_COMMAND for schema errors caught at submit. */
+  readonly code?: RejectionCode;
+  readonly message?: string;
+}
+
+/** Orders leave operational state when they finish; their outcome is kept from the events. */
+export interface FinishedOrder {
+  readonly order_id: string;
+  readonly status: "shipped" | "cancelled";
+  readonly tick: number;
+  readonly truck_id: string;
+  readonly lines: readonly CargoLine[];
+}
 
 /**
  * UI-facing projection of the authoritative simulation. Components read from here; only the
@@ -35,8 +75,15 @@ export interface SimulationView {
   readonly rejectionCount: number;
   readonly recentEvents: readonly DomainEvent[];
   readonly inventory: SimulationState["inventory"];
+  /** Latest published (frozen) state, and the state one tick earlier for render interpolation. */
+  readonly state: SimulationState;
+  readonly prevState: SimulationState;
   readonly stateHash: string;
   readonly selection: Selection | null;
+  /** Most recent operator commands first. */
+  readonly commands: readonly CommandRecord[];
+  /** Most recently finished orders first. */
+  readonly finishedOrders: readonly FinishedOrder[];
 }
 
 interface SimulationActions {
@@ -48,11 +95,18 @@ interface SimulationActions {
   select(selection: Selection | null): void;
   /** Replace the running scenario. Starts a fresh run and applies its opening commands at tick 1. */
   loadScenario(id: ScenarioId): void;
+  /**
+   * Queue an operator command for the next tick, through the same validated command path as every
+   * other input. Schema errors are rejected immediately; business rules are checked by the engine.
+   */
+  submitCommand(input: CommandInput): CommandRecord;
 }
 
 export const SPEED_PRESETS = [0.5, 1, 2, 4, 8] as const;
 export const DEFAULT_SCENARIO: ScenarioId = "showcase";
 const RECENT_EVENTS = 6;
+const RECENT_COMMANDS = 8;
+const RECENT_ORDERS = 8;
 
 interface Started {
   runner: SimulationRunner;
@@ -71,31 +125,110 @@ function start(scenario: Scenario): Started {
 
 const initial = start(createScenario(DEFAULT_SCENARIO));
 let runner = initial.runner;
+/** State before the latest tick (for interpolation); tracked from the runner's step stream. */
+let previous = runner.state;
+let latest = runner.state;
+let unsubscribe = track(runner);
+let commandSeq = 0;
+
+function track(r: SimulationRunner): () => void {
+  previous = r.state;
+  latest = r.state;
+  return r.subscribe((result) => {
+    previous = latest;
+    latest = result.state;
+  });
+}
+
 const recent = (events: readonly DomainEvent[]) => [...events.slice(-RECENT_EVENTS)].reverse();
 
 function project(
   r: SimulationRunner,
-): Pick<SimulationView, "tick" | "simTimeMs" | "paused" | "speed" | "inventory" | "stateHash"> {
+): Pick<
+  SimulationView,
+  "tick" | "simTimeMs" | "paused" | "speed" | "inventory" | "state" | "prevState" | "stateHash"
+> {
   return {
     tick: r.state.tick,
     simTimeMs: r.simulationTimeMs,
     paused: r.paused,
     speed: r.speed,
     inventory: r.state.inventory,
+    state: r.state,
+    prevState: previous,
     stateHash: stateHash(r.config, r.state),
   };
 }
 
+/** The authoritative, replayable command log of the current run (read-only). */
+export function commandLog() {
+  return runner.commandLog;
+}
+
+/**
+ * Render-time interpolation factor between `prevState` (0) and `state` (1): the fraction of the
+ * next tick already elapsed. Paused runs show the latest state exactly.
+ */
+export function renderAlpha(): number {
+  return runner.paused ? 1 : runner.tickProgress;
+}
+
+function finishedOrders(
+  config: SimulationConfig,
+  events: readonly DomainEvent[],
+  before: readonly FinishedOrder[],
+): readonly FinishedOrder[] {
+  const done: FinishedOrder[] = [];
+  for (const e of events) {
+    if (e.event_type !== "order.status_changed") continue;
+    if (e.payload.to !== "shipped" && e.payload.to !== "cancelled") continue;
+    done.push({
+      order_id: e.payload.order_id,
+      status: e.payload.to,
+      tick: e.simulation_time_ms / config.tick_ms,
+      truck_id: e.payload.truck_id,
+      lines: e.payload.lines,
+    });
+  }
+  return done.length ? [...done.reverse(), ...before].slice(0, RECENT_ORDERS) : before;
+}
+
+/** Settle pending commands after ticks ran: each one was applied or rejected by the engine. */
+function settle(
+  records: readonly CommandRecord[],
+  rejections: readonly CommandRejection[],
+): readonly CommandRecord[] {
+  if (!records.some((c) => c.status === "pending")) return records;
+  const rejected = new Map(rejections.map((r) => [r.command_id, r]));
+  const log = runner.commandLog;
+  const appliedAt = (id: string) => {
+    for (let i = log.length - 1; i >= 0; i--)
+      if (log[i]?.command.command_id === id) return log[i]?.tick;
+    return undefined;
+  };
+  return records.map((c) => {
+    if (c.status !== "pending") return c;
+    const appliedTick = appliedAt(c.command_id);
+    if (appliedTick === undefined) return c;
+    const r = rejected.get(c.command_id);
+    return r
+      ? { ...c, status: "rejected", appliedTick, code: r.code, message: r.message }
+      : { ...c, status: "accepted", appliedTick };
+  });
+}
+
 export const useSimulation = create<SimulationView & SimulationActions>()((set, get) => {
-  const absorb = (events: readonly DomainEvent[], rejections: number) => {
+  const absorb = (events: readonly DomainEvent[], rejections: readonly CommandRejection[]) => {
     const s = get();
     set({
       ...project(runner),
       eventCount: s.eventCount + events.length,
-      rejectionCount: s.rejectionCount + rejections,
+      rejectionCount: s.rejectionCount + rejections.length,
       recentEvents: events.length
         ? [...events.slice(-RECENT_EVENTS).reverse(), ...s.recentEvents].slice(0, RECENT_EVENTS)
         : s.recentEvents,
+      commands: settle(s.commands, rejections),
+      finishedOrders: finishedOrders(runner.config, events, s.finishedOrders),
     });
   };
 
@@ -108,10 +241,12 @@ export const useSimulation = create<SimulationView & SimulationActions>()((set, 
     rejectionCount: initial.rejections,
     recentEvents: recent(initial.events),
     selection: null,
+    commands: [],
+    finishedOrders: [],
 
     advance(realDeltaMs) {
       const r = runner.advance(realDeltaMs);
-      if (r.ticks > 0) absorb(r.events, r.rejections.length);
+      if (r.ticks > 0) absorb(r.events, r.rejections);
     },
     togglePause() {
       if (runner.paused) runner.resume();
@@ -124,7 +259,7 @@ export const useSimulation = create<SimulationView & SimulationActions>()((set, 
     },
     stepOnce() {
       const r = runner.stepOnce();
-      absorb(r.events, r.rejections.length);
+      absorb(r.events, r.rejections);
     },
     reset() {
       get().loadScenario(get().scenarioId);
@@ -134,8 +269,10 @@ export const useSimulation = create<SimulationView & SimulationActions>()((set, 
     },
     loadScenario(id) {
       const wasPaused = runner.paused;
+      unsubscribe();
       const started = start(createScenario(id));
       runner = started.runner;
+      unsubscribe = track(runner);
       runner.setSpeed(get().speed);
       if (!wasPaused) runner.resume();
       set({
@@ -146,10 +283,79 @@ export const useSimulation = create<SimulationView & SimulationActions>()((set, 
         rejectionCount: started.rejections,
         recentEvents: recent(started.events),
         selection: null,
+        commands: [],
+        finishedOrders: [],
       });
+    },
+    submitCommand(input) {
+      const command_id = `ui-${String(++commandSeq).padStart(4, "0")}`;
+      const result = runner.submit({ command_id, type: input.type, payload: input.payload });
+      const base = {
+        command_id,
+        type: input.type,
+        summary: summarizeCommand(input),
+        submittedAtTick: runner.state.tick,
+      };
+      const record: CommandRecord = result.accepted
+        ? { ...base, status: "pending" }
+        : {
+            ...base,
+            status: "rejected",
+            code: "INVALID_COMMAND",
+            message: result.issues.join("; "),
+          };
+      const s = get();
+      set({
+        commands: [record, ...s.commands].slice(0, RECENT_COMMANDS),
+        rejectionCount: s.rejectionCount + (result.accepted ? 0 : 1),
+      });
+      return record;
     },
   };
 });
+
+/** One-line description of an operator command. */
+export function summarizeCommand(c: CommandInput): string {
+  const lines = (l: readonly CargoLine[]) => l.map((x) => `${x.quantity} × ${x.sku}`).join(", ");
+  switch (c.type) {
+    case "order.create":
+      return `Order ${lines(c.payload.lines)}`;
+    case "truck.schedule_inbound":
+      return `Inbound truck ${lines(c.payload.cargo)}`;
+    case "order.cancel":
+      return `Cancel ${c.payload.order_id}`;
+    case "pallet.relocate":
+      return `Relocate ${c.payload.pallet_id} → ${c.payload.to_location_id}`;
+    case "inventory.receive":
+      return `Receive ${c.payload.quantity} × ${c.payload.sku} → ${c.payload.location_id}`;
+    case "inventory.move":
+      return `Move ${c.payload.quantity} × ${c.payload.sku} ${c.payload.from_location_id} → ${c.payload.to_location_id}`;
+    case "inventory.adjust":
+      return `Adjust ${c.payload.delta} ${c.payload.sku} @ ${c.payload.location_id}`;
+  }
+}
+
+/** What a rejection means for the operator, and what to do about it. */
+export const REJECTION_EXPLANATION: Record<RejectionCode, string> = {
+  INVALID_COMMAND: "The request is incomplete or malformed, so it was not sent to the simulation.",
+  UNKNOWN_LOCATION: "That rack bay does not exist in this facility.",
+  UNKNOWN_SKU: "That SKU is not in the item master.",
+  INSUFFICIENT_STOCK:
+    "Not enough free pallets of this SKU are stored in the racks. Pallets already allocated to an order or being moved do not count.",
+  CAPACITY_EXCEEDED: "The bay does not have that many free positions.",
+  OPERATIONS_DISABLED:
+    "This scenario has no facility data, so vehicles, trucks and orders are not simulated.",
+  UNKNOWN_PALLET: "No pallet with that id is on site; it may already have shipped.",
+  PALLET_NOT_STORED: "Only pallets stored in a rack slot can be relocated.",
+  PALLET_RESERVED: "The pallet is allocated to an order or already being moved by a task.",
+  SAME_LOCATION: "The pallet is already in that bay. Choose a different destination.",
+  NO_CAPACITY:
+    "There is no free, unreserved position for it. Free some space or wait for put-away to finish.",
+  YARD_FULL: "Every yard slot is taken. Wait for a truck to dock or leave, then try again.",
+  UNKNOWN_ORDER: "The order does not exist or has already finished.",
+  ORDER_NOT_CANCELLABLE:
+    "Its truck already has a dock and picking has started, so it can no longer be cancelled.",
+};
 
 /** Format simulated time as the warehouse wall clock (epoch + elapsed), in UTC. */
 export function formatSimClock(epochIso: string, simTimeMs: number): string {
@@ -178,4 +384,51 @@ export function stockSummary(config: SimulationConfig, inventory: SimulationStat
     locations: config.locations.length,
     utilisation: capacity ? units / capacity : 0,
   };
+}
+
+/**
+ * Read-only access to the authoritative run for automated tests and tools
+ * (`window.__WAREHOUSE_ONE_SIM__`). State is deeply frozen by the runner, so nothing read here
+ * can change the simulation.
+ */
+export interface SimulationDebug {
+  state(): SimulationState;
+  config(): SimulationConfig;
+  commands(): readonly CommandRecord[];
+  finishedOrders(): readonly FinishedOrder[];
+  /** Authoritative poses of the latest tick (`equipmentPose` / `truckPose`), in metres. */
+  poses(): {
+    vehicles: { id: string; x: number; z: number; yaw: number; fork: number }[];
+    trucks: { id: string; x: number; z: number }[];
+  };
+}
+
+declare global {
+  interface Window {
+    __WAREHOUSE_ONE_SIM__?: Readonly<SimulationDebug>;
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.__WAREHOUSE_ONE_SIM__ = Object.freeze({
+    state: () => runner.state,
+    config: () => runner.config,
+    commands: () => useSimulation.getState().commands,
+    finishedOrders: () => useSimulation.getState().finishedOrders,
+    poses: () => {
+      const ops = runner.state.ops;
+      if (!ops) return { vehicles: [], trucks: [] };
+      return {
+        vehicles: vehicleViews(runner.config, undefined, ops, 1).map((v) => ({
+          id: v.id,
+          ...v.pose,
+        })),
+        trucks: truckViews(runner.config, undefined, ops, 1).map((t) => ({
+          id: t.id,
+          x: t.pose.x,
+          z: t.pose.z,
+        })),
+      };
+    },
+  });
 }

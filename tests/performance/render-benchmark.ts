@@ -1,6 +1,8 @@
 /**
  * Renderer frame-time benchmark. Loads the production web build in Chromium for the benchmark
- * scenarios (exactly 100 / 300 / 1,000 pallets + 6 vehicles) and the showcase, discards a warm-up period, samples frame times via the in-app probe
+ * scenarios (exactly 100 / 300 / 1,000 pallets, 4 moving vehicles, live relocations) and the
+ * operating showcase (trucks, staging, carried pallets), discards a warm-up period, samples frame
+ * times via the in-app probe
  * (window.__WAREHOUSE_ONE_PERF__) and prints a JSON + table report including the GPU string,
  * so results are never quoted without their hardware/software context.
  *

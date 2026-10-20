@@ -1,7 +1,7 @@
 "use client";
 
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import type { EquipmentConfig, FacilityConfig, SimulationConfig } from "@warehouse-one/simulation";
+import type { FacilityConfig, SimulationConfig } from "@warehouse-one/simulation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BoxGeometry,
@@ -9,7 +9,6 @@ import {
   EdgesGeometry,
   Group,
   MeshBasicMaterial,
-  PlaneGeometry,
   type InstancedMesh,
 } from "three";
 import { useSimulation, type Selection } from "@/lib/sim/store";
@@ -22,7 +21,6 @@ import {
   levelsFor,
   resolveFacility,
   sceneCounts,
-  VEHICLE_SIZE,
   YARD_LEVEL,
   type CargoArchetype,
 } from "@/world/derive";
@@ -30,28 +28,26 @@ import {
   beamGeometry,
   braceGeometry,
   cargoGeometry,
-  forkliftModel,
   guardGeometry,
   palletGeometry,
   postGeometry,
-  reachTruckModel,
-  truckModel,
-  type Model,
-  type VehiclePart,
 } from "@/world/geometry";
 import {
   CARGO_COLOR,
-  decalMaterial,
   floorMarkingsTexture,
-  liveryTexture,
   PALLET_COLOR,
   worldMaterials,
   yardMarkingsTexture,
   type WorldMaterials,
 } from "@/world/materials";
+import { opsSceneCounts, staticPalletCapacity, staticPallets } from "@/world/ops-view";
 import { Instances, type InstanceSpec } from "./instanced";
+import { OperationsLayer } from "./operations-layer";
 
-/** The warehouse digital twin: static facility from config, dynamic stock from simulation state. */
+/**
+ * The warehouse digital twin: static facility from config; pallets, vehicles, trucks and dock
+ * states from the authoritative simulation state.
+ */
 export function WarehouseWorld() {
   const config = useSimulation((s) => s.config);
   const facility = useMemo(() => resolveFacility(config), [config]);
@@ -70,7 +66,7 @@ export function WarehouseWorld() {
       <Building facility={facility} materials={materials} />
       <Racks config={config} facility={facility} materials={materials} />
       <Pallets config={config} facility={facility} materials={materials} />
-      <Fleet equipment={facility.equipment} materials={materials} />
+      <OperationsLayer config={config} facility={facility} materials={materials} />
       <Docks facility={facility} materials={materials} />
       <PickLayer config={config} facility={facility} rackHeight={rackHeight} />
     </group>
@@ -452,6 +448,18 @@ function Racks({
 
 // ---------------------------------------------------------------------------------------------
 
+interface PalletSpec {
+  readonly archetype: CargoArchetype;
+  readonly position: readonly [number, number, number];
+  readonly yaw: number;
+  readonly variation: number;
+}
+
+/**
+ * Pallets standing still: in rack slots and staging lanes, at their exact simulated positions
+ * (pallets on forks are drawn by the operations layer). Configs without operational state fall
+ * back to the per-bay inventory convention.
+ */
 function Pallets({
   config,
   facility,
@@ -462,6 +470,8 @@ function Pallets({
   materials: WorldMaterials;
 }) {
   const inventory = useSimulation((s) => s.inventory);
+  const opsPallets = useSimulation((s) => s.state.ops?.pallets);
+  const opsTrucks = useSimulation((s) => s.state.ops?.trucks);
   const geo = useMemo(
     () => ({
       pallet: palletGeometry(),
@@ -472,11 +482,17 @@ function Pallets({
     }),
     [],
   );
-  const capacity = useMemo(() => config.locations.reduce((n, l) => n + l.capacity, 0), [config]);
-  const pallets = useMemo(
-    () => derivePallets(config, inventory, facility.rack),
-    [config, inventory, facility],
+  const capacity = useMemo(() => staticPalletCapacity(config), [config]);
+  // Recomputed only when a pallet moves (the pallets record is copied on write).
+  const statics = useMemo(
+    () => (opsPallets ? staticPallets(config, useSimulation.getState().state) : null),
+    [config, opsPallets],
   );
+  const legacy = useMemo(
+    () => (statics ? null : derivePallets(config, inventory, facility.rack)),
+    [statics, config, inventory, facility],
+  );
+  const pallets = useMemo<readonly PalletSpec[]>(() => statics ?? legacy ?? [], [statics, legacy]);
 
   const specs = useMemo(() => {
     const base = new Color(PALLET_COLOR);
@@ -504,8 +520,12 @@ function Pallets({
   }, [pallets]);
 
   useEffect(() => {
-    publishSceneDebug({ counts: sceneCounts(config, pallets) });
-  }, [config, pallets]);
+    const ops = useSimulation.getState().state.ops;
+    publishSceneDebug({
+      counts:
+        statics && ops ? opsSceneCounts(config, ops, statics) : sceneCounts(config, legacy ?? []),
+    });
+  }, [config, statics, legacy, opsTrucks]);
 
   return (
     <group>
@@ -532,100 +552,6 @@ function Pallets({
 
 // ---------------------------------------------------------------------------------------------
 
-const VEHICLE_PARTS: VehiclePart[] = ["body", "dark", "steel", "tyre", "glass"];
-
-function Fleet({
-  equipment,
-  materials,
-}: {
-  equipment: readonly EquipmentConfig[];
-  materials: WorldMaterials;
-}) {
-  const models = useMemo(
-    () => ({
-      counterbalance_forklift: forkliftModel(),
-      reach_truck: reachTruckModel(),
-      truck: truckModel(),
-    }),
-    [],
-  );
-  const livery = useMemo(() => {
-    const map = liveryTexture();
-    return { map, material: decalMaterial(map), geometry: new PlaneGeometry(9.5, 1.78) };
-  }, []);
-  useEffect(() => () => livery.map.dispose(), [livery]);
-
-  const partMaterial = (kind: EquipmentConfig["kind"], part: VehiclePart) =>
-    part === "body"
-      ? kind === "truck"
-        ? materials.vehicle.truckBody
-        : materials.vehicle.forkliftBody
-      : materials.vehicle[part];
-
-  const byKind = useMemo(() => {
-    const groups = new Map<EquipmentConfig["kind"], InstanceSpec[]>();
-    for (const e of equipment) {
-      const y = e.kind === "truck" ? YARD_LEVEL : 0;
-      groups.set(e.kind, [
-        ...(groups.get(e.kind) ?? []),
-        { position: [e.position.x, y, e.position.z], rotation: [0, e.yaw, 0] },
-      ]);
-    }
-    return groups;
-  }, [equipment]);
-
-  const decals = useMemo<InstanceSpec[]>(() => {
-    const out: InstanceSpec[] = [];
-    for (const e of equipment.filter((v) => v.kind === "truck")) {
-      for (const side of [-1, 1]) {
-        const c = Math.cos(e.yaw);
-        const s = Math.sin(e.yaw);
-        const lx = side * 1.255;
-        const lz = -1.4;
-        out.push({
-          position: [
-            e.position.x + lx * c + lz * s,
-            YARD_LEVEL + 2.7,
-            e.position.z - lx * s + lz * c,
-          ],
-          rotation: [0, e.yaw + (side * Math.PI) / 2, 0],
-        });
-      }
-    }
-    return out;
-  }, [equipment]);
-
-  return (
-    <group>
-      {[...byKind.entries()].map(([kind, instances]) =>
-        VEHICLE_PARTS.map((part) => {
-          const geometry = (models[kind] as Model<VehiclePart>)[part];
-          return geometry ? (
-            <Instances
-              key={`${kind}-${part}`}
-              geometry={geometry}
-              material={partMaterial(kind, part)}
-              instances={instances}
-              name={`${kind}-${part}`}
-            />
-          ) : null;
-        }),
-      )}
-      {decals.length > 0 && (
-        <Instances
-          geometry={livery.geometry}
-          material={livery.material}
-          instances={decals}
-          castShadow={false}
-          name="truck-livery"
-        />
-      )}
-    </group>
-  );
-}
-
-// ---------------------------------------------------------------------------------------------
-
 function Docks({
   facility: f,
   materials,
@@ -634,6 +560,20 @@ function Docks({
   materials: WorldMaterials;
 }) {
   const geo = useMemo(() => ({ unit: new BoxGeometry(1, 1, 1) }), []);
+  const docks = useSimulation((s) => s.state.ops?.docks);
+  // Status light above each door, outside: amber while a truck holds the dock, green when free.
+  const lights = useMemo(() => {
+    const free: InstanceSpec[] = [];
+    const occupied: InstanceSpec[] = [];
+    for (const d of f.docks) {
+      const spec: InstanceSpec = {
+        position: [d.position.x + DOOR.width / 2 + 0.35, DOOR.height + 0.35, d.position.z + 0.2],
+        scale: [0.22, 0.22, 0.12],
+      };
+      (docks?.[d.id]?.truck_id ? occupied : free).push(spec);
+    }
+    return { free, occupied };
+  }, [f, docks]);
   const parts = useMemo(() => {
     const seals: InstanceSpec[] = [];
     const bumpers: InstanceSpec[] = [];
@@ -692,6 +632,26 @@ function Docks({
         instances={parts.posts}
         name="dock-bollards"
       />
+      {docks && (
+        <>
+          <Instances
+            geometry={geo.unit}
+            material={materials.dockLight.free}
+            instances={lights.free}
+            capacity={f.docks.length}
+            castShadow={false}
+            name="dock-lights-free"
+          />
+          <Instances
+            geometry={geo.unit}
+            material={materials.dockLight.occupied}
+            instances={lights.occupied}
+            capacity={f.docks.length}
+            castShadow={false}
+            name="dock-lights-occupied"
+          />
+        </>
+      )}
     </group>
   );
 }
@@ -709,7 +669,7 @@ const PICK_MATERIAL = new MeshBasicMaterial({ visible: false });
 const HOVER_COLOR = new Color("#e8edf3");
 const SELECT_COLOR = new Color("#f5b83d");
 
-/** Invisible, cheap-to-raycast volumes for every selectable entity, plus hover/selection outlines. */
+/** Invisible, cheap-to-raycast volumes for bays and docks, plus hover/selection outlines. */
 function PickLayer({
   config,
   facility: f,
@@ -737,16 +697,7 @@ function PickLayer({
         yaw: l.yaw ?? 0,
       });
     }
-    for (const e of f.equipment) {
-      const s = VEHICLE_SIZE[e.kind];
-      const y0 = e.kind === "truck" ? YARD_LEVEL : 0;
-      out.push({
-        selection: { kind: "equipment", id: e.id },
-        center: [e.position.x, y0 + s.height / 2, e.position.z],
-        size: [s.width + 0.2, s.height, s.length + 0.2],
-        yaw: e.yaw,
-      });
-    }
+    // Vehicles and trucks move: their pick volumes live in the operations layer.
     for (const d of f.docks) {
       out.push({
         selection: { kind: "dock", id: d.id },

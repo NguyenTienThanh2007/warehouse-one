@@ -1,0 +1,242 @@
+{
+  "measured_at": "2026-10-20T16:25:58.771Z",
+  "machine": {
+    "platform": "darwin",
+    "release": "25.6.0",
+    "arch": "arm64",
+    "cpu": "Apple M2"
+  },
+  "browser": "chromium 153.0.8010.12 (headless)",
+  "viewport": "1440x900 @2x",
+  "sample_seconds": 10,
+  "results": [
+    {
+      "scene": "bench-100 · high",
+      "frame": {
+        "samples": 240,
+        "fps": 39.85585465866774,
+        "meanMs": 25.090416666865348,
+        "p50Ms": 24.800000071525574,
+        "p95Ms": 30.5,
+        "p99Ms": 33,
+        "maxMs": 39.39999997615814,
+        "longFrames": 113
+      },
+      "renderer": {
+        "drawCalls": 97,
+        "triangles": 110931,
+        "dpr": 1.5,
+        "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+      },
+      "counts": {
+        "pallets": 100,
+        "palletsByArchetype": {
+          "cartons": 68,
+          "cold-chain": 32,
+          "bulk-bag": 0,
+          "electronics": 0
+        },
+        "palletsByPlace": {
+          "slot": 100,
+          "staging": 0,
+          "equipment": 0
+        },
+        "bays": 14,
+        "vehicles": 4,
+        "trucks": 0,
+        "docks": 4
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+    },
+    {
+      "scene": "bench-300 · high",
+      "frame": {
+        "samples": 240,
+        "fps": 41.05090312003605,
+        "meanMs": 24.35999999990066,
+        "p50Ms": 23.899999976158142,
+        "p95Ms": 30.399999976158142,
+        "p99Ms": 31.900000095367435,
+        "maxMs": 35.300000071525574,
+        "longFrames": 95
+      },
+      "renderer": {
+        "drawCalls": 103,
+        "triangles": 389643,
+        "dpr": 1.5,
+        "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+      },
+      "counts": {
+        "pallets": 300,
+        "palletsByArchetype": {
+          "cartons": 72,
+          "cold-chain": 48,
+          "bulk-bag": 80,
+          "electronics": 100
+        },
+        "palletsByPlace": {
+          "slot": 300,
+          "staging": 0,
+          "equipment": 0
+        },
+        "bays": 40,
+        "vehicles": 4,
+        "trucks": 0,
+        "docks": 4
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+    },
+    {
+      "scene": "bench-1000 · high",
+      "frame": {
+        "samples": 240,
+        "fps": 37.97768810823641,
+        "meanMs": 26.33125,
+        "p50Ms": 25.899999976158142,
+        "p95Ms": 35,
+        "p99Ms": 38.700000047683716,
+        "maxMs": 49.699999928474426,
+        "longFrames": 129
+      },
+      "renderer": {
+        "drawCalls": 111,
+        "triangles": 1265259,
+        "dpr": 1.5,
+        "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+      },
+      "counts": {
+        "pallets": 1000,
+        "palletsByArchetype": {
+          "cartons": 264,
+          "cold-chain": 272,
+          "bulk-bag": 248,
+          "electronics": 216
+        },
+        "palletsByPlace": {
+          "slot": 1000,
+          "staging": 0,
+          "equipment": 0
+        },
+        "bays": 128,
+        "vehicles": 4,
+        "trucks": 0,
+        "docks": 4
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+    },
+    {
+      "scene": "bench-1000 · medium",
+      "frame": {
+        "samples": 240,
+        "fps": 59.99999999999999,
+        "meanMs": 16.666666666666668,
+        "p50Ms": 16.699999928474426,
+        "p95Ms": 20.899999976158142,
+        "p99Ms": 21.5,
+        "maxMs": 22.699999928474426,
+        "longFrames": 0
+      },
+      "renderer": {
+        "drawCalls": 99,
+        "triangles": 1265245,
+        "dpr": 1.5,
+        "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+      },
+      "counts": {
+        "pallets": 1000,
+        "palletsByArchetype": {
+          "cartons": 264,
+          "cold-chain": 272,
+          "bulk-bag": 248,
+          "electronics": 216
+        },
+        "palletsByPlace": {
+          "slot": 1000,
+          "staging": 0,
+          "equipment": 0
+        },
+        "bays": 128,
+        "vehicles": 4,
+        "trucks": 0,
+        "docks": 4
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+    },
+    {
+      "scene": "bench-1000 · low",
+      "frame": {
+        "samples": 240,
+        "fps": 59.9985000389295,
+        "meanMs": 16.66708333293597,
+        "p50Ms": 16.699999928474426,
+        "p95Ms": 20.600000023841858,
+        "p99Ms": 20.899999976158142,
+        "maxMs": 21.100000023841858,
+        "longFrames": 0
+      },
+      "renderer": {
+        "drawCalls": 52,
+        "triangles": 635938,
+        "dpr": 1,
+        "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+      },
+      "counts": {
+        "pallets": 1000,
+        "palletsByArchetype": {
+          "cartons": 264,
+          "cold-chain": 272,
+          "bulk-bag": 248,
+          "electronics": 216
+        },
+        "palletsByPlace": {
+          "slot": 1000,
+          "staging": 0,
+          "equipment": 0
+        },
+        "bays": 128,
+        "vehicles": 4,
+        "trucks": 0,
+        "docks": 4
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+    },
+    {
+      "scene": "showcase · high",
+      "frame": {
+        "samples": 240,
+        "fps": 40.92560066795232,
+        "meanMs": 24.434583333631355,
+        "p50Ms": 24.100000023841858,
+        "p95Ms": 31.5,
+        "p99Ms": 34.799999952316284,
+        "maxMs": 37.09999990463257,
+        "longFrames": 92
+      },
+      "renderer": {
+        "drawCalls": 122,
+        "triangles": 487163,
+        "dpr": 1.5,
+        "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+      },
+      "counts": {
+        "pallets": 395,
+        "palletsByArchetype": {
+          "cartons": 113,
+          "cold-chain": 140,
+          "bulk-bag": 62,
+          "electronics": 80
+        },
+        "palletsByPlace": {
+          "slot": 395,
+          "staging": 0,
+          "equipment": 0
+        },
+        "bays": 84,
+        "vehicles": 4,
+        "trucks": 2,
+        "docks": 4
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
+    }
+  ]
+}

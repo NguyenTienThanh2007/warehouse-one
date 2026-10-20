@@ -113,6 +113,8 @@ export interface WorldMaterials {
     glass: MeshStandardMaterial;
   };
   dockDoor: MeshStandardMaterial;
+  /** Dock status lights above the doors: free (green) or holding a truck (amber). */
+  dockLight: { free: MeshStandardMaterial; occupied: MeshStandardMaterial };
   dockSeal: MeshStandardMaterial;
   bumper: MeshStandardMaterial;
   hazard: MeshStandardMaterial;
@@ -163,6 +165,10 @@ export function worldMaterials(): WorldMaterials {
       glass: std("#1a2633", 0.08, 0.6),
     },
     dockDoor: std("#b9c1ca", 0.45, 0.4),
+    dockLight: {
+      free: std("#2fbf71", 0.4, 0, { emissive: new Color("#2fbf71"), emissiveIntensity: 1.6 }),
+      occupied: std("#f5a623", 0.4, 0, { emissive: new Color("#f5a623"), emissiveIntensity: 1.6 }),
+    },
     dockSeal: std("#1e2227", 0.95),
     bumper: std("#101113", 0.9),
     hazard: std("#f2c230", 0.5, 0.1),
