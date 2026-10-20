@@ -1,0 +1,247 @@
+{
+  "simulation_id": "6c0b7c8e-2f43-4a59-9a3e-5d1f0c2b7a10",
+  "seed": "warehouse-one-foundation",
+  "tick_ms": 100,
+  "epoch": "2026-01-05T06:00:00.000Z",
+  "locations": [
+    {
+      "id": "loc-00-001",
+      "zone": "zone-a",
+      "capacity": 8,
+      "position": {
+        "x": -15.399999999999999,
+        "z": -3
+      }
+    },
+    {
+      "id": "loc-00-002",
+      "zone": "zone-a",
+      "capacity": 8,
+      "position": {
+        "x": -12.6,
+        "z": -3
+      }
+    },
+    {
+      "id": "loc-00-003",
+      "zone": "zone-a",
+      "capacity": 8,
+      "position": {
+        "x": -9.799999999999999,
+        "z": -3
+      }
+    },
+    {
+      "id": "loc-00-004",
+      "zone": "zone-a",
+      "capacity": 8,
+      "position": {
+        "x": -7,
+        "z": -3
+      }
+    },
+    {
+      "id": "loc-00-005",
+      "zone": "zone-a",
+      "capacity": 8,
+      "position": {
+        "x": -4.199999999999999,
+        "z": -3
+      }
+    },
+    {
+      "id": "loc-00-006",
+      "zone": "zone-a",
+      "capacity": 8,
+      "position": {
+        "x": -1.4,
+        "z": -3
+      }
+    },
+    {
+      "id": "loc-00-007",
+      "zone": "zone-a",
+      "capacity": 8,
+      "position": {
+        "x": 1.4,
+        "z": -3
+      }
+    },
+    {
+      "id": "loc-00-008",
+      "zone": "zone-a",
+      "capacity": 8,
+      "position": {
+        "x": 4.199999999999999,
+        "z": -3
+      }
+    },
+    {
+      "id": "loc-00-009",
+      "zone": "zone-a",
+      "capacity": 8,
+      "position": {
+        "x": 7,
+        "z": -3
+      }
+    },
+    {
+      "id": "loc-00-010",
+      "zone": "zone-a",
+      "capacity": 8,
+      "position": {
+        "x": 9.799999999999999,
+        "z": -3
+      }
+    },
+    {
+      "id": "loc-00-011",
+      "zone": "zone-a",
+      "capacity": 8,
+      "position": {
+        "x": 12.6,
+        "z": -3
+      }
+    },
+    {
+      "id": "loc-00-012",
+      "zone": "zone-a",
+      "capacity": 8,
+      "position": {
+        "x": 15.399999999999999,
+        "z": -3
+      }
+    },
+    {
+      "id": "loc-01-001",
+      "zone": "zone-b",
+      "capacity": 8,
+      "position": {
+        "x": -15.399999999999999,
+        "z": 3
+      }
+    },
+    {
+      "id": "loc-01-002",
+      "zone": "zone-b",
+      "capacity": 8,
+      "position": {
+        "x": -12.6,
+        "z": 3
+      }
+    },
+    {
+      "id": "loc-01-003",
+      "zone": "zone-b",
+      "capacity": 8,
+      "position": {
+        "x": -9.799999999999999,
+        "z": 3
+      }
+    },
+    {
+      "id": "loc-01-004",
+      "zone": "zone-b",
+      "capacity": 8,
+      "position": {
+        "x": -7,
+        "z": 3
+      }
+    },
+    {
+      "id": "loc-01-005",
+      "zone": "zone-b",
+      "capacity": 8,
+      "position": {
+        "x": -4.199999999999999,
+        "z": 3
+      }
+    },
+    {
+      "id": "loc-01-006",
+      "zone": "zone-b",
+      "capacity": 8,
+      "position": {
+        "x": -1.4,
+        "z": 3
+      }
+    },
+    {
+      "id": "loc-01-007",
+      "zone": "zone-b",
+      "capacity": 8,
+      "position": {
+        "x": 1.4,
+        "z": 3
+      }
+    },
+    {
+      "id": "loc-01-008",
+      "zone": "zone-b",
+      "capacity": 8,
+      "position": {
+        "x": 4.199999999999999,
+        "z": 3
+      }
+    },
+    {
+      "id": "loc-01-009",
+      "zone": "zone-b",
+      "capacity": 8,
+      "position": {
+        "x": 7,
+        "z": 3
+      }
+    },
+    {
+      "id": "loc-01-010",
+      "zone": "zone-b",
+      "capacity": 8,
+      "position": {
+        "x": 9.799999999999999,
+        "z": 3
+      }
+    },
+    {
+      "id": "loc-01-011",
+      "zone": "zone-b",
+      "capacity": 8,
+      "position": {
+        "x": 12.6,
+        "z": 3
+      }
+    },
+    {
+      "id": "loc-01-012",
+      "zone": "zone-b",
+      "capacity": 8,
+      "position": {
+        "x": 15.399999999999999,
+        "z": 3
+      }
+    }
+  ],
+  "skus": [
+    {
+      "id": "sku-std-pallet",
+      "name": "Standard pallet (mixed goods)"
+    },
+    {
+      "id": "sku-cold-chain",
+      "name": "Cold-chain pallet"
+    },
+    {
+      "id": "sku-bulk-bags",
+      "name": "Bulk bags"
+    },
+    {
+      "id": "sku-electronics",
+      "name": "Boxed electronics"
+    }
+  ],
+  "synthetic_workload": {
+    "inbound_probability": 0.2,
+    "move_probability": 0.15,
+    "max_quantity": 3
+  }
+}

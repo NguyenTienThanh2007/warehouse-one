@@ -5,5 +5,32 @@
   "packageManager": "pnpm@11.25.0",
   "engines": {
     "node": ">=24.0.0"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @warehouse-one/web dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
+    "bench:sim": "pnpm --filter @warehouse-one/simulation bench",
+    "schemas:generate": "pnpm --filter @warehouse-one/contracts generate:schemas",
+    "fixtures:generate": "pnpm --filter @warehouse-one/simulation generate:fixtures",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@next/eslint-plugin-next": "16.3.8",
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.19.1",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.1"
   }
 }
