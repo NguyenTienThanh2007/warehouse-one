@@ -132,3 +132,13 @@ UI forms build commands and submit them to the runner (`submitCommand`): schema 
 at submit, business rules by the engine on the next tick, and accepted commands enter the replayable
 command log. The UI shows the engine's rejection code and message, plus an operator explanation per
 code (`REJECTION_EXPLANATION`). Nothing in the UI changes state directly.
+
+### DEC-023 — The simulation clock does not depend on the frame rate (Phase 2)
+**Context:** real time was fed to the simulation only from `requestAnimationFrame`, capped at 250 ms
+per frame. On a slow renderer (software WebGL on a 2-core CI runner, under ~4 FPS) the simulation
+fell behind its requested speed: CI measured 8–24 ticks/s at 8× instead of 80, and long browser
+workflows timed out (CI runs 39463588226, 39469515802). **Decision:** a 50 ms timer feeds time too,
+on the same clock as the frames, so each millisecond is fed exactly once; the 250 ms cap still
+applies per call. **Consequences:** the simulation keeps its requested speed regardless of frame
+rate (measured locally: 79.9 ticks/s at 8× with frames slowed to ~2 FPS); a backgrounded tab still
+cannot cause a catch-up burst. Rendering is unchanged: it interpolates from `tickProgress` per frame.

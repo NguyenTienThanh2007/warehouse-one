@@ -275,6 +275,14 @@ in the test itself: the pallet reaches its slot halfway through the drop, and th
 few ticks later. The test now waits for both (pallet in the target slot and no open task) in one
 state condition.
 
+**Second CI run (39469515802, `92dadd7`): cancelled at the 20-minute job limit.** The runner was
+slower still: the relocation took 1.5 min (~8 ticks/s) and the full order flow exceeded its
+3-minute budget twice. Profiling locally under SwiftShader showed the main thread ~95% idle while
+the renderer produced 3–4.5 FPS: the simulation was only fed time from animation frames, capped at
+250 ms each, so a slow renderer slowed the simulation. Fixed at the cause (DEC-023): a 50 ms timer
+feeds time on the same clock. With frames slowed to ~2 FPS locally, the run held 79.9 ticks/s at 8×
+(requested 80). Test budgets were not raised.
+
 Existing browser tests changed: no fixed sleep in "pallets follow the simulation" (it waits for 400 ticks); rendered pallets are compared with the simulation state while paused; the vehicle inspector checks live status instead of "Parked".
 
 ### 5.4 Benchmarks
