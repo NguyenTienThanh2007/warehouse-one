@@ -3,7 +3,10 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderGoldenFiles, runGolden } from "../src/scenarios/golden";
 
-const outDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../../data/fixtures/foundation-demo");
+const outDir = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../data/fixtures/foundation-demo",
+);
 mkdirSync(outDir, { recursive: true });
 const run = runGolden();
 for (const [name, content] of Object.entries(renderGoldenFiles(run))) {

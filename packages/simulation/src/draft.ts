@@ -1,4 +1,9 @@
-import { EVENT_PAYLOADS, type DomainEvent, type EventPayload, type EventType } from "@warehouse-one/contracts";
+import {
+  EVENT_PAYLOADS,
+  type DomainEvent,
+  type EventPayload,
+  type EventType,
+} from "@warehouse-one/contracts";
 import { deterministicUuid } from "./hash";
 import { nextFloat, nextInt, type RngState } from "./rng";
 import type { SimulationConfig, SimulationState } from "./types";
@@ -21,7 +26,10 @@ export class TickDraft {
   constructor(
     readonly config: SimulationConfig,
     base: SimulationState,
-    indexes: { locations: ReadonlyMap<string, SimulationConfig["locations"][number]>; skus: ReadonlySet<string> },
+    indexes: {
+      locations: ReadonlyMap<string, SimulationConfig["locations"][number]>;
+      skus: ReadonlySet<string>;
+    },
   ) {
     this.tick = base.tick + 1;
     this.sequence = base.sequence;

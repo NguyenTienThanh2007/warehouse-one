@@ -17,7 +17,9 @@ function percentile(sorted: number[], p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length))] ?? NaN;
 }
 
-console.log(`node ${process.version} ${process.platform}/${process.arch} — ${TICKS} ticks per size (after 200 warm-up)`);
+console.log(
+  `node ${process.version} ${process.platform}/${process.arch} — ${TICKS} ticks per size (after 200 warm-up)`,
+);
 console.log("size              | mean µs/tick | p95 µs/tick | ticks/sec  | events");
 for (const size of SIZES) {
   const config = createFoundationDemoConfig({ aisles: size.aisles, bays: size.bays });
@@ -37,7 +39,11 @@ for (const size of SIZES) {
   samples.sort((a, b) => a - b);
   const mean = (total * 1000) / TICKS;
   console.log(
-    `${size.label.padEnd(17)} | ${mean.toFixed(1).padStart(12)} | ${percentile(samples, 95).toFixed(1).padStart(11)} | ${Math.round(TICKS / (total / 1000)).toLocaleString("en-US").padStart(10)} | ${events}`,
+    `${size.label.padEnd(17)} | ${mean.toFixed(1).padStart(12)} | ${percentile(samples, 95).toFixed(1).padStart(11)} | ${Math.round(
+      TICKS / (total / 1000),
+    )
+      .toLocaleString("en-US")
+      .padStart(10)} | ${events}`,
   );
 }
 console.log("Note: Phase 0 simulates inventory only; entity-heavy systems arrive in Phase 2.");

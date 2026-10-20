@@ -36,16 +36,22 @@ function indexes(config: SimulationConfig): Indexes {
 export function validateConfig(config: SimulationConfig): string[] {
   const problems: string[] = [];
   if (!Uuid.safeParse(config.simulation_id).success) problems.push("simulation_id must be a UUID");
-  if (!Number.isInteger(config.tick_ms) || config.tick_ms <= 0) problems.push("tick_ms must be a positive integer");
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(config.epoch) || Number.isNaN(Date.parse(config.epoch))) {
+  if (!Number.isInteger(config.tick_ms) || config.tick_ms <= 0)
+    problems.push("tick_ms must be a positive integer");
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(config.epoch) ||
+    Number.isNaN(Date.parse(config.epoch))
+  ) {
     problems.push("epoch must be an ISO-8601 UTC timestamp with millisecond precision");
   }
   const seen = new Set<string>();
   for (const l of config.locations) {
-    if (!EntityId.safeParse(l.id).success) problems.push(`location id '${l.id}' is not a valid slug`);
+    if (!EntityId.safeParse(l.id).success)
+      problems.push(`location id '${l.id}' is not a valid slug`);
     if (seen.has(l.id)) problems.push(`duplicate location id '${l.id}'`);
     seen.add(l.id);
-    if (!Number.isInteger(l.capacity) || l.capacity <= 0) problems.push(`location '${l.id}' capacity must be a positive integer`);
+    if (!Number.isInteger(l.capacity) || l.capacity <= 0)
+      problems.push(`location '${l.id}' capacity must be a positive integer`);
   }
   const skus = new Set<string>();
   for (const s of config.skus) {
@@ -56,9 +62,11 @@ export function validateConfig(config: SimulationConfig): string[] {
   const w = config.synthetic_workload;
   if (w) {
     for (const p of [w.inbound_probability, w.move_probability]) {
-      if (!(p >= 0 && p <= 1)) problems.push("synthetic workload probabilities must be within [0, 1]");
+      if (!(p >= 0 && p <= 1))
+        problems.push("synthetic workload probabilities must be within [0, 1]");
     }
-    if (!Number.isInteger(w.max_quantity) || w.max_quantity < 1) problems.push("synthetic max_quantity must be >= 1");
+    if (!Number.isInteger(w.max_quantity) || w.max_quantity < 1)
+      problems.push("synthetic max_quantity must be >= 1");
   }
   return problems;
 }
@@ -79,20 +87,37 @@ export function createInitialState(config: SimulationConfig): SimulationState {
  *
  * `commands` is untrusted: each is schema-validated and invalid ones are rejected, never thrown.
  */
-export function step(config: SimulationConfig, state: SimulationState, commands: readonly unknown[] = []): StepResult {
+export function step(
+  config: SimulationConfig,
+  state: SimulationState,
+  commands: readonly unknown[] = [],
+): StepResult {
   const draft = new TickDraft(config, state, indexes(config));
   const rejections: CommandRejection[] = [];
 
   for (const raw of commands) {
     const parsed = parseCommand(raw);
     if (!parsed.ok) {
-      const id = typeof raw === "object" && raw !== null && "command_id" in raw ? String(raw.command_id) : "(unknown)";
-      rejections.push({ command_id: id, tick: draft.tick, code: "INVALID_COMMAND", message: parsed.issues.join("; ") });
+      const id =
+        typeof raw === "object" && raw !== null && "command_id" in raw
+          ? String(raw.command_id)
+          : "(unknown)";
+      rejections.push({
+        command_id: id,
+        tick: draft.tick,
+        code: "INVALID_COMMAND",
+        message: parsed.issues.join("; "),
+      });
       continue;
     }
     const result = applyCommand(draft, parsed.value);
     if (!result.ok) {
-      rejections.push({ command_id: parsed.value.command_id, tick: draft.tick, code: result.code, message: result.message });
+      rejections.push({
+        command_id: parsed.value.command_id,
+        tick: draft.tick,
+        code: result.code,
+        message: result.message,
+      });
     }
   }
 
@@ -136,10 +161,12 @@ export function checkInvariants(config: SimulationConfig, state: SimulationState
     let total = 0;
     for (const [sku, q] of Object.entries(row)) {
       if (!skus.has(sku)) violations.push(`unknown sku '${sku}' at '${locationId}'`);
-      if (!Number.isInteger(q) || q <= 0) violations.push(`non-positive or fractional quantity ${q} at '${locationId}/${sku}'`);
+      if (!Number.isInteger(q) || q <= 0)
+        violations.push(`non-positive or fractional quantity ${q} at '${locationId}/${sku}'`);
       total += q;
     }
-    if (loc && total > loc.capacity) violations.push(`location '${locationId}' over capacity (${total}/${loc.capacity})`);
+    if (loc && total > loc.capacity)
+      violations.push(`location '${locationId}' over capacity (${total}/${loc.capacity})`);
   }
   return violations;
 }

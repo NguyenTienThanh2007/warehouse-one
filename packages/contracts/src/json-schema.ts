@@ -14,7 +14,10 @@ export const SCHEMA_FILES = {
 } as const;
 
 export function renderJsonSchema(name: keyof typeof SCHEMA_FILES): string {
-  const schema = z.toJSONSchema(SCHEMA_FILES[name], { target: "draft-2020-12", unrepresentable: "any" });
+  const schema = z.toJSONSchema(SCHEMA_FILES[name], {
+    target: "draft-2020-12",
+    unrepresentable: "any",
+  });
   const withId = {
     $id: `https://github.com/NguyenTienThanh2007/warehouse-one/data/schemas/${name}`,
     ...schema,

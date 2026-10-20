@@ -44,7 +44,10 @@ export default tseslint.config(
       ],
       "no-restricted-syntax": [
         "error",
-        { selector: "NewExpression[callee.name='Date'][arguments.length=0]", message: "Use simulation time." },
+        {
+          selector: "NewExpression[callee.name='Date'][arguments.length=0]",
+          message: "Use simulation time.",
+        },
       ],
     },
   },

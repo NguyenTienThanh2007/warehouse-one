@@ -2,7 +2,13 @@ import type { DomainEvent } from "@warehouse-one/contracts";
 import { parseCommand } from "@warehouse-one/contracts";
 import { createInitialState, step } from "./engine";
 import { createSnapshot, type Snapshot } from "./snapshot";
-import type { CommandRejection, LoggedCommand, SimulationConfig, SimulationState, StepResult } from "./types";
+import type {
+  CommandRejection,
+  LoggedCommand,
+  SimulationConfig,
+  SimulationState,
+  StepResult,
+} from "./types";
 
 export const SPEED_LIMITS = { min: 0.25, max: 16 } as const;
 
@@ -119,7 +125,8 @@ export class SimulationRunner {
 
   /** Feed real elapsed time; runs as many fixed ticks as the accumulator allows. */
   advance(realDeltaMs: number): AdvanceSummary {
-    if (this.isPaused || !(realDeltaMs > 0)) return { ticks: 0, events: [], rejections: [], droppedMs: 0 };
+    if (this.isPaused || !(realDeltaMs > 0))
+      return { ticks: 0, events: [], rejections: [], droppedMs: 0 };
     this.accumulatorMs += realDeltaMs * this.speedFactor;
     const events: DomainEvent[] = [];
     const rejections: CommandRejection[] = [];

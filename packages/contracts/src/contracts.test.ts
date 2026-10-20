@@ -20,7 +20,12 @@ const validEvent = {
   simulation_time_ms: 100,
   correlation_id: "cmd-1",
   causation_id: "cmd-1",
-  payload: { location_id: "loc-a01", sku: "sku-std-pallet", quantity: 4, location_quantity_after: 4 },
+  payload: {
+    location_id: "loc-a01",
+    sku: "sku-std-pallet",
+    quantity: 4,
+    location_quantity_after: 4,
+  },
 };
 
 describe("command contracts", () => {
@@ -28,18 +33,58 @@ describe("command contracts", () => {
     const r = parseCommand({
       command_id: "c1",
       type: "inventory.move",
-      payload: { from_location_id: "loc-a01", to_location_id: "loc-a02", sku: "sku-x", quantity: 2 },
+      payload: {
+        from_location_id: "loc-a01",
+        to_location_id: "loc-a02",
+        sku: "sku-x",
+        quantity: 2,
+      },
     });
     expect(r.ok).toBe(true);
   });
 
   it.each([
     ["unknown type", { command_id: "c", type: "inventory.teleport", payload: {} }],
-    ["zero quantity", { command_id: "c", type: "inventory.receive", payload: { location_id: "loc-a", sku: "sku-a", quantity: 0 } }],
-    ["fractional quantity", { command_id: "c", type: "inventory.receive", payload: { location_id: "loc-a", sku: "sku-a", quantity: 1.5 } }],
-    ["same from/to", { command_id: "c", type: "inventory.move", payload: { from_location_id: "loc-a", to_location_id: "loc-a", sku: "sku-a", quantity: 1 } }],
-    ["zero delta", { command_id: "c", type: "inventory.adjust", payload: { location_id: "loc-a", sku: "sku-a", delta: 0, reason: "correction" } }],
-    ["bad id", { command_id: "c", type: "inventory.receive", payload: { location_id: "LOC A; DROP", sku: "sku-a", quantity: 1 } }],
+    [
+      "zero quantity",
+      {
+        command_id: "c",
+        type: "inventory.receive",
+        payload: { location_id: "loc-a", sku: "sku-a", quantity: 0 },
+      },
+    ],
+    [
+      "fractional quantity",
+      {
+        command_id: "c",
+        type: "inventory.receive",
+        payload: { location_id: "loc-a", sku: "sku-a", quantity: 1.5 },
+      },
+    ],
+    [
+      "same from/to",
+      {
+        command_id: "c",
+        type: "inventory.move",
+        payload: { from_location_id: "loc-a", to_location_id: "loc-a", sku: "sku-a", quantity: 1 },
+      },
+    ],
+    [
+      "zero delta",
+      {
+        command_id: "c",
+        type: "inventory.adjust",
+        payload: { location_id: "loc-a", sku: "sku-a", delta: 0, reason: "correction" },
+      },
+    ],
+    [
+      "bad id",
+      {
+        command_id: "c",
+        type: "inventory.receive",
+        payload: { location_id: "LOC A; DROP", sku: "sku-a", quantity: 1 },
+      },
+    ],
     ["not an object", "inventory.receive"],
   ])("rejects %s without throwing", (_name, input) => {
     const r = parseCommand(input);
@@ -59,7 +104,9 @@ describe("event contracts", () => {
   });
 
   it("rejects non-UTC or imprecise timestamps", () => {
-    expect(DomainEvent.safeParse({ ...validEvent, occurred_at: "2026-01-05T06:00:00+07:00" }).success).toBe(false);
+    expect(
+      DomainEvent.safeParse({ ...validEvent, occurred_at: "2026-01-05T06:00:00+07:00" }).success,
+    ).toBe(false);
   });
 
   it("registers a schema version for every event type", () => {
@@ -68,8 +115,11 @@ describe("event contracts", () => {
 });
 
 describe("generated JSON Schemas", () => {
-  it.each(Object.keys(SCHEMA_FILES))("data/schemas/%s is up to date (run `pnpm schemas:generate`)", (name) => {
-    const onDisk = readFileSync(resolve(schemasDir, name), "utf8");
-    expect(onDisk).toBe(renderJsonSchema(name as keyof typeof SCHEMA_FILES));
-  });
+  it.each(Object.keys(SCHEMA_FILES))(
+    "data/schemas/%s is up to date (run `pnpm schemas:generate`)",
+    (name) => {
+      const onDisk = readFileSync(resolve(schemasDir, name), "utf8");
+      expect(onDisk).toBe(renderJsonSchema(name as keyof typeof SCHEMA_FILES));
+    },
+  );
 });

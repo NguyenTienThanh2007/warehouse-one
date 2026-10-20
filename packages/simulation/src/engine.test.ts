@@ -19,12 +19,23 @@ const base = createFoundationDemoConfig();
 /** Same layout, no synthetic workload: only explicit commands change state. */
 const quiet: SimulationConfig = { ...base, synthetic_workload: undefined };
 
-const recv = (id: string, location_id: string, sku: string, quantity: number): SimulationCommand => ({
+const recv = (
+  id: string,
+  location_id: string,
+  sku: string,
+  quantity: number,
+): SimulationCommand => ({
   command_id: id,
   type: "inventory.receive",
   payload: { location_id, sku, quantity },
 });
-const mv = (id: string, from: string, to: string, sku: string, quantity: number): SimulationCommand => ({
+const mv = (
+  id: string,
+  from: string,
+  to: string,
+  sku: string,
+  quantity: number,
+): SimulationCommand => ({
   command_id: id,
   type: "inventory.move",
   payload: { from_location_id: from, to_location_id: to, sku, quantity },
@@ -76,7 +87,8 @@ describe("determinism", () => {
     const log: LoggedCommand[] = [];
     const liveEvents: DomainEvent[] = [];
     for (let t = 1; t <= 400; t++) {
-      const cmds: SimulationCommand[] = t % 37 === 0 ? [recv(`c${t}`, "loc-00-003", "sku-bulk-bags", 2)] : [];
+      const cmds: SimulationCommand[] =
+        t % 37 === 0 ? [recv(`c${t}`, "loc-00-003", "sku-bulk-bags", 2)] : [];
       for (const command of cmds) log.push({ tick: t, command });
       const r = step(base, state, cmds);
       liveEvents.push(...r.events);
@@ -110,11 +122,19 @@ describe("command validation and inventory invariants", () => {
   it("rejects schema-invalid commands safely without changing state", () => {
     const s0 = createInitialState(quiet);
     const r = step(quiet, s0, [
-      { command_id: "x1", type: "inventory.receive", payload: { location_id: "loc-00-001", sku: "sku-std-pallet", quantity: -5 } },
+      {
+        command_id: "x1",
+        type: "inventory.receive",
+        payload: { location_id: "loc-00-001", sku: "sku-std-pallet", quantity: -5 },
+      },
       { nonsense: true },
       null,
     ]);
-    expect(r.rejections.map((x) => x.code)).toEqual(["INVALID_COMMAND", "INVALID_COMMAND", "INVALID_COMMAND"]);
+    expect(r.rejections.map((x) => x.code)).toEqual([
+      "INVALID_COMMAND",
+      "INVALID_COMMAND",
+      "INVALID_COMMAND",
+    ]);
     expect(r.events).toEqual([]);
     expect(r.state.inventory).toEqual({});
   });
@@ -126,7 +146,11 @@ describe("command validation and inventory invariants", () => {
       recv("b", "loc-00-001", "sku-unknown", 1),
       recv("c", "loc-00-001", "sku-std-pallet", 9),
       mv("d", "loc-00-001", "loc-00-002", "sku-std-pallet", 1),
-      { command_id: "e", type: "inventory.adjust", payload: { location_id: "loc-00-001", sku: "sku-std-pallet", delta: -1, reason: "damage" } },
+      {
+        command_id: "e",
+        type: "inventory.adjust",
+        payload: { location_id: "loc-00-001", sku: "sku-std-pallet", delta: -1, reason: "damage" },
+      },
     ]);
     expect(r.rejections.map((x) => x.code)).toEqual([
       "UNKNOWN_LOCATION",
@@ -139,12 +163,16 @@ describe("command validation and inventory invariants", () => {
   });
 
   it("applies same-tick conflicting commands sequentially: the second overdraw is rejected", () => {
-    const s1 = step(quiet, createInitialState(quiet), [recv("r", "loc-00-001", "sku-std-pallet", 5)]).state;
+    const s1 = step(quiet, createInitialState(quiet), [
+      recv("r", "loc-00-001", "sku-std-pallet", 5),
+    ]).state;
     const r = step(quiet, s1, [
       mv("m1", "loc-00-001", "loc-00-002", "sku-std-pallet", 4),
       mv("m2", "loc-00-001", "loc-00-003", "sku-std-pallet", 4),
     ]);
-    expect(r.rejections).toEqual([expect.objectContaining({ command_id: "m2", code: "INSUFFICIENT_STOCK" })]);
+    expect(r.rejections).toEqual([
+      expect.objectContaining({ command_id: "m2", code: "INSUFFICIENT_STOCK" }),
+    ]);
     expect(totalsBySku(r.state)).toEqual({ "sku-std-pallet": 5 });
     expect(r.state.inventory["loc-00-001"]).toEqual({ "sku-std-pallet": 1 });
   });
@@ -175,14 +203,22 @@ describe("command validation and inventory invariants", () => {
             cmds.push(mv(`f${t}-${k}`, loc, locIds[pick(locIds.length)]!, sku, qty));
             break;
           default:
-            cmds.push({ command_id: `f${t}-${k}`, type: "inventory.adjust", payload: { location_id: loc, sku, delta: qty - 6, reason: "cycle_count" } });
+            cmds.push({
+              command_id: `f${t}-${k}`,
+              type: "inventory.adjust",
+              payload: { location_id: loc, sku, delta: qty - 6, reason: "cycle_count" },
+            });
         }
       }
       const r = step(config, state, cmds);
       for (const e of r.events) {
         const p = e.payload;
-        if (e.event_type === "inventory.received") expected[e.aggregate_id] = (expected[e.aggregate_id] ?? 0) + (p as { quantity: number }).quantity;
-        if (e.event_type === "inventory.adjusted") expected[e.aggregate_id] = (expected[e.aggregate_id] ?? 0) + (p as { delta: number }).delta;
+        if (e.event_type === "inventory.received")
+          expected[e.aggregate_id] =
+            (expected[e.aggregate_id] ?? 0) + (p as { quantity: number }).quantity;
+        if (e.event_type === "inventory.adjusted")
+          expected[e.aggregate_id] =
+            (expected[e.aggregate_id] ?? 0) + (p as { delta: number }).delta;
       }
       expect(checkInvariants(config, r.state)).toEqual([]);
       state = r.state;

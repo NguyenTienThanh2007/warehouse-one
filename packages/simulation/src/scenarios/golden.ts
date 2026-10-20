@@ -2,7 +2,11 @@ import type { DomainEvent } from "@warehouse-one/contracts";
 import { replay, totalsBySku } from "../engine";
 import { stateHash } from "../snapshot";
 import type { CommandRejection, LoggedCommand, SimulationConfig, SimulationState } from "../types";
-import { createFoundationDemoConfig, FOUNDATION_DEMO_SCRIPT, FOUNDATION_DEMO_TICKS } from "./foundation-demo";
+import {
+  createFoundationDemoConfig,
+  FOUNDATION_DEMO_SCRIPT,
+  FOUNDATION_DEMO_TICKS,
+} from "./foundation-demo";
 
 export interface GoldenRun {
   config: SimulationConfig;

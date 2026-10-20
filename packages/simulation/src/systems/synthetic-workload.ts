@@ -14,7 +14,10 @@ export function syntheticWorkloadSystem(d: TickDraft): void {
   const skus = d.config.skus;
   if (locations.length < 2 || skus.length === 0) return;
 
-  const trace = { correlation_id: `sys-workload-t${d.tick}`, causation_id: "system:synthetic-workload" };
+  const trace = {
+    correlation_id: `sys-workload-t${d.tick}`,
+    causation_id: "system:synthetic-workload",
+  };
 
   const inboundRoll = d.random();
   const inLoc = locations[d.randomInt(0, locations.length - 1)];

@@ -1,7 +1,7 @@
 {
   "name": "warehouse-one",
   "private": true,
-  "description": "WAREHOUSE ONE — 3D logistics digital twin and real-time data engineering platform.",
+  "description": "WAREHOUSE ONE \u2014 3D logistics digital twin and real-time data engineering platform.",
   "packageManager": "pnpm@11.25.0",
   "engines": {
     "node": ">=24.0.0"
@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "pnpm --filter @warehouse-one/web dev",
     "build": "pnpm -r --if-present build",
-    "typecheck": "pnpm -r --if-present typecheck",
+    "typecheck": "pnpm -r --if-present typecheck && tsc -p tests/tsconfig.json",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -19,7 +19,8 @@
     "bench:sim": "pnpm --filter @warehouse-one/simulation bench",
     "schemas:generate": "pnpm --filter @warehouse-one/contracts generate:schemas",
     "fixtures:generate": "pnpm --filter @warehouse-one/simulation generate:fixtures",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "bench:render": "tsx tests/performance/render-benchmark.ts"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
@@ -30,6 +31,7 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.13.0",
     "prettier": "3.9.9",
+    "tsx": "4.23.15",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.1"
   }

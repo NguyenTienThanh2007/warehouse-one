@@ -1,6 +1,11 @@
 import { checkInvariants, validateConfig } from "./engine";
 import { hashValue } from "./hash";
-import { ENGINE_VERSION, SNAPSHOT_VERSION, type SimulationConfig, type SimulationState } from "./types";
+import {
+  ENGINE_VERSION,
+  SNAPSHOT_VERSION,
+  type SimulationConfig,
+  type SimulationState,
+} from "./types";
 
 export interface Snapshot {
   readonly snapshot_version: number;
@@ -33,13 +38,18 @@ export function serializeSnapshot(snapshot: Snapshot): string {
 export function loadSnapshot(json: string): Snapshot {
   const raw = JSON.parse(json) as Partial<Snapshot>;
   if (raw.snapshot_version !== SNAPSHOT_VERSION) {
-    throw new Error(`unsupported snapshot_version ${String(raw.snapshot_version)} (expected ${SNAPSHOT_VERSION})`);
+    throw new Error(
+      `unsupported snapshot_version ${String(raw.snapshot_version)} (expected ${SNAPSHOT_VERSION})`,
+    );
   }
-  if (!raw.config || !raw.state || typeof raw.state_hash !== "string") throw new Error("snapshot is missing fields");
+  if (!raw.config || !raw.state || typeof raw.state_hash !== "string")
+    throw new Error("snapshot is missing fields");
   const problems = validateConfig(raw.config);
   if (problems.length > 0) throw new Error(`snapshot config invalid: ${problems.join("; ")}`);
-  if (stateHash(raw.config, raw.state) !== raw.state_hash) throw new Error("snapshot hash mismatch: data is corrupt");
+  if (stateHash(raw.config, raw.state) !== raw.state_hash)
+    throw new Error("snapshot hash mismatch: data is corrupt");
   const violations = checkInvariants(raw.config, raw.state);
-  if (violations.length > 0) throw new Error(`snapshot violates invariants: ${violations.join("; ")}`);
+  if (violations.length > 0)
+    throw new Error(`snapshot violates invariants: ${violations.join("; ")}`);
   return raw as Snapshot;
 }

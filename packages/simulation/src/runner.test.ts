@@ -62,14 +62,21 @@ describe("SimulationRunner time control", () => {
 describe("SimulationRunner commands and state protection", () => {
   it("rejects schema-invalid input at submit and logs applied commands with their tick", () => {
     const r = new SimulationRunner({ ...config, synthetic_workload: undefined });
-    expect(r.submit({ command_id: "bad", type: "inventory.receive", payload: {} }).accepted).toBe(false);
+    expect(r.submit({ command_id: "bad", type: "inventory.receive", payload: {} }).accepted).toBe(
+      false,
+    );
     expect(
-      r.submit({ command_id: "ok", type: "inventory.receive", payload: { location_id: "loc-00-001", sku: "sku-std-pallet", quantity: 2 } })
-        .accepted,
+      r.submit({
+        command_id: "ok",
+        type: "inventory.receive",
+        payload: { location_id: "loc-00-001", sku: "sku-std-pallet", quantity: 2 },
+      }).accepted,
     ).toBe(true);
     const res = r.stepOnce();
     expect(res.events).toHaveLength(1);
-    expect(r.commandLog).toEqual([{ tick: 1, command: expect.objectContaining({ command_id: "ok" }) }]);
+    expect(r.commandLog).toEqual([
+      { tick: 1, command: expect.objectContaining({ command_id: "ok" }) },
+    ]);
   });
 
   it("publishes deeply frozen state so rendering code cannot secretly mutate it", () => {
@@ -105,7 +112,9 @@ describe("snapshots", () => {
 
     const first = new SimulationRunner(config);
     for (let i = 0; i < 300; i++) first.stepOnce();
-    const restored = SimulationRunner.fromSnapshot(loadSnapshot(serializeSnapshot(first.snapshot())));
+    const restored = SimulationRunner.fromSnapshot(
+      loadSnapshot(serializeSnapshot(first.snapshot())),
+    );
     for (let i = 0; i < 500; i++) restored.stepOnce();
 
     expect(stateHash(config, restored.state)).toBe(stateHash(config, straight.state));
@@ -120,7 +129,9 @@ describe("snapshots", () => {
     tampered.state.tick += 1;
     expect(() => loadSnapshot(JSON.stringify(tampered))).toThrow(/hash mismatch/);
 
-    expect(() => loadSnapshot(JSON.stringify({ ...snap, snapshot_version: 99 }))).toThrow(/unsupported snapshot_version/);
+    expect(() => loadSnapshot(JSON.stringify({ ...snap, snapshot_version: 99 }))).toThrow(
+      /unsupported snapshot_version/,
+    );
 
     const loc = config.locations[0]!.id;
     const overfull = { ...snap.state, inventory: { [loc]: { "sku-std-pallet": 999 } } };
