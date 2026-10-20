@@ -5,6 +5,8 @@ import {
   type EventType,
 } from "@warehouse-one/contracts";
 import { deterministicUuid } from "./hash";
+import { navGraph } from "./ops/nav";
+import { OpsDraft } from "./ops/ops-draft";
 import { nextFloat, nextInt, type RngState } from "./rng";
 import type { SimulationConfig, SimulationState } from "./types";
 
@@ -20,6 +22,8 @@ export class TickDraft {
   private readonly copiedLocations = new Set<string>();
   private readonly versions: Record<string, number>;
   readonly events: DomainEvent[] = [];
+  /** Operational working copy; null for configs without facility data (Phase 0 behaviour). */
+  readonly ops: OpsDraft | null;
   readonly locationIndex: ReadonlyMap<string, SimulationConfig["locations"][number]>;
   readonly skuIds: ReadonlySet<string>;
 
@@ -38,6 +42,7 @@ export class TickDraft {
     this.versions = { ...base.aggregate_versions };
     this.locationIndex = indexes.locations;
     this.skuIds = indexes.skus;
+    this.ops = base.ops ? new OpsDraft(this, navGraph(config), base.ops) : null;
   }
 
   get simulationTimeMs(): number {
@@ -98,7 +103,7 @@ export class TickDraft {
       event_id: deterministicUuid(this.config.simulation_id, this.sequence),
       event_type: eventType,
       schema_version: EVENT_PAYLOADS[eventType].version,
-      aggregate_type: "inventory_item",
+      aggregate_type: EVENT_PAYLOADS[eventType].aggregate,
       aggregate_id: aggregateId,
       aggregate_version: version,
       simulation_id: this.config.simulation_id,
@@ -118,6 +123,7 @@ export class TickDraft {
       rng: this.rng,
       inventory: this.inventory,
       aggregate_versions: this.versions,
+      ...(this.ops ? { ops: this.ops.commit() } : {}),
     };
   }
 }

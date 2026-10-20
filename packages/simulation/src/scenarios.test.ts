@@ -56,8 +56,10 @@ describe("scenario registry", () => {
       const s = createBenchmarkScenario(n);
       let state = open(s).state;
       expect(units(totalsBySku(state))).toBe(n);
+      // Relocations carry pallets on forklift forks; every pallet stays on site.
       for (let i = 0; i < 300; i++) state = step(s.config, state).state;
-      expect(units(totalsBySku(state))).toBe(n);
+      expect(Object.keys(state.ops!.pallets)).toHaveLength(n);
+      expect(checkInvariants(s.config, state)).toEqual([]);
     },
   );
 });

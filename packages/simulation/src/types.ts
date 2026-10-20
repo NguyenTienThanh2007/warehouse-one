@@ -1,4 +1,5 @@
 import type { DomainEvent, SimulationCommand } from "@warehouse-one/contracts";
+import type { OperationsState, OperationsWorkloadConfig } from "./ops/model";
 import type { RngState } from "./rng";
 
 export const ENGINE_VERSION = "0.1.0";
@@ -48,6 +49,8 @@ export interface SimulationConfig {
    * or assets. Equipment becomes stateful (moving, tasked) in Phase 2.
    */
   readonly facility?: FacilityConfig;
+  /** Phase 2: seeded generator of trucks, orders and relocations. Disabled when absent. */
+  readonly operations_workload?: OperationsWorkloadConfig;
 }
 
 export interface Point2 {
@@ -87,6 +90,8 @@ export interface EquipmentConfig {
   readonly rated_capacity_kg: number;
   /** For trucks: the dock they are reversed onto. */
   readonly dock_id?: string;
+  /** Phase 2: battery charge at the start of a run (permille, default 1000). */
+  readonly battery_permille?: number;
 }
 
 export interface FacilityConfig {
@@ -100,6 +105,8 @@ export interface FacilityConfig {
   /** Outdoor paved area (yard) including the building footprint (m). */
   readonly site: { readonly min: Point2; readonly max: Point2 };
   readonly rack: RackSpec;
+  /** Working-aisle width between pick faces (m, default 3.6). Used by navigation (Phase 2). */
+  readonly aisle_width?: number;
   readonly docks: readonly DockConfig[];
   readonly equipment: readonly EquipmentConfig[];
 }
@@ -114,8 +121,13 @@ export interface SimulationState {
   readonly sequence: number;
   readonly rng: RngState;
   readonly inventory: InventoryTable;
-  /** aggregate_id (sku) -> last aggregate_version emitted. */
+  /** aggregate_id -> last aggregate_version emitted (IDs are unique across aggregate types). */
   readonly aggregate_versions: Readonly<Record<string, number>>;
+  /**
+   * Phase 2 operational state (pallets, equipment, tasks, trucks, orders, docks). Present only
+   * when the config has facility data; `inventory` is then a checked projection of slotted pallets.
+   */
+  readonly ops?: OperationsState;
 }
 
 export type RejectionCode =
@@ -123,7 +135,17 @@ export type RejectionCode =
   | "UNKNOWN_LOCATION"
   | "UNKNOWN_SKU"
   | "INSUFFICIENT_STOCK"
-  | "CAPACITY_EXCEEDED";
+  | "CAPACITY_EXCEEDED"
+  // Phase 2 operations
+  | "OPERATIONS_DISABLED"
+  | "UNKNOWN_PALLET"
+  | "PALLET_NOT_STORED"
+  | "PALLET_RESERVED"
+  | "SAME_LOCATION"
+  | "NO_CAPACITY"
+  | "YARD_FULL"
+  | "UNKNOWN_ORDER"
+  | "ORDER_NOT_CANCELLABLE";
 
 export interface CommandRejection {
   readonly command_id: string;
