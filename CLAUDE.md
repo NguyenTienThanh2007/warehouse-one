@@ -5,9 +5,9 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
 
 ## Current state
 
-- **Active phase:** 1 (Premium 3D world), in review on `feature/p1-3d-world`. Phase 0 is merged.
-  **Do not start Phase 2 until the owner approves Phase 1.**
-- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_1.md`.
+- **Active phase:** 2 (Living warehouse simulation) on `feature/p2-simulation`. Phases 0–1 are merged.
+  **Do not start Phase 3 (Kafka, MinIO, dbt, Airflow, AI) until the owner approves Phase 2.**
+- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_2.md`.
 
 ## Architecture (one screen)
 

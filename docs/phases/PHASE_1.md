@@ -1,7 +1,7 @@
 # Phase 1 — Premium 3D World
 
-**Branch:** `feature/p1-3d-world` (from `main` @ `c512733`) · **PR:** #2, merged to `main` as `d80a7f2`. A follow-up draft PR from the same branch carries the flaky-test fix (§7)
-**Status:** merged to `main` by the owner on 2026-10-20 (PR #2, head `f8ed81c`, merge `d80a7f2`). CI on `main` is green (run 39424947352, e2e 18/18). The flaky-test fix in §7 was pushed after that merge and reaches `main` through the follow-up PR. Two visual-checklist items remain NOT RUN (§6).
+**Branch:** `feature/p1-3d-world` (from `main` @ `c512733`) · **PR:** #2, merged to `main` as `d80a7f2`; follow-up #3 (flaky-test fix, §7) merged as `0463395`
+**Status:** ACCEPTED. Merged by the owner on 2026-10-20 (PR #2 → `d80a7f2`, PR #3 → `0463395`). CI on `main` @ `0463395` is green (run 39429621800, e2e 18/18, no flaky results). Two visual-checklist items remain NOT RUN (§6).
 
 ## 1. Starting point
 
