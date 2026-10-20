@@ -1,5 +1,10 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": { "lib": ["DOM", "ES2023"], "types": ["node"] },
-  "include": ["e2e", "performance", "../apps/web/src/lib/perf/renderer-probe.ts"]
+  "include": [
+    "e2e",
+    "performance",
+    "../apps/web/src/lib/perf/renderer-probe.ts",
+    "../apps/web/src/lib/world/scene-debug.ts"
+  ]
 }
