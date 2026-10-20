@@ -1,0 +1,9 @@
+{
+  "name": "warehouse-one",
+  "private": true,
+  "description": "WAREHOUSE ONE — 3D logistics digital twin and real-time data engineering platform.",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
