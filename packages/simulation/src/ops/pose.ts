@@ -1,7 +1,14 @@
 import type { PalletPosition } from "@warehouse-one/contracts";
 import type { LocationConfig, SimulationConfig, SimulationState } from "../types";
-import { TRUCK_DEPARTING_TICKS, TRUCK_DOCKING_TICKS, type EquipmentState, type Heading, type TruckState } from "./model";
+import {
+  TRUCK_DEPARTING_TICKS,
+  TRUCK_DOCKING_TICKS,
+  type EquipmentState,
+  type Heading,
+  type TruckState,
+} from "./model";
 import { navGraph, type NavGraph } from "./nav";
+import { must } from "./must";
 
 /**
  * World poses derived from authoritative state (metres, radians). Pure functions shared by tests
@@ -21,7 +28,12 @@ export interface EquipmentPose extends Pose {
   readonly fork: number;
 }
 
-const HEADING_YAW: Record<Heading, number> = { pz: 0, px: Math.PI / 2, nz: Math.PI, nx: -Math.PI / 2 };
+const HEADING_YAW: Record<Heading, number> = {
+  pz: 0,
+  px: Math.PI / 2,
+  nz: Math.PI,
+  nx: -Math.PI / 2,
+};
 export const headingYaw = (h: Heading) => HEADING_YAW[h];
 
 /** Travel height of empty forks and of a carried pallet's underside (m). */
@@ -44,21 +56,31 @@ export function equipmentPose(g: NavGraph, e: EquipmentState): EquipmentPose {
   if (e.handling) {
     // Raise to the lift height at the midpoint (pallet changes hands there), then lower.
     const p = 1 - e.handling.ticks_left / e.handling.ticks_total;
-    fork = Math.max(fork, (e.handling.lift_mm / 1000) * (1 - Math.abs(2 * p - 1)) + FORK_TRAVEL_EMPTY);
+    fork = Math.max(
+      fork,
+      (e.handling.lift_mm / 1000) * (1 - Math.abs(2 * p - 1)) + FORK_TRAVEL_EMPTY,
+    );
   }
   return { x: x / 1000, z: z / 1000, yaw: headingYaw(e.handling?.facing ?? e.heading), fork };
 }
 
 /** Local slot centre in a bay: x along the beam, y = beam top (level 0 is the floor). */
-export function slotLocal(config: SimulationConfig, slot: number): { x: number; y: number; level: number } {
-  const rack = config.facility!.rack;
+export function slotLocal(
+  config: SimulationConfig,
+  slot: number,
+): { x: number; y: number; level: number } {
+  const rack = must(config.facility, "facility").rack;
   const level = Math.floor(slot / rack.positions_per_level);
   const column = slot % rack.positions_per_level;
   const pitch = rack.bay_width / rack.positions_per_level;
   return { x: -rack.bay_width / 2 + pitch * (column + 0.5), y: level * rack.level_height, level };
 }
 
-export function slotWorld(config: SimulationConfig, loc: LocationConfig, slot: number): Pose & { y: number } {
+export function slotWorld(
+  config: SimulationConfig,
+  loc: LocationConfig,
+  slot: number,
+): Pose & { y: number } {
   const local = slotLocal(config, slot);
   const yaw = loc.yaw ?? 0;
   return {
@@ -79,15 +101,24 @@ const ease = (t: number) => t * t * (3 - 2 * t);
 
 /** Pose of a truck with its rear at a dock door (front pointing away from the building). */
 export function dockedTruckPose(config: SimulationConfig, dockId: string): Pose {
-  const d = config.facility!.docks.find((x) => x.id === dockId)!;
+  const d = must(
+    must(config.facility, "facility").docks.find((x) => x.id === dockId),
+    `dock ${dockId}`,
+  );
   return { x: d.position.x, z: d.position.z + DOCK_GAP + TRUCK_LENGTH / 2, yaw: 0 };
 }
 
 /** Waiting position in the yard row behind the docks. */
 export function yardPose(config: SimulationConfig, slot: number): Pose {
-  const docks = [...config.facility!.docks].sort((a, b) => a.id.localeCompare(b.id));
-  const d = docks[slot % docks.length]!;
-  return { x: d.position.x, z: d.position.z + YARD_ROW_OFFSET + DOCK_GAP + TRUCK_LENGTH / 2, yaw: 0 };
+  const docks = [...must(config.facility, "facility").docks].sort((a, b) =>
+    a.id.localeCompare(b.id),
+  );
+  const d = must(docks[slot % docks.length], `yard slot ${slot}`);
+  return {
+    x: d.position.x,
+    z: d.position.z + YARD_ROW_OFFSET + DOCK_GAP + TRUCK_LENGTH / 2,
+    yaw: 0,
+  };
 }
 
 /**
@@ -100,9 +131,9 @@ export function truckPose(config: SimulationConfig, t: TruckState): Pose | null 
     case "yard":
       return yard;
     case "docked":
-      return dockedTruckPose(config, t.dock_id!);
+      return dockedTruckPose(config, must(t.dock_id, `dock of ${t.id}`));
     case "docking": {
-      const dock = dockedTruckPose(config, t.dock_id!);
+      const dock = dockedTruckPose(config, must(t.dock_id, `dock of ${t.id}`));
       const p = 1 - t.motion_ticks_left / TRUCK_DOCKING_TICKS;
       if (p < 0.4) return { x: yard.x + (dock.x - yard.x) * ease(p / 0.4), z: yard.z, yaw: 0 };
       return { x: dock.x, z: yard.z + (dock.z - yard.z) * ease((p - 0.4) / 0.6), yaw: 0 };
@@ -110,7 +141,7 @@ export function truckPose(config: SimulationConfig, t: TruckState): Pose | null 
     case "departing": {
       const from = t.dock_id ? dockedTruckPose(config, t.dock_id) : yard;
       const p = 1 - t.motion_ticks_left / TRUCK_DEPARTING_TICKS;
-      const exit = config.facility!.site.max.z + TRUCK_LENGTH;
+      const exit = must(config.facility, "facility").site.max.z + TRUCK_LENGTH;
       return { x: from.x, z: from.z + (exit - from.z) * ease(p), yaw: 0 };
     }
   }
@@ -149,7 +180,12 @@ export function palletWorld(
       const pose = equipmentPoseOf(at.equipment_id);
       if (!e || !pose) return null;
       const reach = e.kind === "reach_truck" ? 0.62 : 1.15;
-      return { x: pose.x + Math.sin(pose.yaw) * reach, z: pose.z + Math.cos(pose.yaw) * reach, y: pose.fork - 0.04, yaw: pose.yaw };
+      return {
+        x: pose.x + Math.sin(pose.yaw) * reach,
+        z: pose.z + Math.cos(pose.yaw) * reach,
+        y: pose.fork - 0.04,
+        yaw: pose.yaw,
+      };
     }
     case "truck":
       return null;

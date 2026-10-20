@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DomainEvent, EVENT_PAYLOADS, EVENT_TYPES, parseCommand, PalletPosition, TRUCK_CAPACITY } from "./index";
+import {
+  DomainEvent,
+  EVENT_PAYLOADS,
+  EVENT_TYPES,
+  parseCommand,
+  PalletPosition,
+  TRUCK_CAPACITY,
+} from "./index";
 
 const envelope = {
   event_id: "0f8fad5b-d9cb-869f-a165-70867728950e",
@@ -15,20 +22,68 @@ const envelope = {
 
 describe("Phase 2 commands", () => {
   it.each([
-    ["inbound truck", { type: "truck.schedule_inbound", payload: { cargo: [{ sku: "sku-a", quantity: 4 }, { sku: "sku-b", quantity: 2 }] } }],
-    ["order", { type: "order.create", payload: { lines: [{ sku: "sku-a", quantity: TRUCK_CAPACITY }] } }],
+    [
+      "inbound truck",
+      {
+        type: "truck.schedule_inbound",
+        payload: {
+          cargo: [
+            { sku: "sku-a", quantity: 4 },
+            { sku: "sku-b", quantity: 2 },
+          ],
+        },
+      },
+    ],
+    [
+      "order",
+      { type: "order.create", payload: { lines: [{ sku: "sku-a", quantity: TRUCK_CAPACITY }] } },
+    ],
     ["cancel", { type: "order.cancel", payload: { order_id: "ord-000001" } }],
-    ["relocate", { type: "pallet.relocate", payload: { pallet_id: "plt-000001", to_location_id: "loc-00-001" } }],
+    [
+      "relocate",
+      {
+        type: "pallet.relocate",
+        payload: { pallet_id: "plt-000001", to_location_id: "loc-00-001" },
+      },
+    ],
   ])("accepts a valid %s command", (_n, c) => {
     expect(parseCommand({ command_id: "c", ...c }).ok).toBe(true);
   });
 
   it.each([
-    ["more than one truck", { type: "order.create", payload: { lines: [{ sku: "sku-a", quantity: 20 }, { sku: "sku-b", quantity: 7 }] } }],
-    ["a duplicated SKU", { type: "order.create", payload: { lines: [{ sku: "sku-a", quantity: 1 }, { sku: "sku-a", quantity: 1 }] } }],
+    [
+      "more than one truck",
+      {
+        type: "order.create",
+        payload: {
+          lines: [
+            { sku: "sku-a", quantity: 20 },
+            { sku: "sku-b", quantity: 7 },
+          ],
+        },
+      },
+    ],
+    [
+      "a duplicated SKU",
+      {
+        type: "order.create",
+        payload: {
+          lines: [
+            { sku: "sku-a", quantity: 1 },
+            { sku: "sku-a", quantity: 1 },
+          ],
+        },
+      },
+    ],
     ["no lines", { type: "truck.schedule_inbound", payload: { cargo: [] } }],
-    ["a zero quantity", { type: "truck.schedule_inbound", payload: { cargo: [{ sku: "sku-a", quantity: 0 }] } }],
-    ["a malformed pallet id", { type: "pallet.relocate", payload: { pallet_id: "PLT 1", to_location_id: "loc-00-001" } }],
+    [
+      "a zero quantity",
+      { type: "truck.schedule_inbound", payload: { cargo: [{ sku: "sku-a", quantity: 0 }] } },
+    ],
+    [
+      "a malformed pallet id",
+      { type: "pallet.relocate", payload: { pallet_id: "PLT 1", to_location_id: "loc-00-001" } },
+    ],
   ])("rejects %s", (_n, c) => {
     expect(parseCommand({ command_id: "c", ...c }).ok).toBe(false);
   });
@@ -54,10 +109,18 @@ describe("Phase 2 events", () => {
       event_type: "pallet.moved",
       aggregate_type: "pallet",
       aggregate_id: "plt-000001",
-      payload: { pallet_id: "plt-000001", sku: "sku-a", from: positions[0], to: positions[2], task_id: "tsk-000001" },
+      payload: {
+        pallet_id: "plt-000001",
+        sku: "sku-a",
+        from: positions[0],
+        to: positions[2],
+        task_id: "tsk-000001",
+      },
     };
     expect(DomainEvent.safeParse(moved).success).toBe(true);
-    expect(DomainEvent.safeParse({ ...moved, payload: { ...moved.payload, task_id: null } }).success).toBe(true);
+    expect(
+      DomainEvent.safeParse({ ...moved, payload: { ...moved.payload, task_id: null } }).success,
+    ).toBe(true);
   });
 
   it("reject a mismatched aggregate type and unknown statuses", () => {
@@ -66,11 +129,22 @@ describe("Phase 2 events", () => {
       event_type: "equipment.status_changed",
       aggregate_type: "equipment",
       aggregate_id: "fl-01",
-      payload: { equipment_id: "fl-01", from: "idle", to: "travelling", node_id: "n-1", task_id: null, battery_permille: 900 },
+      payload: {
+        equipment_id: "fl-01",
+        from: "idle",
+        to: "travelling",
+        node_id: "n-1",
+        task_id: null,
+        battery_permille: 900,
+      },
     };
     expect(DomainEvent.safeParse(ev).success).toBe(true);
     expect(DomainEvent.safeParse({ ...ev, aggregate_type: "pallet" }).success).toBe(false);
-    expect(DomainEvent.safeParse({ ...ev, payload: { ...ev.payload, to: "flying" } }).success).toBe(false);
-    expect(DomainEvent.safeParse({ ...ev, payload: { ...ev.payload, battery_permille: 1001 } }).success).toBe(false);
+    expect(DomainEvent.safeParse({ ...ev, payload: { ...ev.payload, to: "flying" } }).success).toBe(
+      false,
+    );
+    expect(
+      DomainEvent.safeParse({ ...ev, payload: { ...ev.payload, battery_permille: 1001 } }).success,
+    ).toBe(false);
   });
 });

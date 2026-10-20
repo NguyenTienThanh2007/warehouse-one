@@ -80,10 +80,10 @@ export interface EquipmentState {
   readonly drain_mm: number;
   readonly handling: HandlingState | null;
   /**
-   * Exclusive zone (dock path or charging road) this vehicle has claimed. Claimed before stepping
-   * onto the node in front of the zone, so a waiting vehicle never blocks the zone's exit.
+   * Exclusive dead-end zones (dock paths, the charging road; see nav.ts) this vehicle has claimed:
+   * the one it is in and, when standing on the junction in front of one, the one it is entering.
    */
-  readonly zone_claim: string | null;
+  readonly zone_claims: readonly string[];
   /** Ticks spent waiting for the next node; triggers replanning. */
   readonly wait_ticks: number;
   readonly blocked_by: string | null;
@@ -129,7 +129,12 @@ export interface OperationsState {
   readonly docks: Readonly<Record<string, DockState>>;
   /** Destination positions claimed by tasks: positionKey -> task id. */
   readonly reservations: Readonly<Record<string, string>>;
-  readonly next_id: { readonly pallet: number; readonly task: number; readonly truck: number; readonly order: number };
+  readonly next_id: {
+    readonly pallet: number;
+    readonly task: number;
+    readonly truck: number;
+    readonly order: number;
+  };
 }
 
 /** Seeded generator of operational work for demos and benchmarks; disabled when absent. */

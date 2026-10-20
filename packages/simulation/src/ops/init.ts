@@ -34,14 +34,18 @@ export function initialOperations(config: SimulationConfig): OperationsState | u
       battery_permille: e.battery_permille ?? BATTERY_FULL,
       drain_mm: 0,
       handling: null,
-      zone_claim: null,
+      zone_claims: [g.nodes.get(g.chargerNode.get(e.id) as string)?.zone].filter(
+        (z): z is string => !!z,
+      ),
       wait_ticks: 0,
       blocked_by: null,
       odometer_mm: 0,
       status_since_tick: 0,
     };
   }
-  const docks = Object.fromEntries([...f.docks].sort((a, b) => a.id.localeCompare(b.id)).map((d) => [d.id, { truck_id: null }]));
+  const docks = Object.fromEntries(
+    [...f.docks].sort((a, b) => a.id.localeCompare(b.id)).map((d) => [d.id, { truck_id: null }]),
+  );
   return {
     pallets: {},
     equipment,

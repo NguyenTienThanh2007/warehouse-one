@@ -118,7 +118,8 @@ export class OpsDraft {
     const idx = this.index();
     if (previous) {
       idx.delete(positionKey(previous.at));
-      if (previous.at.kind === "slot") this.adjustSlotCount(previous.at.location_id, previous.sku, -1);
+      if (previous.at.kind === "slot")
+        this.adjustSlotCount(previous.at.location_id, previous.sku, -1);
     }
     const key = positionKey(pallet.at);
     const holder = idx.get(key);

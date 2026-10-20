@@ -262,31 +262,63 @@ function exactStock(config: SimulationConfig, pallets: number): SimulationComman
 const FLEET = { forklifts: 3, reachTrucks: 1, batteries: [1000, 860, 720, 940] } as const;
 
 export function createShowcaseScenario(): Scenario {
-  const layout = buildWarehouse({ name: "WAREHOUSE ONE · Northgate DC", rows: 6, bays: 14, docks: 4, ...FLEET });
+  const layout = buildWarehouse({
+    name: "WAREHOUSE ONE · Northgate DC",
+    rows: 6,
+    bays: 14,
+    docks: 4,
+    ...FLEET,
+  });
   const config = baseConfig("showcase", layout, {
-    // Calibrated to ~45% fleet utilisation (4 vehicles, ~300 ticks per task), so queues stay bounded.
-    inbound_interval_ticks: 1800,
-    outbound_interval_ticks: 1800,
-    relocate_interval_ticks: 600,
-    min_pallets: 3,
-    max_pallets: 5,
+    // Measured at ~63–70% fleet utilisation with a bounded backlog (one-way aisles, ~1,000 ticks
+    // per task); see docs/phases/PHASE_2.md.
+    inbound_interval_ticks: 3600,
+    outbound_interval_ticks: 3600,
+    relocate_interval_ticks: 1800,
+    min_pallets: 2,
+    max_pallets: 4,
   });
   const stock = openingStock(config, 0.55);
   return {
     id: "showcase",
     label: "Showcase DC",
-    description: "84 rack bays (672 positions), 4 docks, 4 vehicles; ~55% opening stock, one inbound truck and one order at start, then seeded trucks, orders and relocations.",
+    description:
+      "84 rack bays (672 positions), 4 docks, 4 vehicles; ~55% opening stock, one inbound truck and one order at start, then seeded trucks, orders and relocations.",
     config,
     openingCommands: [
       ...stock,
-      { command_id: "open-inbound-1", type: "truck.schedule_inbound", payload: { cargo: [{ sku: "sku-electronics", quantity: 3 }, { sku: "sku-bulk-bags", quantity: 2 }] } },
-      { command_id: "open-order-1", type: "order.create", payload: { lines: [{ sku: "sku-std-pallet", quantity: 2 }, { sku: "sku-cold-chain", quantity: 2 }] } },
+      {
+        command_id: "open-inbound-1",
+        type: "truck.schedule_inbound",
+        payload: {
+          cargo: [
+            { sku: "sku-electronics", quantity: 3 },
+            { sku: "sku-bulk-bags", quantity: 2 },
+          ],
+        },
+      },
+      {
+        command_id: "open-order-1",
+        type: "order.create",
+        payload: {
+          lines: [
+            { sku: "sku-std-pallet", quantity: 2 },
+            { sku: "sku-cold-chain", quantity: 2 },
+          ],
+        },
+      },
     ],
   };
 }
 
 export function createEmptyScenario(): Scenario {
-  const layout = buildWarehouse({ name: "WAREHOUSE ONE · Northgate DC", rows: 6, bays: 14, docks: 4, ...FLEET });
+  const layout = buildWarehouse({
+    name: "WAREHOUSE ONE · Northgate DC",
+    rows: 6,
+    bays: 14,
+    docks: 4,
+    ...FLEET,
+  });
   return {
     id: "empty",
     label: "Empty facility",
@@ -301,12 +333,19 @@ export function createBenchmarkScenario(pallets: 100 | 300 | 1000): Scenario {
   const rows = Math.max(2, 2 * Math.round(Math.sqrt(pallets / 64)));
   const bays = Math.ceil(pallets / (rows * 8));
   const id = `bench-${pallets}` as const;
-  const layout = buildWarehouse({ name: `Benchmark ${pallets}`, rows, bays, docks: 4, ...FLEET, batteries: [1000, 1000, 1000, 1000] });
+  const layout = buildWarehouse({
+    name: `Benchmark ${pallets}`,
+    rows,
+    bays,
+    docks: 4,
+    ...FLEET,
+    batteries: [1000, 1000, 1000, 1000],
+  });
   const config = baseConfig(id, layout, {
     inbound_interval_ticks: 0,
     outbound_interval_ticks: 0,
-    // ~80% fleet utilisation: every vehicle is regularly active, queues stay bounded.
-    relocate_interval_ticks: 90,
+    // Measured at ~83–85% fleet utilisation with a backlog of at most five tasks.
+    relocate_interval_ticks: 360,
     min_pallets: 1,
     max_pallets: 1,
   });

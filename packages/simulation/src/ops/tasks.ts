@@ -9,7 +9,11 @@ export interface Trace {
 }
 
 /** Trace for events produced by an operations system rather than a command. */
-export function systemTrace(o: OpsDraft, system: string, correlation_id = `sys-ops-t${o.tick}`): Trace {
+export function systemTrace(
+  o: OpsDraft,
+  system: string,
+  correlation_id = `sys-ops-t${o.tick}`,
+): Trace {
   return { correlation_id, causation_id: `system:${system}` };
 }
 
@@ -38,8 +42,10 @@ export function createTask(
   links: { order_id: string | null; truck_id: string | null },
   trace: Trace,
 ): TaskState {
-  if (!o.isFree(to)) throw new Error(`invariant violated: task destination ${positionKey(to)} is not free`);
-  if (pallet.task_id) throw new Error(`invariant violated: pallet ${pallet.id} already has task ${pallet.task_id}`);
+  if (!o.isFree(to))
+    throw new Error(`invariant violated: task destination ${positionKey(to)} is not free`);
+  if (pallet.task_id)
+    throw new Error(`invariant violated: pallet ${pallet.id} already has task ${pallet.task_id}`);
   const id = o.newId("task");
   const task: TaskState = {
     id,
@@ -61,7 +67,16 @@ export function createTask(
   o.draft.emit(
     "task.created",
     id,
-    { task_id: id, task_type: type, pallet_id: pallet.id, sku: pallet.sku, from: pallet.at, to, order_id: links.order_id, truck_id: links.truck_id },
+    {
+      task_id: id,
+      task_type: type,
+      pallet_id: pallet.id,
+      sku: pallet.sku,
+      from: pallet.at,
+      to,
+      order_id: links.order_id,
+      truck_id: links.truck_id,
+    },
     trace,
   );
   return task;
@@ -71,7 +86,11 @@ export function createTask(
  * Closest free rack slot to a node by travel distance; ties go to the earlier location in the
  * config, then the lowest slot (bottom-up). Returns null when storage is full.
  */
-export function nearestFreeSlot(o: OpsDraft, fromNode: string, excludeLocation?: string): { location_id: string; slot: number } | null {
+export function nearestFreeSlot(
+  o: OpsDraft,
+  fromNode: string,
+  excludeLocation?: string,
+): { location_id: string; slot: number } | null {
   const distance = shortestPaths(o.graph, fromNode).distance;
   const ranked = o.draft.config.locations
     .map((l, i) => ({ id: l.id, i, d: distance.get(o.graph.pickNode.get(l.id) ?? "") ?? Infinity }))
@@ -86,7 +105,9 @@ export function nearestFreeSlot(o: OpsDraft, fromNode: string, excludeLocation?:
 
 /** Stored pallets of a SKU that are not allocated to an order or a task, oldest (lowest id) first. */
 export function availablePallets(o: OpsDraft, sku: string): PalletState[] {
-  return o.pallets.sorted().filter((p) => p.sku === sku && p.at.kind === "slot" && !p.order_id && !p.task_id);
+  return o.pallets
+    .sorted()
+    .filter((p) => p.sku === sku && p.at.kind === "slot" && !p.order_id && !p.task_id);
 }
 
 /** Pallets of a location in a rack slot, sorted by slot. */
@@ -111,7 +132,12 @@ export function inboundBacklog(o: OpsDraft): number {
   for (const p of o.pallets.values()) {
     if (p.order_id) continue;
     const task = p.task_id ? o.tasks.get(p.task_id) : undefined;
-    if (p.at.kind === "truck" || (p.at.kind === "staging" && task?.type !== "putaway") || task?.type === "unload") n++;
+    if (
+      p.at.kind === "truck" ||
+      (p.at.kind === "staging" && task?.type !== "putaway") ||
+      task?.type === "unload"
+    )
+      n++;
   }
   return n;
 }
@@ -122,7 +148,12 @@ export function freeYardSlot(o: OpsDraft): number | null {
   const used = new Set(
     o.trucks
       .values()
-      .filter((t) => t.status === "yard" || t.status === "docking" || (t.status === "departing" && t.dock_id === null))
+      .filter(
+        (t) =>
+          t.status === "yard" ||
+          t.status === "docking" ||
+          (t.status === "departing" && t.dock_id === null),
+      )
       .map((t) => t.yard_slot),
   );
   for (let s = 0; s < capacity; s++) if (!used.has(s)) return s;

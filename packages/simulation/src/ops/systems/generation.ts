@@ -5,7 +5,8 @@ import { createTask, nearestFreeSlot, systemTrace } from "../tasks";
 /** Free staging positions of a dock, nearest the door first. */
 function freeLanePositions(o: OpsDraft, dockId: string): number[] {
   const out: number[] = [];
-  for (let k = 0; k < STAGING_LANE_CAPACITY; k++) if (o.isFree({ kind: "staging", dock_id: dockId, position: k })) out.push(k);
+  for (let k = 0; k < STAGING_LANE_CAPACITY; k++)
+    if (o.isFree({ kind: "staging", dock_id: dockId, position: k })) out.push(k);
   return out;
 }
 
@@ -23,7 +24,9 @@ const byId = (a: PalletState, b: PalletState) => a.id.localeCompare(b.id);
 export function taskGenerationSystem(o: OpsDraft): void {
   const trucks = o.trucks.sorted();
 
-  for (const t of trucks.filter((x) => x.direction === "inbound" && x.status === "docked" && x.dock_id)) {
+  for (const t of trucks.filter(
+    (x) => x.direction === "inbound" && x.status === "docked" && x.dock_id,
+  )) {
     const dock = t.dock_id as string;
     const lane = freeLanePositions(o, dock);
     const cargo = o.pallets
@@ -33,7 +36,14 @@ export function taskGenerationSystem(o: OpsDraft): void {
     for (const pallet of cargo) {
       const position = lane.shift();
       if (position === undefined) break;
-      createTask(o, "unload", pallet, { kind: "staging", dock_id: dock, position }, { order_id: null, truck_id: t.id }, { correlation_id: t.correlation_id, causation_id: "system:tasks" });
+      createTask(
+        o,
+        "unload",
+        pallet,
+        { kind: "staging", dock_id: dock, position },
+        { order_id: null, truck_id: t.id },
+        { correlation_id: t.correlation_id, causation_id: "system:tasks" },
+      );
     }
   }
 
@@ -46,7 +56,14 @@ export function taskGenerationSystem(o: OpsDraft): void {
     const from = o.graph.laneNodes.get(pallet.at.dock_id)?.[pallet.at.position];
     const slot = from ? nearestFreeSlot(o, from) : null;
     if (!slot) break; // storage full: pallets wait in staging (visible as blocked work)
-    createTask(o, "putaway", pallet, { kind: "slot", ...slot }, { order_id: null, truck_id: null }, systemTrace(o, "tasks"));
+    createTask(
+      o,
+      "putaway",
+      pallet,
+      { kind: "slot", ...slot },
+      { order_id: null, truck_id: null },
+      systemTrace(o, "tasks"),
+    );
   }
 
   for (const order of o.orders.sorted().filter((x) => x.status === "in_progress")) {
@@ -59,15 +76,35 @@ export function taskGenerationSystem(o: OpsDraft): void {
       if (!pallet || pallet.task_id || pallet.at.kind !== "slot") continue;
       const position = lane.shift();
       if (position === undefined) break;
-      createTask(o, "pick", pallet, { kind: "staging", dock_id: truck.dock_id, position }, { order_id: order.id, truck_id: truck.id }, trace);
+      createTask(
+        o,
+        "pick",
+        pallet,
+        { kind: "staging", dock_id: truck.dock_id, position },
+        { order_id: order.id, truck_id: truck.id },
+        trace,
+      );
     }
     if (truck.status !== "docked") continue;
     for (const id of [...order.pallet_ids].sort()) {
       const pallet = o.pallets.get(id);
-      if (!pallet || pallet.task_id || pallet.at.kind !== "staging" || pallet.at.dock_id !== truck.dock_id) continue;
+      if (
+        !pallet ||
+        pallet.task_id ||
+        pallet.at.kind !== "staging" ||
+        pallet.at.dock_id !== truck.dock_id
+      )
+        continue;
       let position = 0;
       while (!o.isFree({ kind: "truck", truck_id: truck.id, position })) position++;
-      createTask(o, "load", pallet, { kind: "truck", truck_id: truck.id, position }, { order_id: order.id, truck_id: truck.id }, trace);
+      createTask(
+        o,
+        "load",
+        pallet,
+        { kind: "truck", truck_id: truck.id, position },
+        { order_id: order.id, truck_id: truck.id },
+        trace,
+      );
     }
   }
 }

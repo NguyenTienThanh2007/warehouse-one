@@ -125,20 +125,42 @@ function validateFacility(config: SimulationConfig): string[] {
       problems.push(`equipment '${e.id}' references unknown dock '${e.dock_id}'`);
     }
     if (e.kind === "truck") {
-      problems.push(`equipment '${e.id}': trucks are scheduled at run time (truck.schedule_inbound, order.create), not facility equipment`);
+      problems.push(
+        `equipment '${e.id}': trucks are scheduled at run time (truck.schedule_inbound, order.create), not facility equipment`,
+      );
     }
-    if (/^(plt|tsk|trk|ord)-/.test(e.id)) problems.push(`equipment id '${e.id}' uses a reserved run-time id prefix`);
-    if (e.battery_permille !== undefined && !(Number.isInteger(e.battery_permille) && e.battery_permille >= 0 && e.battery_permille <= 1000)) {
+    if (/^(plt|tsk|trk|ord)-/.test(e.id))
+      problems.push(`equipment id '${e.id}' uses a reserved run-time id prefix`);
+    if (
+      e.battery_permille !== undefined &&
+      !(
+        Number.isInteger(e.battery_permille) &&
+        e.battery_permille >= 0 &&
+        e.battery_permille <= 1000
+      )
+    ) {
       problems.push(`equipment '${e.id}' battery_permille must be an integer in [0, 1000]`);
     }
   }
-  if (problems.length === 0) problems.push(...navGraph(config).problems.map((p) => `navigation: ${p}`));
+  if (problems.length === 0)
+    problems.push(...navGraph(config).problems.map((p) => `navigation: ${p}`));
   const w = config.operations_workload;
   if (w) {
-    for (const k of ["inbound_interval_ticks", "outbound_interval_ticks", "relocate_interval_ticks"] as const) {
-      if (!Number.isInteger(w[k]) || w[k] < 0) problems.push(`operations_workload.${k} must be a non-negative integer`);
+    for (const k of [
+      "inbound_interval_ticks",
+      "outbound_interval_ticks",
+      "relocate_interval_ticks",
+    ] as const) {
+      if (!Number.isInteger(w[k]) || w[k] < 0)
+        problems.push(`operations_workload.${k} must be a non-negative integer`);
     }
-    if (!(Number.isInteger(w.min_pallets) && w.min_pallets >= 1 && Number.isInteger(w.max_pallets) && w.max_pallets >= w.min_pallets && w.max_pallets <= 26)) {
+    if (!(
+      Number.isInteger(w.min_pallets) &&
+      w.min_pallets >= 1 &&
+      Number.isInteger(w.max_pallets) &&
+      w.max_pallets >= w.min_pallets &&
+      w.max_pallets <= 26
+    )) {
       problems.push("operations_workload pallets must satisfy 1 <= min <= max <= 26");
     }
   }

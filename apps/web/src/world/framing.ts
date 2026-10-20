@@ -78,13 +78,14 @@ export function fitBox(
 
 /** Box covering the building, its racking height and the trucks at the docks. */
 export function facilityFrame(f: FacilityConfig, rackHeight: number): Box3 {
-  const trucks = f.equipment.filter((e) => e.kind === "truck");
-  const yardDepth = trucks.length
-    ? Math.max(...trucks.map((t) => t.position.z + VEHICLE_SIZE.truck.length / 2))
+  // Trucks arrive at run time (Phase 2); frame the area they occupy when docked.
+  const hasDocks = f.docks.length > 0;
+  const dockedRear = hasDocks
+    ? Math.max(...f.docks.map((d) => d.position.z)) + 0.6 + VEHICLE_SIZE.truck.length
     : f.building.max.z;
   return new Box3(
-    new Vector3(f.building.min.x, trucks.length ? YARD_LEVEL : 0, f.building.min.z),
-    new Vector3(f.building.max.x, rackHeight, Math.max(f.building.max.z, yardDepth)),
+    new Vector3(f.building.min.x, hasDocks ? YARD_LEVEL : 0, f.building.min.z),
+    new Vector3(f.building.max.x, rackHeight, Math.max(f.building.max.z, dockedRear)),
   );
 }
 

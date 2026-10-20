@@ -122,6 +122,9 @@ export function applyCommand(d: TickDraft, command: SimulationCommand): HandlerR
     case "order.create":
     case "order.cancel":
     case "pallet.relocate":
-      return reject("OPERATIONS_DISABLED", `'${command.type}' needs a facility with operations (config.facility)`);
+      return reject(
+        "OPERATIONS_DISABLED",
+        `'${command.type}' needs a facility with operations (config.facility)`,
+      );
   }
 }

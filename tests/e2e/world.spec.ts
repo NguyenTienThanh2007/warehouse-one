@@ -37,7 +37,9 @@ test.describe("3D world reflects authoritative simulation state", () => {
     expect(counts.pallets).toBe(await kpi(page, "kpi-stock"));
     expect(counts.bays).toBe(84);
     expect(counts.docks).toBe(4);
-    expect(counts.vehicles).toBe(6);
+    // 3 forklifts + 1 reach truck from facility data. Trucks are scheduled at run time in Phase 2
+    // and are not rendered yet (renderer integration is Phase 2 milestone D).
+    expect(counts.vehicles).toBe(4);
     expect(Object.values(counts.palletsByArchetype).reduce((a, b) => a + b, 0)).toBe(
       counts.pallets,
     );

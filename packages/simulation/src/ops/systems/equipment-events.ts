@@ -10,7 +10,17 @@ export function setEquipment(o: OpsDraft, prev: EquipmentState, next: EquipmentS
   o.draft.emit(
     "equipment.status_changed",
     next.id,
-    { equipment_id: next.id, from: prev.status, to: next.status, node_id: next.node, task_id: next.task_id, battery_permille: next.battery_permille },
-    { correlation_id: task?.correlation_id ?? `sys-ops-t${o.tick}`, causation_id: "system:equipment" },
+    {
+      equipment_id: next.id,
+      from: prev.status,
+      to: next.status,
+      node_id: next.node,
+      task_id: next.task_id,
+      battery_permille: next.battery_permille,
+    },
+    {
+      correlation_id: task?.correlation_id ?? `sys-ops-t${o.tick}`,
+      causation_id: "system:equipment",
+    },
   );
 }

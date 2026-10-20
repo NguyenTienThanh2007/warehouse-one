@@ -41,7 +41,10 @@ export const OrderStatus = z.enum(ORDER_STATUSES);
 export type OrderStatus = z.infer<typeof OrderStatus>;
 
 /** A quantity of one SKU, in pallets. */
-export const CargoLine = z.object({ sku: EntityId, quantity: z.int().positive().max(TRUCK_CAPACITY) });
+export const CargoLine = z.object({
+  sku: EntityId,
+  quantity: z.int().positive().max(TRUCK_CAPACITY),
+});
 export type CargoLine = z.infer<typeof CargoLine>;
 
 /** 1–8 lines whose quantities fit one truck; each SKU appears once. */

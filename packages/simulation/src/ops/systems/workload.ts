@@ -2,6 +2,7 @@ import type { CargoLine, SimulationCommand } from "@warehouse-one/contracts";
 import { applyOpsCommand } from "../commands";
 import type { OpsDraft } from "../ops-draft";
 import { availablePallets } from "../tasks";
+import { must } from "../must";
 
 /**
  * Seeded operational workload for demos and benchmarks. Work is issued through the same command
@@ -13,13 +14,20 @@ export function operationsWorkloadSystem(o: OpsDraft): void {
   const w = o.draft.config.operations_workload;
   if (!w) return;
   const t = o.tick;
-  const due = (interval: number, phase: number) => interval > 0 && t % interval === Math.floor((interval * phase) / 3);
+  const due = (interval: number, phase: number) =>
+    interval > 0 && t % interval === Math.floor((interval * phase) / 3);
   const skus = o.draft.config.skus.map((s) => s.id);
   const issue = (suffix: string, c: Omit<SimulationCommand, "command_id">) => {
     const command = { command_id: `wl-${suffix}-t${t}`, ...c } as SimulationCommand;
-    applyOpsCommand(o, command, { correlation_id: command.command_id, causation_id: "system:workload" });
+    applyOpsCommand(o, command, {
+      correlation_id: command.command_id,
+      causation_id: "system:workload",
+    });
   };
-  const lines = (counts: Map<string, number>): CargoLine[] => [...counts].sort(([a], [b]) => a.localeCompare(b)).map(([sku, quantity]) => ({ sku, quantity }));
+  const lines = (counts: Map<string, number>): CargoLine[] =>
+    [...counts]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([sku, quantity]) => ({ sku, quantity }));
 
   if (due(w.inbound_interval_ticks, 1)) {
     const n = o.draft.randomInt(w.min_pallets, w.max_pallets);
@@ -46,11 +54,24 @@ export function operationsWorkloadSystem(o: OpsDraft): void {
   }
 
   if (due(w.relocate_interval_ticks, 0) && t > 0) {
-    const candidates = o.pallets.sorted().filter((p) => p.at.kind === "slot" && !p.order_id && !p.task_id);
+    const candidates = o.pallets
+      .sorted()
+      .filter((p) => p.at.kind === "slot" && !p.order_id && !p.task_id);
     if (candidates.length === 0) return;
-    const pallet = candidates[o.draft.randomInt(0, candidates.length - 1)]!;
-    const locations = o.draft.config.locations;
-    const target = locations[o.draft.randomInt(0, locations.length - 1)]!;
-    issue("mv", { type: "pallet.relocate", payload: { pallet_id: pallet.id, to_location_id: target.id } });
+    const pallet = must(
+      candidates[o.draft.randomInt(0, candidates.length - 1)],
+      "relocation candidate",
+    );
+    const from = pallet.at.kind === "slot" ? pallet.at.location_id : "";
+    // Only bays with room: in a nearly full warehouse a random bay would almost always be rejected.
+    const targets = o.draft.config.locations.filter(
+      (l) => l.id !== from && o.freeSlots(l.id).length > 0,
+    );
+    if (targets.length === 0) return;
+    const target = must(targets[o.draft.randomInt(0, targets.length - 1)], "relocation target");
+    issue("mv", {
+      type: "pallet.relocate",
+      payload: { pallet_id: pallet.id, to_location_id: target.id },
+    });
   }
 }

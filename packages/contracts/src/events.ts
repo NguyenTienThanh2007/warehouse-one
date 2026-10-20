@@ -133,9 +133,17 @@ export const OrderStatusChangedPayload = z.object({
 
 /** Registry: event_type -> payload schema, schema version and aggregate type. */
 export const EVENT_PAYLOADS = {
-  "inventory.received": { schema: InventoryReceivedPayload, version: 1, aggregate: "inventory_item" },
+  "inventory.received": {
+    schema: InventoryReceivedPayload,
+    version: 1,
+    aggregate: "inventory_item",
+  },
   "inventory.moved": { schema: InventoryMovedPayload, version: 1, aggregate: "inventory_item" },
-  "inventory.adjusted": { schema: InventoryAdjustedPayload, version: 1, aggregate: "inventory_item" },
+  "inventory.adjusted": {
+    schema: InventoryAdjustedPayload,
+    version: 1,
+    aggregate: "inventory_item",
+  },
   "pallet.created": { schema: PalletCreatedPayload, version: 1, aggregate: "pallet" },
   "pallet.moved": { schema: PalletMovedPayload, version: 1, aggregate: "pallet" },
   "pallet.removed": { schema: PalletRemovedPayload, version: 1, aggregate: "pallet" },
@@ -143,7 +151,11 @@ export const EVENT_PAYLOADS = {
   "task.assigned": { schema: TaskAssignedPayload, version: 1, aggregate: "task" },
   "task.completed": { schema: TaskCompletedPayload, version: 1, aggregate: "task" },
   "task.cancelled": { schema: TaskCancelledPayload, version: 1, aggregate: "task" },
-  "equipment.status_changed": { schema: EquipmentStatusChangedPayload, version: 1, aggregate: "equipment" },
+  "equipment.status_changed": {
+    schema: EquipmentStatusChangedPayload,
+    version: 1,
+    aggregate: "equipment",
+  },
   "truck.status_changed": { schema: TruckStatusChangedPayload, version: 1, aggregate: "truck" },
   "order.status_changed": { schema: OrderStatusChangedPayload, version: 1, aggregate: "order" },
 } as const;
@@ -169,7 +181,11 @@ function envelope<A extends string>(aggregate: A) {
 }
 
 function eventSchema<T extends EventType, P extends z.ZodType>(type: T, payload: P) {
-  return z.object({ ...envelope(EVENT_PAYLOADS[type].aggregate), event_type: z.literal(type), payload });
+  return z.object({
+    ...envelope(EVENT_PAYLOADS[type].aggregate),
+    event_type: z.literal(type),
+    payload,
+  });
 }
 
 export const InventoryReceivedEvent = eventSchema("inventory.received", InventoryReceivedPayload);
@@ -182,9 +198,18 @@ export const TaskCreatedEvent = eventSchema("task.created", TaskCreatedPayload);
 export const TaskAssignedEvent = eventSchema("task.assigned", TaskAssignedPayload);
 export const TaskCompletedEvent = eventSchema("task.completed", TaskCompletedPayload);
 export const TaskCancelledEvent = eventSchema("task.cancelled", TaskCancelledPayload);
-export const EquipmentStatusChangedEvent = eventSchema("equipment.status_changed", EquipmentStatusChangedPayload);
-export const TruckStatusChangedEvent = eventSchema("truck.status_changed", TruckStatusChangedPayload);
-export const OrderStatusChangedEvent = eventSchema("order.status_changed", OrderStatusChangedPayload);
+export const EquipmentStatusChangedEvent = eventSchema(
+  "equipment.status_changed",
+  EquipmentStatusChangedPayload,
+);
+export const TruckStatusChangedEvent = eventSchema(
+  "truck.status_changed",
+  TruckStatusChangedPayload,
+);
+export const OrderStatusChangedEvent = eventSchema(
+  "order.status_changed",
+  OrderStatusChangedPayload,
+);
 
 export const DomainEvent = z.discriminatedUnion("event_type", [
   InventoryReceivedEvent,

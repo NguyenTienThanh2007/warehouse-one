@@ -102,3 +102,18 @@ software rendering). Users can still pick a tier manually.
 All 3D assets are generated in code (`docs/design/ASSETS.md`), which avoids licensing risk and
 download weight. Detailed instanced meshes skip raycasting. One invisible box per bay, vehicle and
 dock makes picking precise and O(entities), independent of triangle count.
+
+### DEC-019 — One-way circulation network for material-handling vehicles (Phase 2)
+**Context:** two-way single-lane aisles caused head-on livelocks that back-off and refuge heuristics
+could not resolve reliably (12-seed sweep). **Decision:** the west cross aisle runs north, the east
+cross aisle south, the back aisle east, the front aisle west, and middle aisles alternate; dock paths
+and the charging road stay two-way, as exclusive zones. **Consequences:** no head-on conflicts; the
+graph must be strongly connected (validated); trips are longer (~1,000 ticks per task, measured),
+so workloads were re-calibrated. Routing and dispatch are deliberately isolated
+(`ops/nav.ts`, `ops/systems/dispatch.ts`) so alternative flow and dispatch policies can be compared
+as scenarios later.
+
+### DEC-020 — One task at a time per dock
+The dispatcher does not start a task whose pick-up or drop-off is in a dock path that already has an
+active task, so vehicles never queue on the front aisle for a busy dock. This caps per-dock
+throughput, a policy to revisit with measured scenario comparisons.

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { createScenario, SCENARIO_IDS } from "../index";
-import { findPath, headingBetween, navGraph, pathLength, shortestPaths, VEHICLE_CLEARANCE } from "./nav";
+import {
+  findPath,
+  headingBetween,
+  navGraph,
+  pathLength,
+  shortestPaths,
+  VEHICLE_CLEARANCE,
+} from "./nav";
 import { STAGING_LANE_CAPACITY } from "./model";
 
 describe.each(SCENARIO_IDS)("navigation graph for %s", (id) => {
@@ -12,12 +19,14 @@ describe.each(SCENARIO_IDS)("navigation graph for %s", (id) => {
   });
 
   it("gives every bay a pick node, every dock a full lane and door, every vehicle a charger", () => {
-    for (const l of config.locations) expect(g.nodes.has(g.pickNode.get(l.id) as string)).toBe(true);
+    for (const l of config.locations)
+      expect(g.nodes.has(g.pickNode.get(l.id) as string)).toBe(true);
     for (const d of config.facility!.docks) {
       expect(g.laneNodes.get(d.id)).toHaveLength(STAGING_LANE_CAPACITY);
       expect(g.doorNode.has(d.id)).toBe(true);
     }
-    for (const e of config.facility!.equipment.filter((v) => v.kind !== "truck")) expect(g.chargerNode.has(e.id)).toBe(true);
+    for (const e of config.facility!.equipment.filter((v) => v.kind !== "truck"))
+      expect(g.chargerNode.has(e.id)).toBe(true);
   });
 
   it("keeps staging pallets off every travel line", () => {
@@ -58,14 +67,19 @@ describe("routing", () => {
     }
   });
 
-  it("routes around an avoided node when an alternative exists, and reports unreachable targets", () => {
+  it("never routes through an avoided node, finds alternatives where the one-way network has them", () => {
     const direct = findPath(g, charger, target)!;
-    const blocker = direct[Math.floor(direct.length / 2)]!;
-    if (blocker !== target) {
+    for (const blocker of direct.slice(0, -1)) {
       const around = findPath(g, charger, target, new Set([blocker]));
-      expect(around).not.toBeNull();
-      expect(around).not.toContain(blocker);
+      if (around) expect(around).not.toContain(blocker);
     }
+    // Some steps of the trip to the east docks can be avoided by going round another aisle.
+    const door = g.doorNode.get("dock-04")!;
+    const toDoor = findPath(g, charger, door)!;
+    const avoidable = toDoor
+      .slice(0, -1)
+      .filter((n) => findPath(g, charger, door, new Set([n])) !== null);
+    expect(avoidable.length).toBeGreaterThan(0);
     expect(findPath(g, charger, target, new Set([target]))).toBeNull();
   });
 
