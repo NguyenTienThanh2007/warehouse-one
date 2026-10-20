@@ -1,7 +1,7 @@
 # Phase 1 — Premium 3D World
 
-**Branch:** `feature/p1-3d-world` (from `main` @ `c512733`) · **PR:** draft, see `docs/PROJECT_STATUS.md`
-**Status:** ready for owner review. CI history and the flaky-test fix are in §7. The result for the final head commit is reported on PR #2. Two visual-checklist items remain NOT RUN (§6).
+**Branch:** `feature/p1-3d-world` (from `main` @ `c512733`) · **PR:** #2, merged to `main` as `d80a7f2`. A follow-up draft PR from the same branch carries the flaky-test fix (§7)
+**Status:** merged to `main` by the owner on 2026-10-20 (PR #2, head `f8ed81c`, merge `d80a7f2`). CI on `main` is green (run 39424947352, e2e 18/18). The flaky-test fix in §7 was pushed after that merge and reaches `main` through the follow-up PR. Two visual-checklist items remain NOT RUN (§6).
 
 ## 1. Starting point
 
@@ -134,7 +134,7 @@ comparison is possible.
 | Regression | PASS | Phase 0 golden fixture byte-identical; schema drift tests |
 | Security | PASS (scope) | No new endpoints. URL parameters are allow-listed (`scenario`, `quality`). Scene debug hooks are read-only |
 | Performance | PASS | §4 |
-| GitHub Actions | PASS (with one flake found and fixed) | Run 39421534969 on `8de7aeb`: all 4 jobs green, e2e 18/18 with no retries (10.1 min). Run 39423216613 on `f8ed81c` (docs-only change): green, but e2e reported **1 flaky test**, "camera presets produce distinct, sensible poses", which failed once (camera still at the previous preset) and passed on CI's single retry. See "Flaky test fix" below |
+| GitHub Actions | PASS (with one flake found and fixed) | Run 39421534969 on `8de7aeb`: all 4 jobs green, e2e 18/18 with no retries (10.1 min). Run 39424947352 on the `main` merge commit `d80a7f2`: all 4 jobs green, e2e 18/18 with no flaky result (10.4 min). That merge still contains the unfixed test, which passed by timing. Run 39423216613 on `f8ed81c` (docs-only change): green, but e2e reported **1 flaky test**, "camera presets produce distinct, sensible poses", which failed once (camera still at the previous preset) and passed on CI's single retry. See "Flaky test fix" below |
 
 **Flaky test fix.** The camera-preset test slept a fixed 1.8 s per transition. Under SwiftShader a
 frame can take longer than that, so it read the pose mid-transition. A first attempt (polling until
