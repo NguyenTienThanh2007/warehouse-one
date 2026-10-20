@@ -55,7 +55,7 @@ renderer invent operational data**.
 | Desktop browser flows work | **PASS** | 18/18 Playwright tests on the production build (GPU), and 18/18 with SwiftShader under `CI=1` |
 | Screenshots are captured | **PASS** | `evidence/phase-1/*.jpg`, reproducible with `pnpm capture:bookmarks` |
 | Measured FPS is reported | **PASS** | §4 and `evidence/phase-1/benchmarks/*.json` (two runs) |
-| Visual quality reviewed against documented targets | **PASS with limitations** | §6. Reference comparison remains limited by the reference's resolution |
+| Visual quality reviewed against documented targets | **PARTIAL** | §6: checklist items 1, 2, 3a, 4 and 6 done. **3b (live-scene contrast audit) and 5 (per-bookmark FPS) NOT RUN.** The reference comparison is limited by the reference's resolution |
 | Rendering does not invent operational data | **PASS** | Unit tests (pallets ≡ inventory, no instance for empty bays, no docks or vehicles without facility data) + e2e (rendered pallets = KPI stock, before and after the simulation runs; bench scenarios render exactly 100/300/1,000) |
 | Loading, error and empty states | **PASS** | e2e: WebGL-unavailable error state; empty scenario state + recovery; loading overlay gate (`data-world-status`) |
 | Responsive with sensible mobile framing | **PASS** | e2e at 390×844: every bay on screen, no horizontal scroll; mobile captures |
@@ -95,14 +95,15 @@ Simulation throughput is unchanged from Phase 0 (`pnpm bench:sim`: 17.4 µs/tick
 
 ## 6. Visual review (against `docs/design/VISUAL_DESIGN_SPEC.md` §7)
 
-| # | Checklist item | Verdict |
-|---|----------------|---------|
-| 1 | Five bookmarks at 1440×900 and 390×844 | Done |
-| 2 | No z-fighting, clipping, floating objects or stretched textures | None observed in the 10 captures. Markings use polygon offset |
-| 3 | HUD text ≥ 11 px; AA contrast | All HUD text raised to ≥ 11 px in this phase. Token contrast computed in Phase 0 (all ≥ 4.5:1). **In-browser contrast audit over the live scene: NOT RUN** |
-| 4 | Rendered entities correspond to state | Automated (unit + e2e) and spot-checked: `loc-05-007` shows 7 cold-chain containers, matching the inspector's 7/8 |
-| 5 | FPS and p95 per bookmark with GPU string | Measured per **scenario** at the overview camera (§4), not per bookmark. Close-up bookmarks render less geometry |
-| 6 | Side-by-side with the reference | See below |
+| # | Checklist item | Status | Notes |
+|---|----------------|--------|-------|
+| 1 | Five bookmarks at 1440×900 and 390×844 | **DONE** | 10 captures in `evidence/phase-1/` |
+| 2 | No z-fighting, clipping, floating objects or stretched textures | **DONE** (manual review) | None observed in the 10 captures. Markings use polygon offset |
+| 3a | All HUD text ≥ 11 px | **DONE** | Seven 10 px instances raised to 11 px. Spec rule made explicit (visual spec §2) |
+| 3b | AA contrast over the live scene (automated) | **NOT RUN** | Only the token ratios against opaque `ink-900` are computed (Phase 0, all ≥ 4.5:1). Panels are translucent, so text over bright scene areas is unverified |
+| 4 | Rendered entities correspond to state | **DONE** | Automated (unit + e2e) and spot-checked: `loc-05-007` shows 7 cold-chain containers, matching the inspector's 7/8 |
+| 5 | FPS and p95 per bookmark with GPU string | **NOT RUN** | Measured per **scenario** at the overview camera only (§4). The FPS values visible in the bookmark screenshots' HUD are not a measurement (short window, no warm-up control) |
+| 6 | Side-by-side with the reference | **DONE** (limited) | See below; resolution-limited, no superiority claim |
 
 **Reference comparison** (the "WareTrack" clip described in the visual spec §7; its viewport is
 about 512 px wide). Judged on the agreed criteria:

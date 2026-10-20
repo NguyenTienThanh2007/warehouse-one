@@ -19,8 +19,8 @@ a toy and not like a generic SaaS dashboard.
 
 ### Explicitly avoid
 
-Excess bloom, neon gradients, purple "AI" aesthetics, unlabelled 3D decoration, text under
-11 px for data, unbounded drop shadows, placeholder cubes in accepted features, and colour as the
+Excess bloom, neon gradients, purple "AI" aesthetics, unlabelled 3D decoration, any HUD text
+under 11 px, unbounded drop shadows, placeholder cubes in accepted features, and colour as the
 only carrier of meaning.
 
 ## 2. Design tokens (implemented in `apps/web/src/app/globals.css`)
@@ -38,8 +38,15 @@ only carrier of meaning.
 | `radius-panel` | 14 px | Panels; controls use 8–10 px |
 
 **Typography:** Geist Sans for UI and Geist Mono for metrics and identifiers (SIL OFL, self-hosted
-via the `geist` package, so no runtime font requests). Scale: 10/11 px for labels in uppercase with
-0.08em tracking, 12–13 px for body, 18 px for inspector titles, 30 px for the hero metric.
+via the `geist` package, so no runtime font requests). Scale: 11 px for uppercase labels (0.08em
+tracking), footnotes and secondary metadata; 12–13 px for body; 18 px for inspector titles; 24 px
+(phone) / 30 px (desktop) for the hero metric.
+
+**Minimum text size rule: 11 px for all HUD and panel text, with no exceptions.** It covers labels,
+units, footnotes, badges and disabled controls. Text drawn inside the 3D world (floor stencils, row
+labels, trailer livery) scales with the camera and is not covered; it must never carry information
+that is unavailable in the HUD. *Phase 1 status: enforced. All `text-[Npx]` utilities in
+`apps/web/src` are ≥ 11 px, after seven 10 px instances were raised in Phase 1.*
 
 **Contrast (computed with the WCAG 2.x formula against opaque `ink-900`):** fog-50 16.7:1,
 fog-200 11.9:1, fog-400 6.3:1, fog-500 5.3:1, signal-400 10.3:1, data-300 11.8:1. Button text
@@ -113,7 +120,8 @@ side-by-side captures at comparable framing. Those will be judged on the followi
 1. Five fixed camera bookmarks captured at 1440×900 and 390×844: overview, dock, aisle, forklift
    close-up, inspector open.
 2. No visible z-fighting, clipping, floating objects or texture stretching in any bookmark.
-3. All text in HUD ≥ 11 px; data contrast passes AA (automated check).
+3. (a) All HUD text ≥ 11 px. (b) Data contrast passes AA, measured by an automated check over the live,
+   translucent panels and the rendered scene (not only the computed token ratios in §2).
 4. Every rendered entity corresponds to simulation state (spot-check five entities against the inspector).
 5. Measured FPS and p95 frame time per bookmark recorded with the GPU string.
 6. Side-by-side with the reference on: entity readability, selection clarity, material quality,
