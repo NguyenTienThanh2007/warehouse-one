@@ -48,7 +48,7 @@ export function SystemStatus() {
         <p className="text-xs font-medium">
           API <span className="text-fog-400">{style.label}</span>
         </p>
-        <p className="metric text-[10px] text-fog-500">{detail}</p>
+        <p className="metric text-[11px] text-fog-500">{detail}</p>
       </div>
     </section>
   );

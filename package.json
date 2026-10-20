@@ -20,7 +20,8 @@
     "schemas:generate": "pnpm --filter @warehouse-one/contracts generate:schemas",
     "fixtures:generate": "pnpm --filter @warehouse-one/simulation generate:fixtures",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
-    "bench:render": "tsx tests/performance/render-benchmark.ts"
+    "bench:render": "tsx tests/performance/render-benchmark.ts",
+    "capture:bookmarks": "tsx tests/performance/capture-bookmarks.ts"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
