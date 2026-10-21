@@ -42,6 +42,7 @@ import {
 } from "@/world/materials";
 import { opsSceneCounts, staticPalletCapacity, staticPallets } from "@/world/ops-view";
 import { Instances, type InstanceSpec } from "./instanced";
+import { NetworkWorld } from "./network-world";
 import { OperationsLayer } from "./operations-layer";
 
 /**
@@ -69,6 +70,7 @@ export function WarehouseWorld() {
       <OperationsLayer config={config} facility={facility} materials={materials} />
       <Docks facility={facility} materials={materials} />
       <PickLayer config={config} facility={facility} rackHeight={rackHeight} />
+      <NetworkWorld materials={materials} />
     </group>
   );
 }
@@ -100,19 +102,21 @@ function Site({
 
   return (
     <group>
-      {/* Surrounding ground, fading into the fog. */}
-      <mesh
-        rotation-x={-Math.PI / 2}
-        position={[
-          (f.site.min.x + f.site.max.x) / 2,
-          YARD_LEVEL - 0.03,
-          (f.site.min.z + f.site.max.z) / 2,
-        ]}
-        receiveShadow
-        material={materials.ground}
-      >
-        <planeGeometry args={[siteW * 8, siteD * 8]} />
-      </mesh>
+      {/* Surrounding ground, fading into the fog (the network draws its own terrain). */}
+      {!config.network && (
+        <mesh
+          rotation-x={-Math.PI / 2}
+          position={[
+            (f.site.min.x + f.site.max.x) / 2,
+            YARD_LEVEL - 0.03,
+            (f.site.min.z + f.site.max.z) / 2,
+          ]}
+          receiveShadow
+          material={materials.ground}
+        >
+          <planeGeometry args={[siteW * 8, siteD * 8]} />
+        </mesh>
+      )}
       {/* Yard: paved site at truck level, 1.2 m below the warehouse floor (dock height). */}
       <mesh
         rotation-x={-Math.PI / 2}

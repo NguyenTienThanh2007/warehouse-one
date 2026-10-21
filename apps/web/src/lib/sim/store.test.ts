@@ -23,12 +23,30 @@ describe("URL options", () => {
 });
 
 describe("simulation store", () => {
-  it("starts on the showcase with its opening stock applied at tick 1", () => {
+  it("starts on the logistics network (the showcase DC and its sites) with opening stock applied at tick 1", () => {
     const s = useSimulation.getState();
-    expect(s.scenarioId).toBe("showcase");
+    expect(s.scenarioId).toBe("network");
+    expect(s.config.network?.sites.map((x) => x.id)).toContain("northgate-dc");
+    expect(Object.keys(s.state.network?.vehicles ?? {})).toHaveLength(6);
     expect(s.tick).toBe(1);
     expect(stockSummary(s.config, s.inventory).units).toBeGreaterThan(0);
     expect(s.eventCount).toBeGreaterThan(0);
+  });
+
+  it("selects network entities and summarises a transfer request", () => {
+    useSimulation.getState().select({ kind: "site", id: "riverside-xd" });
+    expect(useSimulation.getState().selection).toEqual({ kind: "site", id: "riverside-xd" });
+    useSimulation.getState().select(null);
+    expect(
+      summarizeCommand({
+        type: "transfer.request",
+        payload: {
+          from_site_id: "riverside-xd",
+          to_site_id: "harbour-terminal",
+          lines: [{ sku: "sku-cold-chain", quantity: 3 }],
+        },
+      }),
+    ).toBe("Transfer 3 × sku-cold-chain riverside-xd → harbour-terminal");
   });
 
   it("loads a scenario through the command path and clears the selection", () => {

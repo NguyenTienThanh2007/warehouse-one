@@ -1,11 +1,11 @@
 "use client";
 
-import { Environment, Lightformer } from "@react-three/drei";
-import type { FacilityConfig } from "@warehouse-one/simulation";
+import { Environment, Lightformer, type CameraControls } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
-import type { DirectionalLight, Fog } from "three";
+import { Vector3, type DirectionalLight, type Fog } from "three";
 import { TIER_SETTINGS, type QualityTier } from "@/lib/world/view-store";
+import type { Bounds } from "@/world/derive";
 
 const SKY = "#0d1117";
 
@@ -14,33 +14,51 @@ const SKY = "#0d1117";
  * procedural studio environment (Lightformers, rendered once) for physically based reflections.
  * No HDR files are downloaded.
  */
-export function Lighting({ facility: f, tier }: { facility: FacilityConfig; tier: QualityTier }) {
+export function Lighting({ bounds: f, tier }: { bounds: Bounds; tier: QualityTier }) {
   const sun = useRef<DirectionalLight>(null);
   const settings = TIER_SETTINGS[tier];
-  const c = useMemo(
-    () => ({ x: (f.site.min.x + f.site.max.x) / 2, z: (f.site.min.z + f.site.max.z) / 2 }),
-    [f],
-  );
-  const radius = useMemo(
-    () => Math.hypot(f.site.max.x - f.site.min.x, f.site.max.z - f.site.min.z) / 2,
-    [f],
-  );
+  const c = useMemo(() => ({ x: (f.min.x + f.max.x) / 2, z: (f.min.z + f.max.z) / 2 }), [f]);
+  const radius = useMemo(() => Math.hypot(f.max.x - f.min.x, f.max.z - f.min.z) / 2, [f]);
 
   useLayoutEffect(() => {
     const light = sun.current;
     if (!light) return;
-    light.target.position.set(c.x, 0, c.z);
-    light.target.updateMatrixWorld();
-    const cam = light.shadow.camera;
-    cam.left = cam.bottom = -radius * 0.85;
-    cam.right = cam.top = radius * 0.85;
-    cam.near = 1;
-    cam.far = radius * 4;
-    cam.updateProjectionMatrix();
     light.shadow.mapSize.set(settings.shadowMap, settings.shadowMap);
     light.shadow.map?.dispose();
     light.shadow.map = null;
-  }, [c, radius, settings.shadowMap]);
+  }, [settings.shadowMap]);
+
+  // The shadow frustum follows what the camera looks at and scales with its distance: tight and
+  // sharp inside one facility, wide (and coarser) in the whole-world view. The centre snaps to the
+  // shadow-map texel grid so shadows do not shimmer while the camera moves.
+  const target = useMemo(() => new Vector3(), []);
+  const applied = useRef({ x: Number.NaN, z: Number.NaN, half: 0 });
+  useFrame(({ camera, controls }) => {
+    const light = sun.current;
+    if (!light) return;
+    const cc = controls as unknown as CameraControls | null;
+    if (cc?.getTarget) cc.getTarget(target);
+    else target.set(c.x, 0, c.z);
+    const dist = camera.position.distanceTo(target);
+    const half = Math.min(Math.max(45, dist * 0.7), radius * 1.1);
+    const texel = (half * 2) / settings.shadowMap;
+    const x = Math.round(target.x / texel) * texel;
+    const z = Math.round(target.z / texel) * texel;
+    const a = applied.current;
+    if (a.x === x && a.z === z && Math.abs(a.half - half) / half < 0.08) return;
+    applied.current = { x, z, half };
+    const dir = { x: 0.55, y: 1.1, z: 0.35 };
+    const k = Math.max(half, 80);
+    light.position.set(x + dir.x * k, dir.y * k, z + dir.z * k);
+    light.target.position.set(x, 0, z);
+    light.target.updateMatrixWorld();
+    const cam = light.shadow.camera;
+    cam.left = cam.bottom = -half;
+    cam.right = cam.top = half;
+    cam.near = 1;
+    cam.far = k * 3.5;
+    cam.updateProjectionMatrix();
+  });
 
   return (
     <>

@@ -28,6 +28,9 @@ const SCENES = [
   { label: "bench-1000 · medium", query: "?scenario=bench-1000&quality=medium" },
   { label: "bench-1000 · low", query: "?scenario=bench-1000&quality=low" },
   { label: "showcase · high", query: "?scenario=showcase&quality=high" },
+  // Phase 5: the whole logistics park in the world view (DC + four sites + fleet).
+  { label: "network world · high", query: "?scenario=network&quality=high" },
+  { label: "network world · low", query: "?scenario=network&quality=low" },
 ];
 
 const browser = await chromium.launch({

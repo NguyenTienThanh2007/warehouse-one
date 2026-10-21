@@ -16,7 +16,7 @@ import {
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 
-type Xyz = readonly [number, number, number];
+export type Xyz = readonly [number, number, number];
 
 /** Transform a geometry in place and strip it to the attributes every part shares. */
 function place(geo: BufferGeometry, pos: Xyz, rot: Xyz = [0, 0, 0]): BufferGeometry {
@@ -33,14 +33,14 @@ function place(geo: BufferGeometry, pos: Xyz, rot: Xyz = [0, 0, 0]): BufferGeome
   return g;
 }
 
-const box = (w: number, h: number, d: number, pos: Xyz, rot?: Xyz) =>
+export const box = (w: number, h: number, d: number, pos: Xyz, rot?: Xyz) =>
   place(new BoxGeometry(w, h, d), pos, rot);
 const rbox = (w: number, h: number, d: number, r: number, pos: Xyz, rot?: Xyz) =>
   place(new RoundedBoxGeometry(w, h, d, 1, Math.min(r, w / 2, h / 2, d / 2)), pos, rot);
-const cyl = (rTop: number, rBottom: number, h: number, seg: number, pos: Xyz, rot?: Xyz) =>
+export const cyl = (rTop: number, rBottom: number, h: number, seg: number, pos: Xyz, rot?: Xyz) =>
   place(new CylinderGeometry(rTop, rBottom, h, seg), pos, rot);
 
-function merge(parts: BufferGeometry[]): BufferGeometry {
+export function merge(parts: BufferGeometry[]): BufferGeometry {
   const merged = mergeGeometries(parts, false);
   if (!merged) throw new Error("geometry merge failed");
   merged.computeBoundingBox();

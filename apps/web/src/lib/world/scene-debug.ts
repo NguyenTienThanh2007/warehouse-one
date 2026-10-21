@@ -33,6 +33,22 @@ export interface SceneDebug {
    * rest events. `camera` is republished exactly at each rest, so a waiter can read a settled pose.
    */
   cameraMotion?: { moving: boolean; rests: number };
+  /** Line-haul trucks drawn in the last frame (metres, rounded to millimetres). */
+  fleet?: { id: string; x: number; z: number }[];
+  /** Phase 5 network layer: sites, and what is drawn from `state.network`. */
+  network?: {
+    sites: {
+      id: string;
+      kind: string;
+      center: [number, number, number];
+      bounds: { min: { x: number; z: number }; max: { x: number; z: number } };
+    }[];
+    buildings: number;
+    roads: number;
+    containers: Record<string, number>;
+    floorPallets: Record<string, number>;
+    linehaulDrawn: string[];
+  };
   /** Pickable centres projected to normalised screen coordinates (x, y in [-1, 1] when visible). */
   projected?: { kind: string; id: string; x: number; y: number; visible: boolean }[];
 }
