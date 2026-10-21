@@ -79,17 +79,24 @@ describe("liveness across seeds and layouts", () => {
     ["showcase", "regression-3"],
     ["bench-1000", "regression-1"],
     ["bench-1000", "regression-2"],
-  ] as const)("%s seed %s: no standstill, work keeps flowing for 15,000 ticks", (id, seed) => {
-    const r = run(id, seed, 15000);
-    // The livelock produced waits of thousands of ticks; queueing behind a working vehicle is short.
-    expect(r.longestWait).toBeLessThan(300);
-    // Every 2,500-tick window completes work, and completions keep pace with demand.
-    for (let w = 0; w < 6; w++) expect(r.windows.has(w), `window ${w}`).toBe(true);
-    expect(r.completed / r.created).toBeGreaterThan(0.85);
-    expect(r.backlog).toBeLessThan(20);
-    // Benchmark relocations must actually happen (the workload once picked full bays and stalled).
-    expect(r.completed).toBeGreaterThan(id === "bench-1000" ? 30 : 50);
-  });
+  ] as const)(
+    "%s seed %s: no standstill, work keeps flowing for 15,000 ticks",
+    (id, seed) => {
+      const r = run(id, seed, 15000);
+      // The livelock produced waits of thousands of ticks; queueing behind a working vehicle is short.
+      expect(r.longestWait).toBeLessThan(300);
+      // Every 2,500-tick window completes work, and completions keep pace with demand.
+      for (let w = 0; w < 6; w++) expect(r.windows.has(w), `window ${w}`).toBe(true);
+      expect(r.completed / r.created).toBeGreaterThan(0.85);
+      expect(r.backlog).toBeLessThan(20);
+      // Benchmark relocations must actually happen (the workload once picked full bays and stalled).
+      expect(r.completed).toBeGreaterThan(id === "bench-1000" ? 30 : 50);
+    },
+    // 15,000 simulated ticks: 1.5–2.6 s locally, 2.1–3.8 s on main's CI runs (39560402887,
+    // 39579726922) and up to 5.1 s on a slower runner (39608774781), past Vitest's 5 s default.
+    // Same explicit limit as the 20,000-tick soak runs.
+    30_000,
+  );
 });
 
 describe("determinism with operations running", () => {
