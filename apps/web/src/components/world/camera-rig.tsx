@@ -195,7 +195,9 @@ export function CameraRig({
   // Frame the world (or the single facility) on load, on scenario change and when the screen flips
   // orientation.
   useEffect(() => {
-    requestCamera(hasNetwork ? "world" : "overview", true);
+    // Operate works in the DC, so it opens framed on the DC (see lib/navigation/mode-route.ts).
+    const operate = useView.getState().mode === "operate";
+    requestCamera(hasNetwork && !operate ? "world" : "overview", true);
   }, [facility, portrait, requestCamera, hasNetwork]);
 
   useEffect(() => {
