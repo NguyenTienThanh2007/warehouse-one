@@ -1,7 +1,39 @@
 # Local development stack for WAREHOUSE ONE.
-# Phase 0 services only. Kafka, MinIO, Airflow etc. are added in Phase 3 when they have real jobs.
+#
+#   docker compose up -d --wait                      PostgreSQL + migrations + API (Phase 0–2)
+#   docker compose --profile data up -d --wait       + the Phase 3 data platform: Kafka (KRaft),
+#                                                    MinIO, outbox relay, consumers, Airflow
+#
 # Credentials below are local-development defaults, overridable via .env (see .env.example).
+# They are not secrets and must never be used outside a developer machine. Development-only
+# settings are marked "dev only" (single Kafka broker, replication factor 1, Airflow without login).
 name: warehouse-one
+
+x-pipeline-env: &pipeline-env
+  WAREHOUSE_LOG_LEVEL: ${WAREHOUSE_LOG_LEVEL:-INFO}
+  WAREHOUSE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-warehouse}:${POSTGRES_PASSWORD:-warehouse_dev}@postgres:5432/${POSTGRES_DB:-warehouse_one}
+  WAREHOUSE_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  WAREHOUSE_KAFKA_REPLICATION_FACTOR: "1" # dev only: single broker
+  WAREHOUSE_S3_ENDPOINT: minio:9000
+  WAREHOUSE_S3_SCHEME: http
+  WAREHOUSE_S3_REGION: us-east-1
+  WAREHOUSE_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-warehouse}
+  WAREHOUSE_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-warehouse_dev_minio}
+  WAREHOUSE_LAKE_BUCKET: ${WAREHOUSE_LAKE_BUCKET:-warehouse-lake}
+
+x-pipeline: &pipeline
+  build:
+    context: ./apps/api
+    target: pipeline
+  image: warehouse-one-pipeline:local
+  environment: *pipeline-env
+  profiles: ["data"]
+  restart: unless-stopped
+  depends_on: &pipeline-deps
+    migrate:
+      condition: service_completed_successfully
+    pipeline-init:
+      condition: service_completed_successfully
 
 services:
   postgres:
@@ -22,12 +54,14 @@ services:
       retries: 10
 
   migrate:
-    build: ./apps/api
+    build:
+      context: ./apps/api
+      target: api
     command: ["alembic", "upgrade", "head"]
     environment: &api-env
       WAREHOUSE_ENV: ${WAREHOUSE_ENV:-development}
       WAREHOUSE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-warehouse}:${POSTGRES_PASSWORD:-warehouse_dev}@postgres:5432/${POSTGRES_DB:-warehouse_one}
-      WAREHOUSE_CORS_ORIGINS: ${WAREHOUSE_CORS_ORIGINS:-["http://localhost:3000"]}
+      WAREHOUSE_CORS_ORIGINS: ${WAREHOUSE_CORS_ORIGINS:-["http://localhost:3000","http://localhost:3100"]}
       WAREHOUSE_GIT_SHA: ${GIT_SHA:-unknown}
     depends_on:
       postgres:
@@ -35,7 +69,9 @@ services:
     restart: "no"
 
   api:
-    build: ./apps/api
+    build:
+      context: ./apps/api
+      target: api
     environment: *api-env
     ports:
       - "${API_PORT:-8000}:8000"
@@ -45,5 +81,163 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # --- Phase 3 data platform (profile "data") -------------------------------------------
+
+  kafka:
+    image: apache/kafka:4.2.2
+    profiles: ["data"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller # KRaft: no ZooKeeper
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:${KAFKA_PORT:-9094}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT # dev only
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 # dev only
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1 # dev only
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1 # dev only
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false" # topics are created explicitly (pipeline-init)
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: -Xmx512m -Xms256m
+    ports:
+      - "${KAFKA_PORT:-9094}:9094"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      # The broker answers API requests on the internal listener (not just "process running").
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:29092 > /dev/null",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+  minio:
+    # Upstream MinIO images are no longer published; this pinned, multi-arch build is frozen and
+    # for local development only (DEC-031).
+    image: bitnamilegacy/minio:2025.7.23-debian-12-r5
+    profiles: ["data"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-warehouse}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-warehouse_dev_minio}
+      MINIO_DEFAULT_BUCKETS: ${WAREHOUSE_LAKE_BUCKET:-warehouse-lake}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/bitnami/minio/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  pipeline-init:
+    <<: *pipeline
+    restart: "no"
+    # Topics and the lake bucket, idempotently.
+    command: ["sh", "-c", "warehouse-pipeline init-topics && warehouse-pipeline init-lake"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  relay:
+    <<: *pipeline
+    command: ["warehouse-pipeline", "relay"]
+    healthcheck: &pipeline-health
+      # Healthy only while the work loop beats `ok` (database and Kafka reachable).
+      test: ["CMD", "warehouse-pipeline", "health", "relay", "--max-age", "30"]
+      interval: 10s
+      timeout: 10s
+      retries: 6
+      start_period: 20s
+
+  consumer-ledger:
+    <<: *pipeline
+    command: ["warehouse-pipeline", "consume", "ledger"]
+    healthcheck:
+      <<: *pipeline-health
+      test: ["CMD", "warehouse-pipeline", "health", "consumer-ledger", "--max-age", "30"]
+
+  consumer-bronze:
+    <<: *pipeline
+    command: ["warehouse-pipeline", "consume", "bronze"]
+    healthcheck:
+      <<: *pipeline-health
+      test: ["CMD", "warehouse-pipeline", "health", "consumer-bronze", "--max-age", "30"]
+
+  airflow-db:
+    # Creates Airflow's metadata database on the shared PostgreSQL server if missing (works for
+    # existing volumes too, unlike docker-entrypoint-initdb.d).
+    image: postgres:18.6-alpine
+    profiles: ["data"]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-warehouse_dev}
+    command:
+      - sh
+      - -c
+      - >-
+        psql -h postgres -U ${POSTGRES_USER:-warehouse} -d ${POSTGRES_DB:-warehouse_one} -tAc
+        "SELECT 1 FROM pg_database WHERE datname = 'airflow'" | grep -q 1
+        || psql -h postgres -U ${POSTGRES_USER:-warehouse} -d ${POSTGRES_DB:-warehouse_one}
+        -c "CREATE DATABASE airflow"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  airflow:
+    build:
+      context: .
+      dockerfile: infra/airflow/Dockerfile
+    image: warehouse-one-airflow:local
+    profiles: ["data"]
+    environment:
+      <<: *pipeline-env
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-warehouse}:${POSTGRES_PASSWORD:-warehouse_dev}@postgres:5432/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true" # dev only: UI without login
+      AIRFLOW__API__EXPOSE_CONFIG: "false"
+    command:
+      - bash
+      - -c
+      - >-
+        airflow db migrate &&
+        airflow pools set lake 1 "One writer of lake-derived outputs at a time" &&
+        exec airflow standalone
+    ports:
+      - "${AIRFLOW_PORT:-8080}:8080"
+    volumes:
+      - airflow-logs:/opt/airflow/logs
+    depends_on:
+      airflow-db:
+        condition: service_completed_successfully
+      pipeline-init:
+        condition: service_completed_successfully
+    healthcheck:
+      # Healthy when the metadata DB, scheduler and DAG processor all report healthy.
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import json,sys,urllib.request as u; h=json.load(u.urlopen('http://localhost:8080/api/v2/monitor/health', timeout=5)); sys.exit(0 if all(h.get(k, {}).get('status') == 'healthy' for k in ('metadatabase', 'scheduler', 'dag_processor')) else 1)\"",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+    restart: unless-stopped
+
 volumes:
   postgres-data:
+  kafka-data:
+  minio-data:
+  airflow-logs:

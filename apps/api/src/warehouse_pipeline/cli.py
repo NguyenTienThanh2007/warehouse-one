@@ -13,11 +13,12 @@ import json
 import sys
 from collections.abc import Callable, Sequence
 from datetime import date
+from uuid import UUID
 
 from sqlalchemy import Engine, create_engine
 
 from warehouse_api.logging import configure_logging
-from warehouse_pipeline import heartbeat
+from warehouse_pipeline import heartbeat, ops
 from warehouse_pipeline.bronze import BronzeProcessor, rebuild_from_postgres
 from warehouse_pipeline.consumer import ConsumerService
 from warehouse_pipeline.kafka import ensure_topics
@@ -103,6 +104,16 @@ def reconcile_cmd(args: argparse.Namespace, settings: PipelineSettings) -> int:
     return 1 if report.status == "failed" else 0
 
 
+def status(args: argparse.Namespace, settings: PipelineSettings) -> int:
+    _print(ops.run_status(_engine(settings), settings, args.simulation))
+    return 0
+
+
+def replay(args: argparse.Namespace, settings: PipelineSettings) -> int:
+    _print(ops.replay(_engine(settings), settings, args.simulation, args.limit))
+    return 0
+
+
 def health(args: argparse.Namespace, settings: PipelineSettings) -> int:
     ok, report = heartbeat.check(_engine(settings), args.component, args.max_age)
     _print({"component": args.component, "healthy": ok, "instances": report})
@@ -116,6 +127,8 @@ COMMANDS: dict[str, Command] = {
     "consume": consume,
     "bronze-rebuild": bronze_rebuild,
     "reconcile": reconcile_cmd,
+    "status": status,
+    "replay": replay,
     "health": health,
 }
 
@@ -137,6 +150,11 @@ def parser() -> argparse.ArgumentParser:
     rc.add_argument("--settle", type=float, default=60.0, help="seconds since publish")
     rc.add_argument("--skip-models", action="store_true", help="do not require silver/gold")
     rc.add_argument("--triggered-by", default="cli")
+    st = sub.add_parser("status", help="a run's counts through every layer")
+    st.add_argument("--simulation", type=UUID, required=True)
+    rp = sub.add_parser("replay", help="re-publish a run's stored events to Kafka")
+    rp.add_argument("--simulation", type=UUID, required=True)
+    rp.add_argument("--limit", type=int, default=None, help="first N events only")
     h = sub.add_parser("health", help="check a component's heartbeat")
     h.add_argument("component")
     h.add_argument("--max-age", type=float, default=30.0)
