@@ -8,10 +8,10 @@ Each phase is developed on `feature/p<N>-…`, reviewed through a pull request, 
 | 0 | `feature/p0-foundation` | Foundation & architecture | **Accepted**, merged (`c512733`) |
 | 1 | `feature/p1-3d-world` | Premium 3D world | **Accepted**, merged (`d80a7f2`, follow-up `0463395`) |
 | 2 | `feature/p2-simulation` | Living warehouse simulation | **Merged** (PR #4, `d2dc4d9`, 2026-10-21; `main` CI 4/4 green) |
-| 3 | `feature/p3-data-engineering` | Real data engineering | **In development** (see `docs/phases/PHASE_3.md`) |
-| 4 | `feature/p4-analytics` | Advanced operations analytics | Not started |
-| 5 | `feature/p5-ai-brain` | AI logistics brain | Not started |
-| 6 | `feature/p6-digital-twin` | Advanced digital twin | Not started |
+| 3 | `feature/p3-data-engineering` | Real data engineering | **Accepted**, merged (PR #5, `0b25fa4`; main CI green) |
+| 4 | `feature/p4-analytics` | Advanced operations analytics | **Planning** (see `docs/phases/PHASE_4.md`) |
+| 5 | `feature/p5-multi-site-world` | Multi-site logistics world | Not started |
+| 6 | `feature/p6-ai-digital-twin` | AI logistics brain + digital twin scenarios | Not started |
 | 7 | `feature/p7-production` | Production & portfolio release | Not started |
 
 ## Phase 1 — Premium 3D world (accepted)
@@ -32,11 +32,11 @@ Equipment became stateful (tasks, routing, battery), pallets got exact positions
 truck arrivals and departures, and the renderer draws all of it from simulation state. Workers were
 deferred. Record and limitations: `docs/phases/PHASE_2.md`.
 
-## Phase 3 — Real data engineering (in development)
+## Phase 3 — Real data engineering (accepted)
 
-PostgreSQL event store and transactional outbox behind an ingestion API, Kafka (KRaft), idempotent
-consumers with a DLQ, Parquet bronze on S3-compatible storage, dbt silver/gold, Airflow refresh,
-backfill and reconciliation, and an end-to-end smoke test. Plan, evidence and limitations:
+PostgreSQL event store and transactional outbox, Kafka (KRaft), idempotent consumers with a DLQ,
+Parquet bronze on MinIO, dbt silver/gold, Airflow refresh/backfill/reconciliation, and an end-to-end
+smoke test. PR #5 merged as `0b25fa4`; main CI passed. Evidence and limitations:
 `docs/phases/PHASE_3.md`.
 
 ## Phases 2–7
@@ -49,10 +49,30 @@ Summarised from the master brief. Detailed plans are written at the start of eac
 - **3:** event log and outbox in PostgreSQL, Kafka (KRaft), idempotent consumers with DLQ, MinIO
   Parquet bronze, dbt silver and gold with tests, Airflow for backfill and reconciliation,
   recovery and duplicate tests.
-- **4:** dashboards reconciled with dbt marts, live vs. historical labelling, freshness and
-  pipeline health, alerts.
-- **5:** provider-agnostic AI service, structured proposals, validation, approval workflow,
-  evaluations, and deterministic optimisers (routing, slotting) with benchmarks.
-- **6:** time travel and replay UI, isolated scenario runs, comparisons, capacity planning, stress tests.
+- **4:** dashboards reconciled with dbt marts, live vs. historical labelling, freshness,
+  pipeline health and alerts. Define metrics without pretending the current single-site model is
+  already city-scale.
+- **5:** multi-site spatial foundation and first visible connected logistics network: facility/site
+  hierarchy, a site overview, multiple warehouse/yard/cross-dock areas, explicit inter-site links,
+  and deterministic transport between hubs. Preserve per-site operational invariants.
+- **6:** provider-agnostic AI service with structured proposals, validation and approval; deterministic
+  optimisers (routing/slotting) with benchmarks; city-scale digital-twin view, time travel/replay,
+  isolated scenarios, comparisons, capacity planning and stress tests.
 - **7:** polish, security review, observability, deployment, documentation, demo and
   commercialisation assessment.
+
+
+## Phase 4 — Advanced operations analytics (planning)
+
+A read-only analytics API and dashboard backed by published dbt gold snapshots. Define a metrics
+catalogue, verify API-to-mart reconciliation, distinguish live simulation from historical analytics,
+and expose freshness and pipeline health. Detailed scope and acceptance:
+`docs/phases/PHASE_4.md`.
+
+## Multi-site roadmap decision
+
+The current scene is one warehouse. Multi-site work is now explicit rather than an implied future
+feature: Phase 5 builds the site/facility network and first visible connected multi-area slice;
+Phase 6 expands it into a city-scale digital twin and combines it with AI recommendations, replay,
+scenario comparison and capacity planning. Phase 4 remains focused on analytics, but its contracts
+must not hard-code a single facility as a permanent product constraint.
