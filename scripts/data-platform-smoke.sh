@@ -197,18 +197,34 @@ expect_counts "$SIM_A" "d['ledger_events'] == $EVENTS_A" || die "restart re-coun
 ok "after restarts, new run D ($EVENTS_D events) processed and run A unchanged"
 
 step "10. Injected discrepancy is reported, then repaired by the backfill DAG"
-KEY=$("${COMPOSE[@]}" exec -T relay python -c "
-from warehouse_pipeline.lake import list_objects, delete_object
-from warehouse_pipeline.settings import get_pipeline_settings as g
-s = g(); key = sorted(k for k in list_objects(s) if 'part-' in k)[0]; delete_object(s, key); print(key)" 2>/dev/null)
-ok "deleted bronze object $KEY"
+# Delete an object holding events of run D: D was never replayed, so its events have exactly one
+# copy in bronze and losing the object must lose events (run A's objects all have a second copy
+# since step 8, so deleting one of those would only break the manifest, not the event count).
+KEY=$("${COMPOSE[@]}" exec -T relay python - "$SIM_D" 2>/dev/null <<'PY'
+import sys
+
+from warehouse_pipeline.lake import delete_object, list_objects, read_object
+from warehouse_pipeline.settings import get_pipeline_settings
+
+s = get_pipeline_settings()
+for key in sorted(k for k in list_objects(s) if "part-" in k):
+    if sys.argv[1] in set(read_object(s, key).column("simulation_id").to_pylist()):
+        delete_object(s, key)
+        print(key)
+        break
+PY
+)
+[[ -n $KEY ]] || die "no bronze object holds events of run $SIM_D"
+ok "deleted bronze object $KEY (events of run D)"
 run_dag warehouse_reconciliation failed
 R=$(run_report)
 [[ $(echo "$R" | field "d['status']") == failed ]] || die "discrepancy not reported: $R"
 echo "$R" | field "[v['check'] for v in d['violations']]" | grep -q missing_in_bronze ||
   die "missing_in_bronze not among the violations: $R"
-ok "reconciliation failed with missing_in_bronze, as it must"
-DAY=$(curl -fsS "$API_URL/api/v1/simulations/$SIM_A/events?limit=1" | field "d['events'][0]['occurred_at'][:10]")
+echo "$R" | field "[v['check'] for v in d['violations']]" | grep -q manifest_objects_missing_from_store ||
+  die "manifest_objects_missing_from_store not among the violations: $R"
+ok "reconciliation failed with missing_in_bronze and the missing manifest object, as it must"
+DAY=$(curl -fsS "$API_URL/api/v1/simulations/$SIM_D/events?limit=1" | field "d['events'][0]['occurred_at'][:10]")
 run_dag warehouse_lake_backfill success "{\"start_date\": \"$DAY\", \"end_date\": \"$DAY\", \"settle_s\": 0}"
 [[ $(run_report | field "d['status']") == passed ]] || die "backfill did not repair: $(run_report)"
 ok "backfill rebuilt bronze for $DAY from PostgreSQL; reconciliation passed again"
