@@ -1,4 +1,4 @@
-import { createScenario } from "@warehouse-one/simulation";
+import { createScenario, dockedTruckPose } from "@warehouse-one/simulation";
 import { Box3, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { facilityFrame, fitBox, maxNdcExtent, overviewPose } from "./framing";
@@ -29,9 +29,14 @@ describe("camera framing", () => {
     expect(dist(portraitPose)).toBeLessThan(dist(naive));
   });
 
-  it("includes parked trucks in the framed region", () => {
-    const truck = facility.equipment.find((e) => e.kind === "truck")!;
-    expect(box.containsPoint(new Vector3(truck.position.x, 1, truck.position.z))).toBe(true);
+  it("includes the area trucks occupy when docked", () => {
+    const config = createScenario("showcase").config;
+    for (const d of facility.docks) {
+      const truck = dockedTruckPose(config, d.id);
+      expect(box.containsPoint(new Vector3(truck.x, 1, truck.z))).toBe(true);
+      // Both ends of the trailer, not just its centre.
+      expect(box.containsPoint(new Vector3(truck.x, 1, truck.z + 8))).toBe(true);
+    }
   });
 
   it("fits arbitrary boxes from any direction", () => {

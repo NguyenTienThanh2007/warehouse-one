@@ -1,8 +1,12 @@
 import { EntityId, parseCommand, Uuid } from "@warehouse-one/contracts";
 import { TickDraft } from "./draft";
 import { applyCommand } from "./handlers";
+import { initialOperations } from "./ops/init";
+import { checkOpsInvariants } from "./ops/invariants";
+import { navGraph } from "./ops/nav";
 import { seedRng } from "./rng";
 import { syntheticWorkloadSystem } from "./systems/synthetic-workload";
+import { operationsSystem } from "./ops/systems";
 import type {
   CommandRejection,
   LoggedCommand,
@@ -12,7 +16,7 @@ import type {
 } from "./types";
 
 /** Systems run every tick, after commands, in this fixed order. */
-const SYSTEMS = [syntheticWorkloadSystem] as const;
+const SYSTEMS = [syntheticWorkloadSystem, operationsSystem] as const;
 
 interface Indexes {
   locations: ReadonlyMap<string, SimulationConfig["locations"][number]>;
@@ -120,6 +124,45 @@ function validateFacility(config: SimulationConfig): string[] {
     if (e.dock_id !== undefined && !f.docks.some((d) => d.id === e.dock_id)) {
       problems.push(`equipment '${e.id}' references unknown dock '${e.dock_id}'`);
     }
+    if (e.kind === "truck") {
+      problems.push(
+        `equipment '${e.id}': trucks are scheduled at run time (truck.schedule_inbound, order.create), not facility equipment`,
+      );
+    }
+    if (/^(plt|tsk|trk|ord)-/.test(e.id))
+      problems.push(`equipment id '${e.id}' uses a reserved run-time id prefix`);
+    if (
+      e.battery_permille !== undefined &&
+      !(
+        Number.isInteger(e.battery_permille) &&
+        e.battery_permille >= 0 &&
+        e.battery_permille <= 1000
+      )
+    ) {
+      problems.push(`equipment '${e.id}' battery_permille must be an integer in [0, 1000]`);
+    }
+  }
+  if (problems.length === 0)
+    problems.push(...navGraph(config).problems.map((p) => `navigation: ${p}`));
+  const w = config.operations_workload;
+  if (w) {
+    for (const k of [
+      "inbound_interval_ticks",
+      "outbound_interval_ticks",
+      "relocate_interval_ticks",
+    ] as const) {
+      if (!Number.isInteger(w[k]) || w[k] < 0)
+        problems.push(`operations_workload.${k} must be a non-negative integer`);
+    }
+    if (!(
+      Number.isInteger(w.min_pallets) &&
+      w.min_pallets >= 1 &&
+      Number.isInteger(w.max_pallets) &&
+      w.max_pallets >= w.min_pallets &&
+      w.max_pallets <= 26
+    )) {
+      problems.push("operations_workload pallets must satisfy 1 <= min <= max <= 26");
+    }
   }
   return problems;
 }
@@ -127,7 +170,15 @@ function validateFacility(config: SimulationConfig): string[] {
 export function createInitialState(config: SimulationConfig): SimulationState {
   const problems = validateConfig(config);
   if (problems.length > 0) throw new Error(`invalid simulation config: ${problems.join("; ")}`);
-  return { tick: 0, sequence: 0, rng: seedRng(config.seed), inventory: {}, aggregate_versions: {} };
+  const ops = initialOperations(config);
+  return {
+    tick: 0,
+    sequence: 0,
+    rng: seedRng(config.seed),
+    inventory: {},
+    aggregate_versions: {},
+    ...(ops ? { ops } : {}),
+  };
 }
 
 /**
@@ -221,6 +272,7 @@ export function checkInvariants(config: SimulationConfig, state: SimulationState
     if (loc && total > loc.capacity)
       violations.push(`location '${locationId}' over capacity (${total}/${loc.capacity})`);
   }
+  violations.push(...checkOpsInvariants(config, state));
   return violations;
 }
 

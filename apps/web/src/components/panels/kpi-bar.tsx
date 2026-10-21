@@ -3,19 +3,20 @@
 import { useMemo } from "react";
 import { stockSummary, useSimulation } from "@/lib/sim/store";
 import { resolveFacility } from "@/world/derive";
+import { opsSummary } from "@/world/ops-view";
 
 /** Facility KPIs computed live from authoritative state and config (nothing estimated). */
 export function KpiBar() {
   const config = useSimulation((s) => s.config);
   const inventory = useSimulation((s) => s.inventory);
+  const ops = useSimulation((s) => s.state.ops);
   const s = useMemo(() => stockSummary(config, inventory), [config, inventory]);
-  const fleet = resolveFacility(config).equipment;
-  const vehicles = fleet.filter((e) => e.kind !== "truck").length;
-  const trucks = fleet.length - vehicles;
+  const o = useMemo(() => (ops ? opsSummary(ops) : null), [ops]);
+  const mhe = resolveFacility(config).equipment.filter((e) => e.kind !== "truck").length;
 
   const chips = [
     {
-      label: "Stock on hand",
+      label: "Stock in racks",
       value: s.units.toLocaleString("en-US"),
       unit: "pallets",
       testid: "kpi-stock",
@@ -27,12 +28,30 @@ export function KpiBar() {
       testid: "kpi-utilisation",
     },
     { label: "Bays in use", value: `${s.occupied}`, unit: `/ ${s.locations}`, testid: "kpi-bays" },
-    {
-      label: "Fleet",
-      value: `${vehicles}`,
-      unit: trucks ? `MHE · ${trucks} trucks` : "MHE",
-      testid: "kpi-fleet",
-    },
+    o
+      ? {
+          label: "Fleet busy",
+          value: `${o.vehiclesBusy}`,
+          unit: `/ ${o.vehicles} MHE`,
+          testid: "kpi-fleet",
+        }
+      : { label: "Fleet", value: `${mhe}`, unit: "MHE", testid: "kpi-fleet" },
+    ...(o
+      ? [
+          {
+            label: "Open tasks",
+            value: `${o.tasks}`,
+            unit: `${o.tasksByStatus.pending} waiting`,
+            testid: "kpi-tasks",
+          },
+          {
+            label: "Trucks on site",
+            value: `${o.trucks}`,
+            unit: `${o.docksOccupied} / ${o.docks} docks`,
+            testid: "kpi-trucks",
+          },
+        ]
+      : []),
   ];
   return (
     <ul

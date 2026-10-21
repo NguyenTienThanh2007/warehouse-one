@@ -81,7 +81,7 @@ See DEC-007.
   It goes through the same command handlers, so every invariant still applies.
 
 Phase 1 added optional facility master data (DEC-014) and a scenario registry; neither changes the
-simulation rules. Phase 2 adds orders, pallets, forklifts, pathfinding, workers and trucks as
+simulation rules. Phase 2 adds orders, pallets, forklifts, pathfinding and trucks (workers deferred) as
 additional systems and aggregates. Heavy runs may move into a Web Worker. The pure `step()` contract makes that a
 transport change, not a redesign.
 

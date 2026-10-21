@@ -1,0 +1,981 @@
+{
+  "simulation_id": "f34d0922-999b-8f4f-9ae6-c979f93658d5",
+  "seed": "warehouse-one-empty",
+  "tick_ms": 100,
+  "epoch": "2026-01-05T06:00:00.000Z",
+  "locations": [
+    {
+      "id": "loc-00-001",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -15.6,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-002",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -13.2,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-003",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -10.8,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-004",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -8.4,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-005",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -6,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-006",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -3.6,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-007",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -1.2,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-008",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 1.2,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-009",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 3.6,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-010",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 6,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-011",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 8.4,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-012",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 10.8,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-013",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 13.2,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-014",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 15.6,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-01-001",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -15.6,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-002",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -13.2,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-003",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -10.8,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-004",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -8.4,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-005",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -6,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-006",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -3.6,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-007",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -1.2,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-008",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 1.2,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-009",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 3.6,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-010",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 6,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-011",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 8.4,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-012",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 10.8,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-013",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 13.2,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-014",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 15.6,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-02-001",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -15.6,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-002",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -13.2,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-003",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -10.8,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-004",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -8.4,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-005",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -6,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-006",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -3.6,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-007",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -1.2,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-008",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 1.2,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-009",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 3.6,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-010",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 6,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-011",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 8.4,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-012",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 10.8,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-013",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 13.2,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-014",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 15.6,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-03-001",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -15.6,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-002",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -13.2,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-003",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -10.8,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-004",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -8.4,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-005",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -6,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-006",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -3.6,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-007",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -1.2,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-008",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 1.2,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-009",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 3.6,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-010",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 6,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-011",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 8.4,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-012",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 10.8,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-013",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 13.2,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-014",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 15.6,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-04-001",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -15.6,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-002",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -13.2,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-003",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -10.8,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-004",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -8.4,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-005",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -6,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-006",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -3.6,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-007",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -1.2,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-008",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 1.2,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-009",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 3.6,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-010",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 6,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-011",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 8.4,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-012",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 10.8,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-013",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 13.2,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-014",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 15.6,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-05-001",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -15.6,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-002",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -13.2,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-003",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -10.8,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-004",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -8.4,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-005",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -6,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-006",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -3.6,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-007",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -1.2,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-008",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 1.2,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-009",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 3.6,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-010",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 6,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-011",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 8.4,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-012",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 10.8,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-013",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 13.2,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-014",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 15.6,
+        "z": 1.1
+      },
+      "yaw": 0
+    }
+  ],
+  "skus": [
+    {
+      "id": "sku-std-pallet",
+      "name": "Mixed cartons (ambient)"
+    },
+    {
+      "id": "sku-cold-chain",
+      "name": "Insulated cold-chain container"
+    },
+    {
+      "id": "sku-bulk-bags",
+      "name": "Bulk bags (FIBC)"
+    },
+    {
+      "id": "sku-electronics",
+      "name": "Boxed electronics"
+    }
+  ],
+  "facility": {
+    "name": "WAREHOUSE ONE · Northgate DC",
+    "building": {
+      "min": {
+        "x": -24.8,
+        "z": -16.65
+      },
+      "max": {
+        "x": 21.8,
+        "z": 16.65
+      },
+      "height": 10
+    },
+    "site": {
+      "min": {
+        "x": -32.8,
+        "z": -22.65
+      },
+      "max": {
+        "x": 29.8,
+        "z": 58.65
+      }
+    },
+    "rack": {
+      "bay_width": 2.4,
+      "depth": 1.1,
+      "level_height": 1.6,
+      "positions_per_level": 2
+    },
+    "aisle_width": 3.6,
+    "docks": [
+      {
+        "id": "dock-01",
+        "position": {
+          "x": -6.4,
+          "z": 16.65
+        },
+        "yaw": 0
+      },
+      {
+        "id": "dock-02",
+        "position": {
+          "x": -1.8,
+          "z": 16.65
+        },
+        "yaw": 0
+      },
+      {
+        "id": "dock-03",
+        "position": {
+          "x": 2.8,
+          "z": 16.65
+        },
+        "yaw": 0
+      },
+      {
+        "id": "dock-04",
+        "position": {
+          "x": 7.4,
+          "z": 16.65
+        },
+        "yaw": 0
+      }
+    ],
+    "equipment": [
+      {
+        "id": "fl-01",
+        "kind": "counterbalance_forklift",
+        "label": "Counterbalance forklift FL-01",
+        "position": {
+          "x": -22.400000000000002,
+          "z": 13.65
+        },
+        "yaw": 1.5707963267948966,
+        "rated_capacity_kg": 2500,
+        "battery_permille": 1000
+      },
+      {
+        "id": "fl-02",
+        "kind": "counterbalance_forklift",
+        "label": "Counterbalance forklift FL-02",
+        "position": {
+          "x": -22.400000000000002,
+          "z": 11.05
+        },
+        "yaw": 1.5707963267948966,
+        "rated_capacity_kg": 2500,
+        "battery_permille": 860
+      },
+      {
+        "id": "fl-03",
+        "kind": "counterbalance_forklift",
+        "label": "Counterbalance forklift FL-03",
+        "position": {
+          "x": -22.400000000000002,
+          "z": 8.45
+        },
+        "yaw": 1.5707963267948966,
+        "rated_capacity_kg": 2500,
+        "battery_permille": 720
+      },
+      {
+        "id": "rt-01",
+        "kind": "reach_truck",
+        "label": "Reach truck RT-01",
+        "position": {
+          "x": -22.400000000000002,
+          "z": 5.45
+        },
+        "yaw": 1.5707963267948966,
+        "rated_capacity_kg": 1600,
+        "battery_permille": 940
+      }
+    ]
+  }
+}

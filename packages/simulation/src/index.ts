@@ -28,6 +28,12 @@ export {
   FOUNDATION_DEMO_SIMULATION_ID,
 } from "./scenarios/foundation-demo";
 export {
+  createOperationsDemoConfig,
+  OPERATIONS_DEMO_SCRIPT,
+  OPERATIONS_DEMO_TICKS,
+  runOperationsDemo,
+} from "./scenarios/operations-demo";
+export {
   buildWarehouse,
   createBenchmarkScenario,
   createEmptyScenario,
@@ -42,3 +48,14 @@ export {
   type ScenarioId,
   type WarehouseOptions,
 } from "./scenarios/warehouse";
+export * from "./ops/model";
+export {
+  navGraph,
+  findPath,
+  shortestPaths,
+  pathLength,
+  type NavGraph,
+  type NavNode,
+} from "./ops/nav";
+export * from "./ops/pose";
+export { isAvailable } from "./ops/systems/dispatch";

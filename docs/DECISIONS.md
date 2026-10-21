@@ -102,3 +102,44 @@ software rendering). Users can still pick a tier manually.
 All 3D assets are generated in code (`docs/design/ASSETS.md`), which avoids licensing risk and
 download weight. Detailed instanced meshes skip raycasting. One invisible box per bay, vehicle and
 dock makes picking precise and O(entities), independent of triangle count.
+
+### DEC-019 — One-way circulation network for material-handling vehicles (Phase 2)
+**Context:** two-way single-lane aisles caused head-on livelocks that back-off and refuge heuristics
+could not resolve reliably (12-seed sweep). **Decision:** the west cross aisle runs north, the east
+cross aisle south, the back aisle east, the front aisle west, and middle aisles alternate; dock paths
+and the charging road stay two-way, as exclusive zones. **Consequences:** no head-on conflicts; the
+graph must be strongly connected (validated); trips are longer (~1,000 ticks per task, measured),
+so workloads were re-calibrated. Routing and dispatch are deliberately isolated
+(`ops/nav.ts`, `ops/systems/dispatch.ts`) so alternative flow and dispatch policies can be compared
+as scenarios later.
+
+### DEC-020 — One task at a time per dock
+The dispatcher does not start a task whose pick-up or drop-off is in a dock path that already has an
+active task, so vehicles never queue on the front aisle for a busy dock. This caps per-dock
+throughput, a policy to revisit with measured scenario comparisons.
+
+### DEC-021 — Renderer draws operational state one tick behind, interpolated (Phase 2)
+**Context:** the simulation advances in fixed 100 ms ticks; drawing only the latest tick makes
+vehicles jump. **Decision:** the store keeps the latest published state and the state one tick
+earlier; the renderer draws `lerp(previous, latest, tickProgress)` from the simulation's own pose
+functions (`equipmentPose`, `truckPose`, `palletWorld`). A paused run draws the latest tick
+exactly. **Consequences:** smooth motion with at most one tick (100 ms simulated) of display lag;
+interpolation is visual only and never feeds back into state. Browser tests compare rendered poses
+with authoritative poses while paused, where they must be identical.
+
+### DEC-022 — Operator commands use the same command path as every other input (Phase 2)
+UI forms build commands and submit them to the runner (`submitCommand`): schema errors are rejected
+at submit, business rules by the engine on the next tick, and accepted commands enter the replayable
+command log. The UI shows the engine's rejection code and message, plus an operator explanation per
+code (`REJECTION_EXPLANATION`). Nothing in the UI changes state directly.
+
+### DEC-023 — The simulation clock does not depend on the frame rate (Phase 2)
+**Context:** real time was fed to the simulation only from `requestAnimationFrame`, capped at 250 ms
+per frame. On a slow renderer (software WebGL on a 2-core CI runner, under ~4 FPS) the simulation
+fell behind its requested speed: CI measured 8–24 ticks/s at 8× instead of 80, and long browser
+workflows timed out (CI runs 39463588226, 39469515802). **Decision:** a 50 ms timer feeds time too,
+on the same clock as the frames, so each millisecond is fed exactly once; the 250 ms cap still
+applies per call. **Consequences:** the simulation keeps its requested speed regardless of frame
+rate (measured locally: 79.9 ticks/s at 8× with frames slowed to ~2 FPS); a backgrounded tab still
+cannot cause a catch-up burst, but it now keeps advancing slowly (throttled timers, 250 ms per call)
+where it previously paused. Rendering is unchanged: it interpolates from `tickProgress` per frame.

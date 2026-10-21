@@ -1,0 +1,50 @@
+{
+  "simulation_id": "f34d0922-999b-8f4f-9ae6-c979f93658d5",
+  "ticks": 6000,
+  "event_count": 197,
+  "event_counts_by_type": {
+    "equipment.status_changed": 94,
+    "inventory.received": 2,
+    "order.status_changed": 3,
+    "pallet.created": 9,
+    "pallet.moved": 30,
+    "pallet.removed": 4,
+    "task.assigned": 15,
+    "task.completed": 15,
+    "task.created": 15,
+    "truck.status_changed": 10
+  },
+  "rejection_codes": {
+    "ops-0006": "INSUFFICIENT_STOCK",
+    "ops-0007": "PALLET_RESERVED",
+    "ops-0008": "UNKNOWN_PALLET",
+    "ops-0009": "ORDER_NOT_CANCELLABLE"
+  },
+  "orders": {
+    "ord-000001": "shipped"
+  },
+  "trucks": {
+    "trk-000001": "departed",
+    "trk-000002": "departed"
+  },
+  "tasks_completed_by_type": {
+    "load": 4,
+    "pick": 4,
+    "putaway": 3,
+    "relocate": 1,
+    "unload": 3
+  },
+  "final_pallets": {
+    "plt-000004": "loc-05-012#0",
+    "plt-000006": "loc-03-009#1",
+    "plt-000007": "loc-05-004#0",
+    "plt-000008": "loc-05-004#1",
+    "plt-000009": "loc-05-004#2"
+  },
+  "final_totals_by_sku": {
+    "sku-bulk-bags": 3,
+    "sku-electronics": 1,
+    "sku-std-pallet": 1
+  },
+  "final_state_hash": "2c9e3f1e50fc634bf2af72ffaabe15bf"
+}

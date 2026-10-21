@@ -7,7 +7,31 @@ const EVENT_LABEL: Record<DomainEvent["event_type"], string> = {
   "inventory.received": "Received",
   "inventory.moved": "Moved",
   "inventory.adjusted": "Adjusted",
+  "pallet.created": "Pallet",
+  "pallet.moved": "Pallet",
+  "pallet.removed": "Pallet",
+  "task.created": "Task",
+  "task.assigned": "Assigned",
+  "task.completed": "Done",
+  "task.cancelled": "Cancelled",
+  "equipment.status_changed": "Vehicle",
+  "truck.status_changed": "Truck",
+  "order.status_changed": "Order",
 };
+
+type Position = Extract<DomainEvent, { event_type: "pallet.moved" }>["payload"]["from"];
+function where(p: Position): string {
+  switch (p.kind) {
+    case "slot":
+      return `${p.location_id}#${p.slot}`;
+    case "staging":
+      return `${p.dock_id} lane ${p.position}`;
+    case "equipment":
+      return p.equipment_id;
+    case "truck":
+      return p.truck_id;
+  }
+}
 
 function describe(e: DomainEvent): string {
   switch (e.event_type) {
@@ -17,6 +41,26 @@ function describe(e: DomainEvent): string {
       return `${e.payload.quantity} × ${e.payload.sku} ${e.payload.from_location_id} → ${e.payload.to_location_id}`;
     case "inventory.adjusted":
       return `${e.payload.delta > 0 ? "+" : ""}${e.payload.delta} ${e.payload.sku} @ ${e.payload.location_id} (${e.payload.reason})`;
+    case "pallet.created":
+      return `${e.payload.pallet_id} created at ${where(e.payload.at)}`;
+    case "pallet.moved":
+      return `${e.payload.pallet_id} ${where(e.payload.from)} → ${where(e.payload.to)}`;
+    case "pallet.removed":
+      return `${e.payload.pallet_id} ${e.payload.reason}`;
+    case "task.created":
+      return `${e.payload.task_id} ${e.payload.task_type} ${e.payload.pallet_id}`;
+    case "task.assigned":
+      return `${e.payload.task_id} → ${e.payload.equipment_id}`;
+    case "task.completed":
+      return `${e.payload.task_id} by ${e.payload.equipment_id}`;
+    case "task.cancelled":
+      return `${e.payload.task_id} (${e.payload.reason})`;
+    case "equipment.status_changed":
+      return `${e.payload.equipment_id} ${e.payload.from} → ${e.payload.to}`;
+    case "truck.status_changed":
+      return `${e.payload.truck_id} ${e.payload.from ?? "new"} → ${e.payload.to}`;
+    case "order.status_changed":
+      return `${e.payload.order_id} ${e.payload.from ?? "new"} → ${e.payload.to}`;
   }
 }
 

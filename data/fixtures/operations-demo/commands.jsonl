@@ -1,0 +1,9 @@
+{"tick":1,"command":{"command_id":"ops-0001","type":"inventory.receive","payload":{"location_id":"loc-01-004","sku":"sku-std-pallet","quantity":4}}}
+{"tick":1,"command":{"command_id":"ops-0002","type":"inventory.receive","payload":{"location_id":"loc-03-009","sku":"sku-electronics","quantity":2}}}
+{"tick":1,"command":{"command_id":"ops-0003","type":"truck.schedule_inbound","payload":{"cargo":[{"sku":"sku-bulk-bags","quantity":3}]}}}
+{"tick":2,"command":{"command_id":"ops-0004","type":"order.create","payload":{"lines":[{"sku":"sku-std-pallet","quantity":3},{"sku":"sku-electronics","quantity":1}]}}}
+{"tick":3,"command":{"command_id":"ops-0005","type":"pallet.relocate","payload":{"pallet_id":"plt-000004","to_location_id":"loc-05-012"}}}
+{"tick":4,"command":{"command_id":"ops-0006","type":"order.create","payload":{"lines":[{"sku":"sku-electronics","quantity":5}]}}}
+{"tick":4,"command":{"command_id":"ops-0007","type":"pallet.relocate","payload":{"pallet_id":"plt-000001","to_location_id":"loc-00-001"}}}
+{"tick":4,"command":{"command_id":"ops-0008","type":"pallet.relocate","payload":{"pallet_id":"plt-999999","to_location_id":"loc-00-001"}}}
+{"tick":5,"command":{"command_id":"ops-0009","type":"order.cancel","payload":{"order_id":"ord-000001"}}}

@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { CameraToolbar } from "@/components/panels/camera-toolbar";
 import { InspectorPanel } from "@/components/panels/inspector-panel";
 import { KpiBar } from "@/components/panels/kpi-bar";
+import { OperationsPanel } from "@/components/panels/operations-panel";
 import { RendererPanel } from "@/components/panels/renderer-panel";
 import { ScenarioPicker } from "@/components/panels/scenario-picker";
 import { SimulationPanel } from "@/components/panels/simulation-panel";
@@ -88,6 +89,7 @@ export function WarehouseApp() {
           </div>
         </div>
         <div className="flex min-h-0 flex-1 items-start justify-end gap-3">
+          <OperationsPanel />
           <InspectorPanel />
           <CameraToolbar />
         </div>

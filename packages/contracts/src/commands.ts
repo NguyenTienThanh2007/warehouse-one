@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CargoLines } from "./operations";
 import { EntityId, Quantity } from "./primitives";
 
 /**
@@ -43,15 +44,47 @@ export const AdjustInventoryCommand = CommandBase.extend({
   }),
 });
 
+/** Phase 2: schedule an inbound truck carrying new pallets; it is unloaded and put away. */
+export const ScheduleInboundTruckCommand = CommandBase.extend({
+  type: z.literal("truck.schedule_inbound"),
+  payload: z.object({ cargo: CargoLines }),
+});
+
+/** Phase 2: create an outbound order; stock is allocated now, then picked, staged and loaded. */
+export const CreateOrderCommand = CommandBase.extend({
+  type: z.literal("order.create"),
+  payload: z.object({ lines: CargoLines }),
+});
+
+/** Phase 2: cancel an order that has not started (no dock assigned yet). */
+export const CancelOrderCommand = CommandBase.extend({
+  type: z.literal("order.cancel"),
+  payload: z.object({ order_id: EntityId }),
+});
+
+/** Phase 2: move one stored pallet to another rack bay with a forklift. */
+export const RelocatePalletCommand = CommandBase.extend({
+  type: z.literal("pallet.relocate"),
+  payload: z.object({ pallet_id: EntityId, to_location_id: EntityId }),
+});
+
 export const SimulationCommand = z.discriminatedUnion("type", [
   ReceiveInventoryCommand,
   MoveInventoryCommand,
   AdjustInventoryCommand,
+  ScheduleInboundTruckCommand,
+  CreateOrderCommand,
+  CancelOrderCommand,
+  RelocatePalletCommand,
 ]);
 
 export type ReceiveInventoryCommand = z.infer<typeof ReceiveInventoryCommand>;
 export type MoveInventoryCommand = z.infer<typeof MoveInventoryCommand>;
 export type AdjustInventoryCommand = z.infer<typeof AdjustInventoryCommand>;
+export type ScheduleInboundTruckCommand = z.infer<typeof ScheduleInboundTruckCommand>;
+export type CreateOrderCommand = z.infer<typeof CreateOrderCommand>;
+export type CancelOrderCommand = z.infer<typeof CancelOrderCommand>;
+export type RelocatePalletCommand = z.infer<typeof RelocatePalletCommand>;
 export type SimulationCommand = z.infer<typeof SimulationCommand>;
 export type SimulationCommandType = SimulationCommand["type"];
 

@@ -1,9 +1,19 @@
 /**
  * Simulation throughput benchmark (headless, no rendering).
- * Measures wall-clock cost of `step()` for layouts of increasing size with the synthetic workload on.
+ * Measures wall-clock cost of `step()`:
+ * - Phase 0 inventory-only layouts of increasing size with the synthetic inventory workload;
+ * - Phase 2 operational scenarios (vehicles, routing, tasks, trucks) with their seeded workload.
  * Usage: pnpm bench:sim [-- --ticks 2000]
  */
-import { createFoundationDemoConfig, createInitialState, step } from "../src/index";
+import {
+  createFoundationDemoConfig,
+  createInitialState,
+  createScenario,
+  step,
+  type ScenarioId,
+  type SimulationConfig,
+  type SimulationState,
+} from "../src/index";
 
 const ticksArg = process.argv.indexOf("--ticks");
 const TICKS = ticksArg > 0 ? Number(process.argv[ticksArg + 1]) : 2000;
@@ -20,10 +30,8 @@ function percentile(sorted: number[], p: number): number {
 console.log(
   `node ${process.version} ${process.platform}/${process.arch} — ${TICKS} ticks per size (after 200 warm-up)`,
 );
-console.log("size              | mean µs/tick | p95 µs/tick | ticks/sec  | events");
-for (const size of SIZES) {
-  const config = createFoundationDemoConfig({ aisles: size.aisles, bays: size.bays });
-  let state = createInitialState(config);
+function measure(config: SimulationConfig, start: SimulationState) {
+  let state = start;
   for (let i = 0; i < 200; i++) state = step(config, state).state;
   const samples: number[] = [];
   let events = 0;
@@ -37,13 +45,43 @@ for (const size of SIZES) {
   }
   const total = performance.now() - t0;
   samples.sort((a, b) => a - b);
-  const mean = (total * 1000) / TICKS;
-  console.log(
-    `${size.label.padEnd(17)} | ${mean.toFixed(1).padStart(12)} | ${percentile(samples, 95).toFixed(1).padStart(11)} | ${Math.round(
-      TICKS / (total / 1000),
-    )
-      .toLocaleString("en-US")
-      .padStart(10)} | ${events}`,
-  );
+  return {
+    mean: (total * 1000) / TICKS,
+    p95: percentile(samples, 95),
+    p99: percentile(samples, 99),
+    rate: Math.round(TICKS / (total / 1000)),
+    events,
+    state,
+  };
 }
-console.log("Note: Phase 0 simulates inventory only; entity-heavy systems arrive in Phase 2.");
+
+const row = (label: string, m: ReturnType<typeof measure>, extra = "") =>
+  console.log(
+    `${label.padEnd(26)} | ${m.mean.toFixed(1).padStart(12)} | ${m.p95.toFixed(1).padStart(11)} | ${m.p99
+      .toFixed(1)
+      .padStart(
+        11,
+      )} | ${m.rate.toLocaleString("en-US").padStart(10)} | ${String(m.events).padStart(6)}${extra}`,
+  );
+
+const header =
+  "scenario                   | mean µs/tick | p95 µs/tick | p99 µs/tick | ticks/sec  | events";
+console.log("Phase 0 · inventory only");
+console.log(header);
+for (const size of SIZES) {
+  const config = createFoundationDemoConfig({ aisles: size.aisles, bays: size.bays });
+  row(size.label, measure(config, createInitialState(config)));
+}
+
+console.log("\nPhase 2 · operations (vehicles, routing, tasks, trucks; seeded workload)");
+console.log(header + " | tasks open");
+for (const id of ["showcase", "bench-100", "bench-300", "bench-1000"] as ScenarioId[]) {
+  const scenario = createScenario(id);
+  const config = scenario.config;
+  const opened = step(config, createInitialState(config), scenario.openingCommands).state;
+  const m = measure(config, opened);
+  row(id, m, ` | ${Object.keys(m.state.ops?.tasks ?? {}).length}`);
+}
+console.log(
+  "\nReal time at 1× needs 10 ticks/sec; the UI's 8× needs 80. Laptop runs can differ by 10–20%; compare runs side by side.",
+);

@@ -5,6 +5,7 @@ import type {
   SimulationCommand,
 } from "@warehouse-one/contracts";
 import type { TickDraft } from "./draft";
+import { applyOpsCommand } from "./ops/commands";
 import type { RejectionCode } from "./types";
 
 export type HandlerResult = { ok: true } | { ok: false; code: RejectionCode; message: string };
@@ -108,6 +109,8 @@ export function adjust(
 
 export function applyCommand(d: TickDraft, command: SimulationCommand): HandlerResult {
   const trace = { correlation_id: command.command_id, causation_id: command.command_id };
+  // Facilities with operations track every pallet; the Phase 0 path below stays unchanged.
+  if (d.ops) return applyOpsCommand(d.ops, command, trace);
   switch (command.type) {
     case "inventory.receive":
       return receive(d, command.payload, trace);
@@ -115,5 +118,13 @@ export function applyCommand(d: TickDraft, command: SimulationCommand): HandlerR
       return move(d, command.payload, trace);
     case "inventory.adjust":
       return adjust(d, command.payload, trace);
+    case "truck.schedule_inbound":
+    case "order.create":
+    case "order.cancel":
+    case "pallet.relocate":
+      return reject(
+        "OPERATIONS_DISABLED",
+        `'${command.type}' needs a facility with operations (config.facility)`,
+      );
   }
 }

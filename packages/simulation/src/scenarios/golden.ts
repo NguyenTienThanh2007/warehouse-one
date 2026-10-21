@@ -56,7 +56,9 @@ export function runGolden(): GoldenRun {
   };
 }
 
-export function renderGoldenFiles(run: GoldenRun): Record<string, string> {
+export function renderGoldenFiles(
+  run: Pick<GoldenRun, "config" | "commands" | "events"> & { summary: unknown },
+): Record<string, string> {
   const jsonl = (rows: readonly unknown[]) => rows.map((r) => JSON.stringify(r)).join("\n") + "\n";
   return {
     "config.json": `${JSON.stringify(run.config, null, 2)}\n`,

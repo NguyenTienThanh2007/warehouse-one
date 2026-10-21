@@ -158,7 +158,15 @@ export const guardGeometry = () => rbox(0.2, 0.4, 0.18, 0.03, [0, 0, 0]);
 // ---------------------------------------------------------------------------------------------
 // Vehicles. Local frame: +z is forward, origin at the footprint centre on the floor.
 
-export type VehiclePart = "body" | "dark" | "steel" | "tyre" | "glass";
+/** `forks` (carriage + blades) is a separate part so it can rise with the simulated lift height. */
+export type VehiclePart = "body" | "dark" | "steel" | "tyre" | "glass" | "forks";
+
+/**
+ * Fork blades are modelled with their centre at y = 0 in the `forks` part; the renderer lifts the
+ * part to the simulated fork height (`EquipmentPose.fork`) plus this offset, so a carried pallet
+ * (drawn by `palletWorld` 4 cm below fork height) sits with the blades in its pockets.
+ */
+export const FORK_BLADE_OFFSET = 0.03;
 
 export function forkliftModel(): Model<VehiclePart> {
   const body = [
@@ -181,11 +189,13 @@ export function forkliftModel(): Model<VehiclePart> {
     box(0.08, 2.1, 0.1, [-0.32, 1.12, 0.48]), // mast rails
     box(0.08, 2.1, 0.1, [0.32, 1.12, 0.48]),
     box(0.72, 0.08, 0.06, [0, 2.12, 0.48]),
-    box(0.78, 0.36, 0.05, [0, 0.36, 0.58]), // carriage
-    box(0.1, 0.045, 1.1, [-0.25, 0.09, 1.15]), // forks
-    box(0.1, 0.045, 1.1, [0.25, 0.09, 1.15]),
-    box(0.1, 0.42, 0.045, [-0.25, 0.3, 0.6]),
-    box(0.1, 0.42, 0.045, [0.25, 0.3, 0.6]),
+  ];
+  const forks = [
+    box(0.78, 0.36, 0.05, [0, 0.27, 0.58]), // carriage
+    box(0.1, 0.045, 1.1, [-0.25, 0, 1.15]), // blades
+    box(0.1, 0.045, 1.1, [0.25, 0, 1.15]),
+    box(0.1, 0.42, 0.045, [-0.25, 0.21, 0.6]),
+    box(0.1, 0.42, 0.045, [0.25, 0.21, 0.6]),
   ];
   const tyre: BufferGeometry[] = [];
   for (const [x, z, r] of [
@@ -200,6 +210,7 @@ export function forkliftModel(): Model<VehiclePart> {
     dark: merge(dark),
     steel: merge(steel),
     tyre: merge(tyre),
+    forks: merge(forks),
   };
 }
 
@@ -221,9 +232,11 @@ export function reachTruckModel(): Model<VehiclePart> {
     steel: merge([
       box(0.08, 2.35, 0.1, [-0.32, 1.27, 0.0]),
       box(0.08, 2.35, 0.1, [0.32, 1.27, 0.0]),
-      box(0.74, 0.32, 0.05, [0, 0.42, 0.12]),
-      box(0.1, 0.045, 1.0, [-0.22, 0.24, 0.62]),
-      box(0.1, 0.045, 1.0, [0.22, 0.24, 0.62]),
+    ]),
+    forks: merge([
+      box(0.74, 0.32, 0.05, [0, 0.18, 0.12]), // carriage
+      box(0.1, 0.045, 1.0, [-0.22, 0, 0.62]), // blades
+      box(0.1, 0.045, 1.0, [0.22, 0, 0.62]),
     ]),
     tyre: merge([
       cyl(0.13, 0.13, 0.1, 16, [-0.55, 0.13, 1.1], [0, 0, Math.PI / 2]),

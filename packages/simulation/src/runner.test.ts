@@ -57,6 +57,19 @@ describe("SimulationRunner time control", () => {
     expect(s.droppedMs).toBeGreaterThan(0);
     expect(r.advance(0).ticks).toBe(0);
   });
+
+  it("reports progress towards the next tick for render interpolation, without affecting state", () => {
+    const r = new SimulationRunner(config);
+    r.resume();
+    r.advance(config.tick_ms * 2.25);
+    expect(r.state.tick).toBe(2);
+    expect(r.tickProgress).toBeCloseTo(0.25);
+    const hash = stateHash(config, r.state);
+    void r.tickProgress;
+    expect(stateHash(config, r.state)).toBe(hash);
+    r.pause();
+    expect(r.tickProgress).toBe(0);
+  });
 });
 
 describe("SimulationRunner commands and state protection", () => {

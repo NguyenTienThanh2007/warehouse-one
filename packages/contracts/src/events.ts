@@ -1,4 +1,13 @@
 import { z } from "zod";
+import {
+  CargoLine,
+  EquipmentStatus,
+  OrderStatus,
+  PalletPosition,
+  TaskType,
+  TruckDirection,
+  TruckStatus,
+} from "./operations";
 import { EntityId, Quantity, Uuid } from "./primitives";
 
 /**
@@ -36,50 +45,186 @@ export const InventoryAdjustedPayload = z.object({
   location_quantity_after: z.int().nonnegative(),
 });
 
-/** Registry: event_type -> { payload schema, payload schema version }. */
+// ---------------------------------------------------------------------------------------------
+// Phase 2 operational events.
+
+const NodeId = z.string().min(1).max(64);
+
+export const PalletCreatedPayload = z.object({
+  pallet_id: EntityId,
+  sku: EntityId,
+  at: PalletPosition,
+  cause: z.enum(["receive", "inbound_truck", "adjust"]),
+});
+
+export const PalletMovedPayload = z.object({
+  pallet_id: EntityId,
+  sku: EntityId,
+  from: PalletPosition,
+  to: PalletPosition,
+  /** The task that moved it, or null for an administrative move (`inventory.move`). */
+  task_id: EntityId.nullable(),
+});
+
+export const PalletRemovedPayload = z.object({
+  pallet_id: EntityId,
+  sku: EntityId,
+  from: PalletPosition,
+  reason: z.enum(["adjust", "shipped"]),
+});
+
+export const TaskCreatedPayload = z.object({
+  task_id: EntityId,
+  task_type: TaskType,
+  pallet_id: EntityId,
+  sku: EntityId,
+  from: PalletPosition,
+  to: PalletPosition,
+  order_id: EntityId.nullable(),
+  truck_id: EntityId.nullable(),
+});
+
+export const TaskAssignedPayload = z.object({
+  task_id: EntityId,
+  equipment_id: EntityId,
+  /** Planned travel to the pick-up point at assignment time. */
+  route_length_mm: z.int().nonnegative(),
+});
+
+export const TaskCompletedPayload = z.object({
+  task_id: EntityId,
+  equipment_id: EntityId,
+  /** Ticks from creation to completion. */
+  duration_ticks: z.int().nonnegative(),
+});
+
+export const TaskCancelledPayload = z.object({
+  task_id: EntityId,
+  reason: z.enum(["order_cancelled"]),
+});
+
+export const EquipmentStatusChangedPayload = z.object({
+  equipment_id: EntityId,
+  from: EquipmentStatus,
+  to: EquipmentStatus,
+  node_id: NodeId,
+  task_id: EntityId.nullable(),
+  battery_permille: z.int().min(0).max(1000),
+});
+
+export const TruckStatusChangedPayload = z.object({
+  truck_id: EntityId,
+  direction: TruckDirection,
+  /** null when the truck is first scheduled. */
+  from: TruckStatus.nullable(),
+  to: TruckStatus,
+  dock_id: EntityId.nullable(),
+  pallet_count: z.int().nonnegative(),
+});
+
+export const OrderStatusChangedPayload = z.object({
+  order_id: EntityId,
+  /** null when the order is created. */
+  from: OrderStatus.nullable(),
+  to: OrderStatus,
+  truck_id: EntityId,
+  lines: z.array(CargoLine),
+});
+
+/** Registry: event_type -> payload schema, schema version and aggregate type. */
 export const EVENT_PAYLOADS = {
-  "inventory.received": { schema: InventoryReceivedPayload, version: 1 },
-  "inventory.moved": { schema: InventoryMovedPayload, version: 1 },
-  "inventory.adjusted": { schema: InventoryAdjustedPayload, version: 1 },
+  "inventory.received": {
+    schema: InventoryReceivedPayload,
+    version: 1,
+    aggregate: "inventory_item",
+  },
+  "inventory.moved": { schema: InventoryMovedPayload, version: 1, aggregate: "inventory_item" },
+  "inventory.adjusted": {
+    schema: InventoryAdjustedPayload,
+    version: 1,
+    aggregate: "inventory_item",
+  },
+  "pallet.created": { schema: PalletCreatedPayload, version: 1, aggregate: "pallet" },
+  "pallet.moved": { schema: PalletMovedPayload, version: 1, aggregate: "pallet" },
+  "pallet.removed": { schema: PalletRemovedPayload, version: 1, aggregate: "pallet" },
+  "task.created": { schema: TaskCreatedPayload, version: 1, aggregate: "task" },
+  "task.assigned": { schema: TaskAssignedPayload, version: 1, aggregate: "task" },
+  "task.completed": { schema: TaskCompletedPayload, version: 1, aggregate: "task" },
+  "task.cancelled": { schema: TaskCancelledPayload, version: 1, aggregate: "task" },
+  "equipment.status_changed": {
+    schema: EquipmentStatusChangedPayload,
+    version: 1,
+    aggregate: "equipment",
+  },
+  "truck.status_changed": { schema: TruckStatusChangedPayload, version: 1, aggregate: "truck" },
+  "order.status_changed": { schema: OrderStatusChangedPayload, version: 1, aggregate: "order" },
 } as const;
 
 export type EventType = keyof typeof EVENT_PAYLOADS;
+export type AggregateType = (typeof EVENT_PAYLOADS)[EventType]["aggregate"];
 export const EVENT_TYPES = Object.keys(EVENT_PAYLOADS) as EventType[];
 
-const envelopeFields = {
-  event_id: Uuid,
-  schema_version: z.int().positive(),
-  aggregate_type: z.enum(["inventory_item"]),
-  aggregate_id: EntityId,
-  aggregate_version: z.int().positive(),
-  simulation_id: Uuid,
-  sequence: z.int().positive(),
-  occurred_at: z.iso.datetime({ offset: false, precision: 3 }),
-  simulation_time_ms: z.int().nonnegative(),
-  correlation_id: z.string().min(1).max(128),
-  causation_id: z.string().min(1).max(128),
-};
+function envelope<A extends string>(aggregate: A) {
+  return {
+    event_id: Uuid,
+    schema_version: z.int().positive(),
+    aggregate_type: z.literal(aggregate),
+    aggregate_id: EntityId,
+    aggregate_version: z.int().positive(),
+    simulation_id: Uuid,
+    sequence: z.int().positive(),
+    occurred_at: z.iso.datetime({ offset: false, precision: 3 }),
+    simulation_time_ms: z.int().nonnegative(),
+    correlation_id: z.string().min(1).max(128),
+    causation_id: z.string().min(1).max(128),
+  };
+}
 
-export const InventoryReceivedEvent = z.object({
-  ...envelopeFields,
-  event_type: z.literal("inventory.received"),
-  payload: InventoryReceivedPayload,
-});
-export const InventoryMovedEvent = z.object({
-  ...envelopeFields,
-  event_type: z.literal("inventory.moved"),
-  payload: InventoryMovedPayload,
-});
-export const InventoryAdjustedEvent = z.object({
-  ...envelopeFields,
-  event_type: z.literal("inventory.adjusted"),
-  payload: InventoryAdjustedPayload,
-});
+function eventSchema<T extends EventType, P extends z.ZodType>(type: T, payload: P) {
+  return z.object({
+    ...envelope(EVENT_PAYLOADS[type].aggregate),
+    event_type: z.literal(type),
+    payload,
+  });
+}
+
+export const InventoryReceivedEvent = eventSchema("inventory.received", InventoryReceivedPayload);
+export const InventoryMovedEvent = eventSchema("inventory.moved", InventoryMovedPayload);
+export const InventoryAdjustedEvent = eventSchema("inventory.adjusted", InventoryAdjustedPayload);
+export const PalletCreatedEvent = eventSchema("pallet.created", PalletCreatedPayload);
+export const PalletMovedEvent = eventSchema("pallet.moved", PalletMovedPayload);
+export const PalletRemovedEvent = eventSchema("pallet.removed", PalletRemovedPayload);
+export const TaskCreatedEvent = eventSchema("task.created", TaskCreatedPayload);
+export const TaskAssignedEvent = eventSchema("task.assigned", TaskAssignedPayload);
+export const TaskCompletedEvent = eventSchema("task.completed", TaskCompletedPayload);
+export const TaskCancelledEvent = eventSchema("task.cancelled", TaskCancelledPayload);
+export const EquipmentStatusChangedEvent = eventSchema(
+  "equipment.status_changed",
+  EquipmentStatusChangedPayload,
+);
+export const TruckStatusChangedEvent = eventSchema(
+  "truck.status_changed",
+  TruckStatusChangedPayload,
+);
+export const OrderStatusChangedEvent = eventSchema(
+  "order.status_changed",
+  OrderStatusChangedPayload,
+);
 
 export const DomainEvent = z.discriminatedUnion("event_type", [
   InventoryReceivedEvent,
   InventoryMovedEvent,
   InventoryAdjustedEvent,
+  PalletCreatedEvent,
+  PalletMovedEvent,
+  PalletRemovedEvent,
+  TaskCreatedEvent,
+  TaskAssignedEvent,
+  TaskCompletedEvent,
+  TaskCancelledEvent,
+  EquipmentStatusChangedEvent,
+  TruckStatusChangedEvent,
+  OrderStatusChangedEvent,
 ]);
 
 export type InventoryReceivedEvent = z.infer<typeof InventoryReceivedEvent>;

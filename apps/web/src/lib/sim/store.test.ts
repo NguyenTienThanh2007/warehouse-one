@@ -1,7 +1,16 @@
 import { createScenario } from "@warehouse-one/simulation";
 import { describe, expect, it } from "vitest";
 import { qualityFromSearch } from "../world/view-store";
-import { formatSimClock, scenarioFromSearch, stockSummary, useSimulation } from "./store";
+import {
+  commandLog,
+  formatSimClock,
+  REJECTION_EXPLANATION,
+  renderAlpha,
+  scenarioFromSearch,
+  stockSummary,
+  summarizeCommand,
+  useSimulation,
+} from "./store";
 
 describe("URL options", () => {
   it("accepts known scenarios and qualities only", () => {
@@ -46,6 +55,116 @@ describe("simulation store", () => {
       occupied: 0,
       utilisation: 0,
     });
+  });
+});
+
+describe("operator commands go through the real command path", () => {
+  const sim = () => useSimulation.getState();
+  const fresh = () => {
+    sim().loadScenario("empty");
+    if (!sim().paused) sim().togglePause();
+  };
+
+  it("queues a valid command, then records that the engine accepted it on the next tick", () => {
+    fresh();
+    const r = sim().submitCommand({
+      type: "inventory.receive",
+      payload: { location_id: "loc-00-001", sku: "sku-std-pallet", quantity: 2 },
+    });
+    expect(r.status).toBe("pending");
+    // Paused: nothing applies until the next tick.
+    expect(sim().state.ops!.pallets).toEqual({});
+    sim().stepOnce();
+    const done = sim().commands.find((c) => c.command_id === r.command_id)!;
+    expect(done).toMatchObject({ status: "accepted", appliedTick: sim().tick });
+    expect(Object.values(sim().state.ops!.pallets)).toHaveLength(2);
+    // The command is in the replayable log, exactly as submitted.
+    const logged = commandLog().find((l) => l.command.command_id === r.command_id);
+    expect(logged?.command.type).toBe("inventory.receive");
+  });
+
+  it("explains business-rule rejections from the engine, without changing state", () => {
+    fresh();
+    const before = sim().stateHash;
+    const r = sim().submitCommand({
+      type: "order.create",
+      payload: { lines: [{ sku: "sku-electronics", quantity: 3 }] },
+    });
+    sim().stepOnce();
+    const done = sim().commands.find((c) => c.command_id === r.command_id)!;
+    expect(done.status).toBe("rejected");
+    expect(done.code).toBe("INSUFFICIENT_STOCK");
+    expect(done.message).toMatch(/0 pallets available, 3 requested/);
+    expect(REJECTION_EXPLANATION[done.code!]).toMatch(/Not enough free pallets/);
+    expect(sim().rejectionCount).toBe(1);
+    expect(sim().state.ops!.orders).toEqual({});
+    // Only the clock moved: no order, truck or allocation was created.
+    expect(sim().stateHash).not.toBe(before);
+    expect(Object.keys(sim().state.ops!.trucks)).toEqual([]);
+  });
+
+  it("rejects schema-invalid input at submit, before it reaches the simulation", () => {
+    fresh();
+    const r = sim().submitCommand({
+      type: "order.create",
+      payload: { lines: [{ sku: "sku-electronics", quantity: 0 }] },
+    });
+    expect(r.status).toBe("rejected");
+    expect(r.code).toBe("INVALID_COMMAND");
+    expect(r.message).toMatch(/quantity/);
+    sim().stepOnce();
+    expect(commandLog().some((l) => l.command.command_id === r.command_id)).toBe(false);
+  });
+
+  it("keeps the outcome of orders after they leave operational state", () => {
+    fresh();
+    sim().submitCommand({
+      type: "inventory.receive",
+      payload: { location_id: "loc-00-001", sku: "sku-cold-chain", quantity: 1 },
+    });
+    sim().submitCommand({
+      type: "order.create",
+      payload: { lines: [{ sku: "sku-cold-chain", quantity: 1 }] },
+    });
+    sim().stepOnce();
+    const order = Object.keys(sim().state.ops!.orders)[0]!;
+    // A free dock is assigned at once, so picking starts and the order can no longer be cancelled.
+    const cancel = sim().submitCommand({ type: "order.cancel", payload: { order_id: order } });
+    sim().stepOnce();
+    expect(sim().commands.find((c) => c.command_id === cancel.command_id)).toMatchObject({
+      status: "rejected",
+      code: "ORDER_NOT_CANCELLABLE",
+    });
+    for (let i = 0; i < 6000 && Object.keys(sim().state.ops!.orders).length > 0; i++)
+      sim().stepOnce();
+    expect(sim().state.ops!.orders).toEqual({});
+    expect(sim().finishedOrders[0]).toMatchObject({ order_id: order, status: "shipped" });
+    expect(sim().state.ops!.pallets).toEqual({});
+  });
+
+  it("tracks the previous tick for interpolation and shows the latest state when paused", () => {
+    fresh();
+    const t = sim().tick;
+    sim().stepOnce();
+    sim().stepOnce();
+    expect(sim().state.tick).toBe(t + 2);
+    expect(sim().prevState.tick).toBe(t + 1);
+    expect(renderAlpha()).toBe(1);
+  });
+
+  it("describes commands in one line", () => {
+    expect(
+      summarizeCommand({
+        type: "order.create",
+        payload: { lines: [{ sku: "a", quantity: 2 }] },
+      }),
+    ).toBe("Order 2 × a");
+    expect(
+      summarizeCommand({
+        type: "pallet.relocate",
+        payload: { pallet_id: "p", to_location_id: "l" },
+      }),
+    ).toBe("Relocate p → l");
   });
 });
 

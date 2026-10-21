@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from warehouse_api.contracts.events import EVENT_MODELS, parse_event
 
@@ -48,17 +48,26 @@ def test_fixture_events_parse_with_pydantic(raw_events: list[str]) -> None:
     assert {e.event_type for e in parsed} <= set(EVENT_MODELS)
 
 
+def _wire_names(model: type[BaseModel]) -> set[str]:
+    """JSON field names: the alias where one exists (`from` is a Python keyword, so `from_`)."""
+    return {field.alias or name for name, field in model.model_fields.items()}
+
+
 def test_pydantic_models_match_json_schema_fields(schema: dict[str, Any]) -> None:
+    assert {v["properties"]["event_type"]["const"] for v in schema["oneOf"]} == set(EVENT_MODELS)
     for variant in schema["oneOf"]:
         event_type = variant["properties"]["event_type"]["const"]
         model = EVENT_MODELS[event_type]
-        assert set(model.model_fields) == set(variant["properties"]), event_type
+        assert _wire_names(model) == set(variant["properties"]), event_type
         assert set(variant["required"]) == set(variant["properties"]), event_type
         payload_model = model.model_fields["payload"].annotation
-        assert payload_model is not None
-        assert set(payload_model.model_fields) == set(  # type: ignore[union-attr]
-            variant["properties"]["payload"]["properties"]
-        ), event_type
+        assert isinstance(payload_model, type) and issubclass(payload_model, BaseModel)
+        assert _wire_names(payload_model) == set(variant["properties"]["payload"]["properties"]), (
+            event_type
+        )
+        aggregate = variant["properties"]["aggregate_type"]["const"]
+        literal = model.model_fields["aggregate_type"].annotation
+        assert getattr(literal, "__args__", None) == (aggregate,), event_type
 
 
 @pytest.mark.parametrize(

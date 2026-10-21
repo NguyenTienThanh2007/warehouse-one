@@ -147,6 +147,183 @@
         "payload"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "type": {
+          "type": "string",
+          "const": "truck.schedule_inbound"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "cargo": {
+              "minItems": 1,
+              "maxItems": 8,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sku": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,63}$"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 26
+                  }
+                },
+                "required": [
+                  "sku",
+                  "quantity"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "cargo"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "command_id",
+        "type",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "type": {
+          "type": "string",
+          "const": "order.create"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "lines": {
+              "minItems": 1,
+              "maxItems": 8,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sku": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,63}$"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 26
+                  }
+                },
+                "required": [
+                  "sku",
+                  "quantity"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "lines"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "command_id",
+        "type",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "type": {
+          "type": "string",
+          "const": "order.cancel"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "order_id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,63}$"
+            }
+          },
+          "required": [
+            "order_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "command_id",
+        "type",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "type": {
+          "type": "string",
+          "const": "pallet.relocate"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "pallet_id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,63}$"
+            },
+            "to_location_id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,63}$"
+            }
+          },
+          "required": [
+            "pallet_id",
+            "to_location_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "command_id",
+        "type",
+        "payload"
+      ],
+      "additionalProperties": false
     }
   ]
 }

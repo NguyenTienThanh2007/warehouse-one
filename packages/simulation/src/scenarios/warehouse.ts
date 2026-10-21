@@ -1,4 +1,5 @@
 import type { SimulationCommand } from "@warehouse-one/contracts";
+import type { OperationsWorkloadConfig } from "../ops/model";
 import { deterministicUuid } from "../hash";
 import { nextFloat, nextInt, seedRng, type RngState } from "../rng";
 import type {
@@ -9,7 +10,6 @@ import type {
   RackSpec,
   SimulationConfig,
   SkuConfig,
-  SyntheticWorkloadConfig,
 } from "../types";
 
 /** Selective pallet racking: 2 pallets per beam level, 1.6 m level pitch, 2.4 m bays. */
@@ -32,8 +32,8 @@ export const LAYOUT = {
   /** Open floor between the last rack row and the dock wall (staging lanes). */
   staging: 15,
   dockPitch: 4.6,
-  /** Yard depth outside the dock wall: truck length plus manoeuvring space. */
-  yard: 34,
+  /** Yard depth outside the dock wall: docked trucks plus a row of waiting trucks. */
+  yard: 42,
   /** Overall truck length (tractor + 13.6 m trailer) used for parking positions. */
   truckLength: 16.5,
 } as const;
@@ -54,7 +54,8 @@ export interface WarehouseOptions {
   readonly forklifts?: number;
   readonly reachTrucks?: number;
   /** Trucks reversed onto docks (assigned to every other dock from the left). */
-  readonly trucks?: number;
+  /** Initial battery (permille) per vehicle, in id order; defaults to full. */
+  readonly batteries?: readonly number[];
 }
 
 const pad = (n: number, w: number) => String(n).padStart(w, "0");
@@ -126,6 +127,7 @@ export function buildWarehouse(o: WarehouseOptions): {
   }
 
   const equipment: EquipmentConfig[] = [];
+  const battery = (i: number) => o.batteries?.[i] ?? 1000;
   const chargeX = building.min.x + 2.4;
   const chargeZ0 = building.max.z - 3;
   for (let i = 0; i < (o.forklifts ?? 3); i++) {
@@ -136,6 +138,7 @@ export function buildWarehouse(o: WarehouseOptions): {
       position: { x: chargeX, z: round(chargeZ0 - i * 2.6) },
       yaw: Math.PI / 2,
       rated_capacity_kg: 2500,
+      battery_permille: battery(i),
     });
   }
   const reachStart = o.forklifts ?? 3;
@@ -147,24 +150,12 @@ export function buildWarehouse(o: WarehouseOptions): {
       position: { x: chargeX, z: round(chargeZ0 - (reachStart + i) * 2.6 - 0.4) },
       yaw: Math.PI / 2,
       rated_capacity_kg: 1600,
+      battery_permille: battery(reachStart + i),
     });
   }
-  for (let i = 0; i < Math.min(o.trucks ?? 2, dockCount); i++) {
-    const dock = docks[Math.min(i * 2, dockCount - 1)] as DockConfig;
-    equipment.push({
-      id: `trk-${pad(i + 1, 2)}`,
-      kind: "truck",
-      label: `Semi-trailer TRK-${pad(i + 1, 2)}`,
-      position: { x: dock.position.x, z: round(dock.position.z + 0.6 + LAYOUT.truckLength / 2) },
-      yaw: 0,
-      rated_capacity_kg: 24000,
-      dock_id: dock.id,
-    });
-  }
-
   return {
     locations,
-    facility: { name: o.name, building, site, rack, docks, equipment },
+    facility: { name: o.name, building, site, rack, aisle_width: LAYOUT.aisle, docks, equipment },
   };
 }
 
@@ -187,7 +178,7 @@ export type ScenarioId = (typeof SCENARIO_IDS)[number];
 function baseConfig(
   id: ScenarioId,
   layout: ReturnType<typeof buildWarehouse>,
-  workload: SyntheticWorkloadConfig | undefined,
+  workload: OperationsWorkloadConfig | undefined,
 ): SimulationConfig {
   return {
     simulation_id: deterministicUuid(`scenario:${id}`, 0),
@@ -196,8 +187,8 @@ function baseConfig(
     epoch: "2026-01-05T06:00:00.000Z",
     locations: layout.locations,
     skus: SHOWCASE_SKUS,
-    ...(workload ? { synthetic_workload: workload } : {}),
     facility: layout.facility,
+    ...(workload ? { operations_workload: workload } : {}),
   };
 }
 
@@ -267,42 +258,77 @@ function exactStock(config: SimulationConfig, pallets: number): SimulationComman
   return commands;
 }
 
+/** Fleet of the standard layouts: three counterbalance forklifts and one reach truck. */
+const FLEET = { forklifts: 3, reachTrucks: 1, batteries: [1000, 860, 720, 940] } as const;
+
 export function createShowcaseScenario(): Scenario {
   const layout = buildWarehouse({
     name: "WAREHOUSE ONE · Northgate DC",
     rows: 6,
     bays: 14,
     docks: 4,
-    forklifts: 3,
-    reachTrucks: 1,
-    trucks: 2,
+    ...FLEET,
   });
   const config = baseConfig("showcase", layout, {
-    inbound_probability: 0.03,
-    move_probability: 0.25,
-    max_quantity: 2,
+    // Measured at ~63–70% fleet utilisation with a bounded backlog (one-way aisles, ~1,000 ticks
+    // per task); see docs/phases/PHASE_2.md.
+    inbound_interval_ticks: 3600,
+    outbound_interval_ticks: 3600,
+    relocate_interval_ticks: 1800,
+    min_pallets: 2,
+    max_pallets: 4,
   });
+  const stock = openingStock(config, 0.55);
   return {
     id: "showcase",
     label: "Showcase DC",
-    description: "84 rack bays (672 pallet positions), 4 docks, opening stock ~55% of capacity.",
+    description:
+      "84 rack bays (672 positions), 4 docks, 4 vehicles; ~55% opening stock, one inbound truck and one order at start, then seeded trucks, orders and relocations.",
     config,
-    openingCommands: openingStock(config, 0.55),
+    openingCommands: [
+      ...stock,
+      {
+        command_id: "open-inbound-1",
+        type: "truck.schedule_inbound",
+        payload: {
+          cargo: [
+            { sku: "sku-electronics", quantity: 3 },
+            { sku: "sku-bulk-bags", quantity: 2 },
+          ],
+        },
+      },
+      {
+        command_id: "open-order-1",
+        type: "order.create",
+        payload: {
+          lines: [
+            { sku: "sku-std-pallet", quantity: 2 },
+            { sku: "sku-cold-chain", quantity: 2 },
+          ],
+        },
+      },
+    ],
   };
 }
 
 export function createEmptyScenario(): Scenario {
-  const layout = buildWarehouse({ name: "WAREHOUSE ONE · Northgate DC", rows: 6, bays: 14 });
+  const layout = buildWarehouse({
+    name: "WAREHOUSE ONE · Northgate DC",
+    rows: 6,
+    bays: 14,
+    docks: 4,
+    ...FLEET,
+  });
   return {
     id: "empty",
     label: "Empty facility",
-    description: "Same building with no stock and no synthetic workload.",
+    description: "Same building and fleet with no stock and no workload.",
     config: baseConfig("empty", layout, undefined),
     openingCommands: [],
   };
 }
 
-/** Benchmark scene with exactly `pallets` stored units; moves keep the count constant. */
+/** Benchmark scene with exactly `pallets` stored; relocations keep vehicles busy and the count constant. */
 export function createBenchmarkScenario(pallets: 100 | 300 | 1000): Scenario {
   const rows = Math.max(2, 2 * Math.round(Math.sqrt(pallets / 64)));
   const bays = Math.ceil(pallets / (rows * 8));
@@ -312,19 +338,21 @@ export function createBenchmarkScenario(pallets: 100 | 300 | 1000): Scenario {
     rows,
     bays,
     docks: 4,
-    forklifts: 3,
-    reachTrucks: 1,
-    trucks: 2,
+    ...FLEET,
+    batteries: [1000, 1000, 1000, 1000],
   });
   const config = baseConfig(id, layout, {
-    inbound_probability: 0,
-    move_probability: 0.3,
-    max_quantity: 2,
+    inbound_interval_ticks: 0,
+    outbound_interval_ticks: 0,
+    // Measured at ~83–85% fleet utilisation with a backlog of at most five tasks.
+    relocate_interval_ticks: 360,
+    min_pallets: 1,
+    max_pallets: 1,
   });
   return {
     id,
     label: `Benchmark · ${pallets} pallets`,
-    description: `${rows} rows × ${bays} bays, exactly ${pallets} pallets, 6 vehicles.`,
+    description: `${rows} rows × ${bays} bays, exactly ${pallets} pallets, 4 vehicles relocating stock.`,
     config,
     openingCommands: exactStock(config, pallets),
   };

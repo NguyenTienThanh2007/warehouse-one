@@ -1,11 +1,10 @@
 /**
  * Pure mapping from authoritative simulation data to renderable instances.
  *
- * Nothing here creates operational data: every pallet instance corresponds to one stored unit
- * in `state.inventory`, every vehicle and dock to an entry in `config.facility`. The only visual
- * decision is *which slot inside a bay* a unit occupies, because Phase 0/1 inventory is tracked
- * per bay, not per beam level. Slots are assigned deterministically (SKU order, bottom-up), so
- * the same state always renders the same way. Phase 2 introduces per-pallet positions.
+ * Nothing here creates operational data. With operational state (Phase 2, every facility
+ * scenario) pallets, vehicles and trucks are drawn from `state.ops` via `ops-view.ts`. Configs
+ * without facility data (the Phase 0 golden scenario) only have per-bay quantities in
+ * `state.inventory`; `derivePallets` draws those with a deterministic bottom-up slot convention.
  */
 import type {
   EquipmentConfig,
@@ -245,10 +244,14 @@ export const VEHICLE_SIZE: Record<
 };
 
 export interface SceneCounts {
+  /** Pallets drawn: in racks, in staging lanes and on forks (pallets inside trailers are hidden). */
   pallets: number;
   palletsByArchetype: Record<CargoArchetype, number>;
+  /** Drawn pallets by where they are (operational scenarios only). */
+  palletsByPlace?: { slot: number; staging: number; equipment: number };
   bays: number;
   vehicles: number;
+  trucks: number;
   docks: number;
 }
 
@@ -267,6 +270,7 @@ export function sceneCounts(
     palletsByArchetype: byArchetype,
     bays: config.locations.length,
     vehicles: f.equipment.length,
+    trucks: 0,
     docks: f.docks.length,
   };
 }
