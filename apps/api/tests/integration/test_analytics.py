@@ -121,7 +121,7 @@ def test_overview_calculates_kpis_from_one_published_snapshot(
         "mean_task_service_ms": 2000.0,
         "inventory_movement_rows": 1,
         "pallet_flow_events": 1,
-        "data_quality_errors": 2,
+        "data_quality_errors_global": 2,
     }
     assert body["sample_counts"] == {
         "order_lead_time": 1,
