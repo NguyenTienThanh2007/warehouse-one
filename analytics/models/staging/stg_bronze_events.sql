@@ -1,0 +1,25 @@
+-- Bronze rows with typed partition columns. One row per delivered copy (duplicates included).
+select
+    event_id,
+    event_type,
+    schema_version,
+    aggregate_type,
+    aggregate_id,
+    aggregate_version,
+    simulation_id,
+    "sequence",
+    occurred_at,
+    cast(event_date as date) as event_date,
+    simulation_time_ms,
+    correlation_id,
+    causation_id,
+    payload_json,
+    envelope_json,
+    envelope_sha256,
+    source,
+    kafka_topic,
+    kafka_partition,
+    kafka_offset,
+    ingested_at,
+    pipeline_version
+from {{ source('lake', 'bronze_domain_events') }}

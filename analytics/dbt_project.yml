@@ -1,0 +1,41 @@
+# WAREHOUSE ONE analytics (DEC-029): DuckDB reads bronze Parquet from the S3 lake and writes silver
+# and gold back to the lake as Parquet. The DuckDB file (target/) is disposable scratch space:
+# every model can be rebuilt from bronze, and bronze from the PostgreSQL event log.
+name: warehouse_one
+version: "0.1.0"
+config-version: 2
+profile: warehouse_one
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: target
+clean-targets: ["target", "logs"]
+
+vars:
+  # Event types and schema versions silver understands; anything else is rejected, not dropped.
+  supported_versions:
+    inventory.received: [1]
+    inventory.moved: [1]
+    inventory.adjusted: [1]
+    pallet.created: [1]
+    pallet.moved: [1]
+    pallet.removed: [1]
+    task.created: [1]
+    task.assigned: [1]
+    task.completed: [1]
+    task.cancelled: [1]
+    equipment.status_changed: [1]
+    truck.status_changed: [1]
+    order.status_changed: [1]
+
+models:
+  warehouse_one:
+    staging:
+      +materialized: view
+    silver:
+      +materialized: external
+      +format: parquet
+    gold:
+      +materialized: external
+      +format: parquet
