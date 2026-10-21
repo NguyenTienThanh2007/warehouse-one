@@ -7,9 +7,11 @@ from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from warehouse_api import __version__
-from warehouse_api.api import health
+from warehouse_api.api import health, simulations
+from warehouse_api.api.errors import install_error_handlers
 from warehouse_api.config import Settings, get_settings
 from warehouse_api.logging import configure_logging, request_id_var
 
@@ -34,6 +36,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
         expose_headers=[REQUEST_ID_HEADER],
     )
+
+    @app.middleware("http")
+    async def limit_body(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        # Reject oversized bodies before parsing. Chunked bodies without a length are refused for
+        # the ingestion API, so the limit cannot be bypassed.
+        if request.method in {"POST", "PUT", "PATCH"} and request.url.path.startswith("/api/"):
+            length = request.headers.get("content-length")
+            if length is None or not length.isdigit():
+                return _error(411, "LENGTH_REQUIRED", "a Content-Length header is required")
+            if int(length) > settings.max_request_bytes:
+                return _error(
+                    413,
+                    "BODY_TOO_LARGE",
+                    f"request body exceeds {settings.max_request_bytes} bytes",
+                )
+        return await call_next(request)
 
     @app.middleware("http")
     async def request_context(
@@ -63,8 +83,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         return response
 
+    install_error_handlers(app)
     app.include_router(health.router)
+    app.include_router(simulations.router)
     return app
+
+
+def _error(status: int, code: str, message: str) -> Response:
+    return JSONResponse(
+        status_code=status, content={"error": {"code": code, "message": message, "details": {}}}
+    )
 
 
 app = create_app()

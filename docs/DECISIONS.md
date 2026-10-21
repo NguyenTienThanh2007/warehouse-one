@@ -143,3 +143,73 @@ applies per call. **Consequences:** the simulation keeps its requested speed reg
 rate (measured locally: 79.9 ticks/s at 8× with frames slowed to ~2 FPS); a backgrounded tab still
 cannot cause a catch-up burst, but it now keeps advancing slowly (throttled timers, 250 ms per call)
 where it previously paused. Rendering is unchanged: it interpolates from `tickProgress` per frame.
+
+## Phase 3 — Data engineering
+
+### DEC-024 — PostgreSQL event store with an HTTP ingestion boundary (Phase 3)
+**Context:** events are produced only by the TypeScript engine (browser or headless). Python must
+not re-implement simulation rules. **Decision:** producers send a run's registration (config,
+seed, engine version), its command log and its events in batches to the API, which stores them in
+one transaction per batch: `simulation_runs`, `command_log`, `domain_events` (append-only, unique
+`event_id` and `(simulation_id, sequence)`), `outbox`, `ingest_batches`. The API **validates** the
+contract (Pydantic mirror), the deterministic `event_id`, gap-free `sequence`, `aggregate_version`
+continuity per aggregate and simulated-time consistency. It does **not** verify business
+semantics; that is done by replaying the stored config and command log in the TypeScript engine
+(`pnpm sim:verify`) and comparing every event. **Consequences:** one source of truth for rules; the
+API trusts that a producer ran the engine honestly, and the replay check can prove it after the
+fact. Recorded sessions get a fresh `simulation_id` (the scenario configs share one per scenario).
+
+### DEC-025 — Transactional outbox relay with a lease per run (Phase 3)
+Each run is relayed by at most one relay instance at a time (a lease column on
+`simulation_runs`, claimed with `FOR UPDATE SKIP LOCKED`, renewed while working). The relay reads
+the run's unpublished rows in `sequence` order, publishes them with an idempotent producer
+(`acks=all`), and marks only the contiguous prefix confirmed by delivery reports as published. No
+database transaction is held across network calls. Failures increment attempts, store the error
+and set a bounded exponential backoff on the run. A crash after the broker acknowledged but before
+the database update causes redelivery, which downstream consumers tolerate (DEC-027).
+
+### DEC-026 — Kafka topics, keys and delivery semantics (Phase 3)
+Topic `warehouse.domain-events.v1`, 6 partitions, key = `simulation_id`, value = the event's
+canonical JSON, headers carry `event_id`, `event_type`, `schema_version`. A run's events share a
+partition, so per-run order is the publish order. Dead letters go to
+`warehouse.domain-events.v1.dlq`. Delivery is **at least once**. Local settings (single broker,
+replication factor 1, 7-day retention) are development-only.
+
+### DEC-027 — Idempotent consumers, manual commits and a durable DLQ (Phase 3)
+Consumers commit offsets only after their durable work (PostgreSQL rows, Parquet objects plus
+manifest) has succeeded. The ledger consumer deduplicates on `event_id` (primary key) and checks
+`aggregate_version` continuity: an identical redelivery is skipped and counted; the same
+`event_id` with different content, and a version regression with a new `event_id`, go to the DLQ;
+a forward gap is processed and recorded as a data-quality issue. Contract violations go to the DLQ
+with the original bytes, source topic/partition/offset, error class and detail, both on the DLQ
+topic and in `pipeline.dead_letters`. Infrastructure failures (database, object store) are never
+dead-lettered: the batch is retried with bounded backoff and the offset is not committed.
+
+### DEC-028 — Bronze layout: raw Parquet, deterministic keys, dedup later (Phase 3)
+`s3://warehouse-lake/bronze/domain_events/event_date=YYYY-MM-DD/event_type=<type>/` with object
+names derived from the Kafka offset range (`part-<partition>-<first>-<last>.parquet`), so
+reprocessing the same range rewrites the same keys with the same content. `event_date` is the
+simulated business date (`occurred_at`), not the ingestion date. Bronze keeps every delivery
+(auditable); deduplication by `event_id` happens in silver. A PostgreSQL manifest records every
+object; the reconciliation compares it with the bucket. Bronze can be rebuilt for any date range
+from the PostgreSQL event log (`source = postgres-rebuild`).
+
+### DEC-029 — dbt with DuckDB over the S3 lake (Phase 3)
+dbt-duckdb reads bronze Parquet from MinIO through DuckDB's `httpfs` and writes silver and gold as
+Parquet back to the lake (external materializations); the DuckDB file is a disposable scratch
+database. Alternatives: dbt-postgres would load the lake back into the operational database;
+Spark/Trino are too heavy for a laptop. Models are full refreshes (small data, deterministic
+results); a date-range backfill re-sources bronze for the range and rebuilds.
+
+### DEC-030 — Airflow 3 standalone with tool virtualenvs (Phase 3)
+Local Airflow runs `airflow standalone` (LocalExecutor) on the shared PostgreSQL server (separate
+`airflow` database) in a custom image based on `apache/airflow:3.3.2-python3.12`. dbt and the
+pipeline CLI live in their own virtual environments inside the image, so their dependencies never
+conflict with Airflow's. Tasks call those CLIs; they do real work and fail on non-zero exit.
+
+### DEC-031 — Object store image provenance (Phase 3)
+The MinIO project is archived upstream and its official images are no longer published. Local
+development pins `bitnamilegacy/minio:2025.7.23-debian-12-r5` (multi-arch, frozen). All pipeline
+code talks plain S3 (PyArrow `S3FileSystem`, DuckDB `httpfs`) with endpoint, region and path-style
+settings from the environment, so a maintained S3-compatible store can replace it by changing the
+Compose service only. Not for production use.

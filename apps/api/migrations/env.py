@@ -3,16 +3,17 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import MetaData, create_engine, pool
+from sqlalchemy import create_engine, pool
 
 from warehouse_api.config import get_settings
+from warehouse_api.store.tables import metadata
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Domain models register their tables here once they exist (Phase 3: outbox, event log).
-target_metadata = MetaData()
+# Used for `alembic revision --autogenerate` and the schema-drift test; migrations stay explicit.
+target_metadata = metadata
 
 
 def run_migrations_offline() -> None:
@@ -29,7 +30,14 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     engine = create_engine(str(get_settings().database_url), poolclass=pool.NullPool)
     with engine.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_schemas=True,
+            include_name=lambda name, type_, _parent: (
+                type_ != "schema" or name in {"operations", "pipeline"}
+            ),
+        )
         with context.begin_transaction():
             context.run_migrations()
 
