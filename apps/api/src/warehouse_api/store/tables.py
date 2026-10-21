@@ -45,6 +45,7 @@ metadata = MetaData(
 
 OPS = "operations"
 PIPE = "pipeline"
+ANALYTICS = "analytics"
 
 
 def wall_clock(name: str, nullable: bool = False) -> Column[Any]:
@@ -232,6 +233,8 @@ consumer_events = Table(
 
 aggregate_versions = Table(
     "aggregate_versions",
+    "analytics_model_rows",
+    "analytics_snapshots",
     metadata,
     Column("consumer_group", Text, nullable=False),
     Column("simulation_id", UUID(as_uuid=True), nullable=False),
@@ -334,6 +337,43 @@ reconciliation_reports = Table(
     wall_clock("finished_at"),
     CheckConstraint("status IN ('passed', 'failed', 'not_settled')", name="status_known"),
     schema=PIPE,
+)
+
+# Published analytics snapshots ---------------------------------------------------------------
+
+analytics_snapshots = Table(
+    "snapshots",
+    metadata,
+    Column("snapshot_id", UUID(as_uuid=True), primary_key=True),
+    wall_clock("published_at"),
+    Column("source_as_of", DateTime(timezone=True), nullable=True),
+    Column(
+        "reconciliation_report_id",
+        UUID(as_uuid=True),
+        ForeignKey(f"{PIPE}.reconciliation_reports.report_id"),
+        nullable=False,
+    ),
+    Column("reconciliation_status", Text, nullable=False),
+    Column("model_counts", JSONB, nullable=False),
+    CheckConstraint("reconciliation_status = 'passed'", name="reconciliation_passed"),
+    schema=ANALYTICS,
+)
+
+analytics_model_rows = Table(
+    "model_rows",
+    metadata,
+    Column(
+        "snapshot_id",
+        UUID(as_uuid=True),
+        ForeignKey(f"{ANALYTICS}.snapshots.snapshot_id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("model_name", Text, nullable=False),
+    Column("row_index", Integer, nullable=False),
+    Column("row_data", JSONB, nullable=False),
+    PrimaryKeyConstraint("snapshot_id", "model_name", "row_index"),
+    Index(None, "snapshot_id", "model_name"),
+    schema=ANALYTICS,
 )
 
 __all__ = [
