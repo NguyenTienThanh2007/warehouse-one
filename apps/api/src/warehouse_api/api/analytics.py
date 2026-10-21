@@ -1,6 +1,6 @@
 """Read-only analytics endpoints backed by the latest published, reconciled snapshot."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -178,6 +178,51 @@ def overview(
             "task_wait_time": len(wait_times),
             "task_service_time": len(service_times),
         },
+    }
+
+
+
+@router.get("/throughput")
+def throughput(
+    engine: Engine = Depends(get_engine),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    limit: int = Query(default=30, ge=1, le=90),
+) -> dict[str, Any]:
+    """Daily domain-event volume by simulated business date; not physical order throughput."""
+    if start_date and end_date and end_date < start_date:
+        raise ApiError(422, "INVALID_DATE_RANGE", "end_date must be on or after start_date")
+    with engine.connect() as conn:
+        snapshot = _snapshot(conn)
+        rows, _ = _rows(
+            conn, snapshot["snapshot_id"], "gold_event_volume_daily", limit=10_000
+        )
+
+    filtered = [
+        row
+        for row in rows
+        if row.get("event_date") is not None
+        and (start_date is None or str(row["event_date"]) >= start_date.isoformat())
+        and (end_date is None or str(row["event_date"]) <= end_date.isoformat())
+    ]
+    daily: dict[str, dict[str, int]] = {}
+    for row in filtered:
+        day = str(row["event_date"])
+        item = daily.setdefault(day, {"events": 0, "simulations": 0, "redelivered_copies": 0})
+        item["events"] += int(row.get("events") or 0)
+        item["simulations"] += int(row.get("simulations") or 0)
+        item["redelivered_copies"] += int(row.get("redelivered_copies") or 0)
+    series = [{"event_date": day, **values} for day, values in sorted(daily.items())[-limit:]]
+    return {
+        **_snapshot_meta(snapshot),
+        "time_basis": "simulated",
+        "definition": "Distinct domain events grouped by simulated business date.",
+        "filters": {
+            "start_date": start_date.isoformat() if start_date else None,
+            "end_date": end_date.isoformat() if end_date else None,
+            "limit": limit,
+        },
+        "daily": series,
     }
 
 
