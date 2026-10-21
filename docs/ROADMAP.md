@@ -8,10 +8,10 @@ Each phase is developed on `feature/p<N>-…`, reviewed through a pull request, 
 | 0 | `feature/p0-foundation` | Foundation & architecture | **Accepted**, merged (`c512733`) |
 | 1 | `feature/p1-3d-world` | Premium 3D world | **Accepted**, merged (`d80a7f2`, follow-up `0463395`) |
 | 2 | `feature/p2-simulation` | Living warehouse simulation | **Merged** (PR #4, `d2dc4d9`, 2026-10-21; `main` CI 4/4 green) |
-| 3 | `feature/p3-data-engineering` | Real data engineering | **In development** (see `docs/phases/PHASE_3.md`) |
-| 4 | `feature/p4-analytics` | Advanced operations analytics | Not started |
-| 5 | `feature/p5-ai-brain` | AI logistics brain | Not started |
-| 6 | `feature/p6-digital-twin` | Advanced digital twin | Not started |
+| 3 | `feature/p3-data-engineering` | Real data engineering | **Merged** (PR #5, `0b25fa4`) |
+| 4 | `feature/p4-analytics` | Advanced operations analytics | Not started (scope proposed in closed PR #6) |
+| 5 | `feature/p5-multi-site-world` | Multi-site logistics world (first vertical slice) | **In review** (see `docs/phases/PHASE_5.md`) |
+| 6 | `feature/p6-ai-digital-twin` | AI logistics brain and advanced digital twin | Not started |
 | 7 | `feature/p7-production` | Production & portfolio release | Not started |
 
 ## Phase 1 — Premium 3D world (accepted)
@@ -32,7 +32,14 @@ Equipment became stateful (tasks, routing, battery), pallets got exact positions
 truck arrivals and departures, and the renderer draws all of it from simulation state. Workers were
 deferred. Record and limitations: `docs/phases/PHASE_2.md`.
 
-## Phase 3 — Real data engineering (in development)
+## Phase 5 — Multi-site logistics world (in review)
+
+The DC inside a connected logistics park: container terminal, cross-dock, fleet depot and highway
+gateway on a road network, with line-haul trucks carrying deterministic inter-site transfers that
+hand over to the DC simulation. World and facility views, site and truck inspectors, operator
+transfer requests. Record, results and next increments: `docs/phases/PHASE_5.md`.
+
+## Phase 3 — Real data engineering (merged)
 
 PostgreSQL event store and transactional outbox behind an ingestion API, Kafka (KRaft), idempotent
 consumers with a DLQ, Parquet bronze on S3-compatible storage, dbt silver/gold, Airflow refresh,
@@ -51,8 +58,10 @@ Summarised from the master brief. Detailed plans are written at the start of eac
   recovery and duplicate tests.
 - **4:** dashboards reconciled with dbt marts, live vs. historical labelling, freshness and
   pipeline health, alerts.
-- **5:** provider-agnostic AI service, structured proposals, validation, approval workflow,
-  evaluations, and deterministic optimisers (routing, slotting) with benchmarks.
-- **6:** time travel and replay UI, isolated scenario runs, comparisons, capacity planning, stress tests.
+- **5 (as delivered):** multi-site world, see above. Next increments there: cross-site orders,
+  a second detailed facility, traffic rules, network analytics.
+- **6 (formerly 5 and 6):** provider-agnostic AI service, structured proposals, validation,
+  approval workflow, evaluations, deterministic optimisers (routing, slotting) with benchmarks; time
+  travel and replay UI, isolated scenario runs, comparisons, capacity planning, stress tests.
 - **7:** polish, security review, observability, deployment, documentation, demo and
   commercialisation assessment.

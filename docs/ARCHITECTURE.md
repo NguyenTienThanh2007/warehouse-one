@@ -126,6 +126,19 @@ SimulationState.inventory (frozen) ───────────────
 - **States:** `useView().status` drives the loading overlay. Error boundary and context-loss
   handler give a recoverable error state while the simulation keeps running.
 
+## 5a. Logistics network (Phase 5)
+
+- **Model:** `packages/simulation/src/network/`: optional `config.network` (sites, stands, roads,
+  line-haul trucks, lanes) and `state.network`, stepped by `networkSystem` after the facility's
+  operations systems. The DC is the facility simulation; trucks hand over through its command
+  handlers (DEC-032). Movement and reservations are deterministic (DEC-033); three new events and
+  `transfer.request` (DEC-034).
+- **Rendering:** `apps/web/src/world/network-view.ts` (pure: sites, roads, truck poses,
+  container and floor layouts), `world/network-geometry.ts` (static geometry merged per material),
+  `components/world/network-world.tsx` (meshes, instancing, cutaways, picking), DOM site labels
+  (`components/shell/site-labels.tsx`), world/site camera presets and scope in `view-store.ts`
+  (DEC-035).
+
 ## 6. Backend
 
 FastAPI app factory (`create_app(settings)`), configured by `WAREHOUSE_*` environment variables

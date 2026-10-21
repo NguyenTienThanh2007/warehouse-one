@@ -81,7 +81,8 @@ Override ports with `API_PORT`, `KAFKA_PORT`, `MINIO_PORT`, `MINIO_CONSOLE_PORT`
 | Regenerate golden fixture | `pnpm fixtures:generate` (only for an *intended* engine behaviour change; explain why in the commit) |
 | Benchmarks | `pnpm bench:sim`, `pnpm bench:render` (see `docs/architecture/PERFORMANCE.md`) |
 | Visual bookmarks | `pnpm capture:bookmarks` (needs `next start -p 3100`) → `docs/phases/evidence/phase-1/` |
-| Scenario / quality | open `/?scenario=bench-1000&quality=low` (scenarios: showcase, empty, bench-100/300/1000) |
+| Multi-site captures | `pnpm capture:network` (needs `next start -p 3100`) → `docs/phases/evidence/phase-5/` |
+| Scenario / quality | open `/?scenario=bench-1000&quality=low` (scenarios: network (default), showcase, empty, bench-100/300/1000) |
 
 ## Conventions
 

@@ -213,3 +213,46 @@ development pins `bitnamilegacy/minio:2025.7.23-debian-12-r5` (multi-arch, froze
 code talks plain S3 (PyArrow `S3FileSystem`, DuckDB `httpfs`) with endpoint, region and path-style
 settings from the environment, so a maintained S3-compatible store can replace it by changing the
 Compose service only. Not for production use.
+
+### DEC-032 — The logistics network wraps the facility; the DC is not modelled twice (Phase 5)
+A multi-site world is an optional `config.network` (sites, stands, roads, line-haul trucks,
+transfer lanes) and `state.network`, stepped by one more system after the facility's operations.
+The distribution centre stays the existing facility simulation: a line-haul truck reaching its gate
+is handed over through the DC's own command handlers (`order.create`, `truck.schedule_inbound`), so
+every DC rule (yard slots, storage capacity, stock) applies unchanged; the DC truck is held in its
+yard slot (`hold_ticks_left`, set only for these trucks) while the line-haul truck reverses in, and
+the network takes it back when the DC truck departs. Other sites are aggregate models (pallet
+counts per SKU, doors handling one pallet per fixed interval). Alternatives: a second full
+facility model per site (much larger change, deferred to a later increment); a purely visual
+network (rejected: it would show activity the simulation does not have). Configs without a network
+keep the Phase 2 state shape, so existing scenarios and golden fixtures are byte-identical.
+
+### DEC-033 — Deterministic network movement and reservations (Phase 5)
+Roads are an undirected graph with integer-millimetre lengths (`sqrt` of integer deltas, not
+`Math.hypot`); routes are Dijkstra with ties broken by node id; trucks advance whole millimetres
+per tick and keep a fixed headway behind trucks on the same directed segment (equal progress: the
+lower id goes first). A truck reserves its destination stand (door, else staging stall; at the DC a
+staging stall as fallback for admission) before it leaves, so arrivals never need a free place that
+might not exist; without a reservation it waits where it is and retries. Stock is allocated at the
+origin and capacity reserved at the destination when a transfer is planned. Random draws come from
+the in-state RNG and happen only when a lane or vessel is due. Poses are derived from state by
+`linehaulPose` and never stored as floats.
+
+### DEC-034 — Network events and the transfer command (Phase 5)
+Three event types, `schema_version` 1: `transfer.status_changed` (aggregate `transfer`),
+`linehaul.status_changed` (aggregate `linehaul`) and `site.stock_changed` (aggregate `site`;
+pallets per SKU or containers). One command, `transfer.request`. They are added to the Zod
+contracts, the generated JSON Schemas, the Pydantic mirror, and dbt silver's accepted
+`(event_type, schema_version)` pairs in the same change, with a reference fixture
+(`data/fixtures/network-demo`) parsed by both languages. Stock at aggregate sites changes when a
+whole load is handled (one event per SKU), not per pallet; the truck's `handled` counter shows
+progress in between.
+
+### DEC-035 — Network rendering: merged static layout, cutaways, camera-following shadows (Phase 5)
+All static network geometry (roads, markings, pads, fences, buildings cut around their real doors,
+cranes, trees, lights) is generated from config once and merged per material, so the world adds
+about fifty draw calls. Walls and roofs of buildings with an interior are separate so the facility
+view can cut them away like the DC's. The sun's shadow frustum follows the camera target and scales
+with distance, snapped to texels. Site labels are DOM elements projected every frame (beneath the
+HUD), not WebGL text or per-label React roots. The default scenario is the network; the single-site
+DC is `?scenario=showcase`.

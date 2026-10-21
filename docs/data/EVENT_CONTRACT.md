@@ -124,6 +124,12 @@ task.cancelled           { task_id, reason: order_cancelled }
 equipment.status_changed { equipment_id, from, to, node_id, task_id, battery_permille }
 truck.status_changed     { truck_id, direction: inbound|outbound, from, to, dock_id, pallet_count }
 order.status_changed     { order_id, from, to, truck_id, lines }
+transfer.status_changed  { transfer_id, lane_id|null, from_site_id, to_site_id, from|null, to, vehicle_id|null, lines }   (Phase 5)
+linehaul.status_changed  { vehicle_id, from, to, node_id, site_id|null, transfer_id|null, odometer_m }                    (Phase 5)
+site.stock_changed       { site_id, unit: pallet|container, sku|null, delta!=0, quantity_after>=0,
+                           reason: loaded|unloaded|devanned|vessel_discharge, transfer_id|null }                         (Phase 5)
+transfer status = planned|assigned|loading|in_transit|unloading|delivered|cancelled
+linehaul status = parked|driving|docking|loading|unloading|waiting|undocking|at_dc|off_network|servicing
 position = slot{location_id, slot} | staging{dock_id, position} | equipment{equipment_id} | truck{truck_id, position}
 ```
 
@@ -132,7 +138,7 @@ position = slot{location_id, slot} | staging{dock_id, position} | equipment{equi
 Commands are *requests* that may be rejected. Each is validated at the trust boundary
 (`parseCommand`, never throws) and again inside `step()`. Commands: `inventory.receive`,
 `inventory.move`, `inventory.adjust`, `truck.schedule_inbound`, `order.create`, `order.cancel`,
-`pallet.relocate`. Rejections are returned to the caller and are not domain events. Only facts
+`pallet.relocate`, and (Phase 5) `transfer.request` `{ from_site_id, to_site_id, lines }`. Rejections are returned to the caller and are not domain events. Only facts
 become events.
 
 A run's **command log** (`{tick, command}` in application order, including rejected commands,
