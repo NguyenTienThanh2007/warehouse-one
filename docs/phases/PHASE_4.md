@@ -124,7 +124,7 @@ rather than leaving it as an unspecified future idea.
 
 ## 6. Acceptance checklist
 
-- [ ] Metrics catalogue covers every visible analytics KPI.
+- [x] Initial metrics catalogue and source mapping drafted in `docs/data/METRICS_CATALOG.md` (API reconciliation still pending).
 - [ ] Every API result identifies its published snapshot and freshness.
 - [ ] API values reconcile with the published dbt gold models.
 - [ ] Live simulation KPIs and historical analytics are clearly distinguished.
