@@ -15,6 +15,7 @@ from tests.conftest import REPO_ROOT, make_client
 from warehouse_api.config import Settings
 
 OPS_TABLES = ["outbox", "domain_events", "command_log", "ingest_batches", "simulation_runs"]
+ANALYTICS_TABLES = ["model_rows", "snapshots"]
 PIPE_TABLES = [
     "consumer_events",
     "aggregate_versions",
@@ -47,7 +48,11 @@ def engine(migrated: str) -> Iterator[Engine]:
 
 
 def truncate(eng: Engine) -> None:
-    tables = [f"operations.{t}" for t in OPS_TABLES] + [f"pipeline.{t}" for t in PIPE_TABLES]
+    tables = (
+        [f"operations.{t}" for t in OPS_TABLES]
+        + [f"pipeline.{t}" for t in PIPE_TABLES]
+        + [f"analytics.{t}" for t in ANALYTICS_TABLES]
+    )
     with eng.begin() as conn:
         conn.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
 
