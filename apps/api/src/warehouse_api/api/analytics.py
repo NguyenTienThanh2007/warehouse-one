@@ -208,9 +208,8 @@ def throughput(
     daily: dict[str, dict[str, int]] = {}
     for row in filtered:
         day = str(row["event_date"])
-        item = daily.setdefault(day, {"events": 0, "simulations": 0, "redelivered_copies": 0})
+        item = daily.setdefault(day, {"events": 0, "redelivered_copies": 0})
         item["events"] += int(row.get("events") or 0)
-        item["simulations"] += int(row.get("simulations") or 0)
         item["redelivered_copies"] += int(row.get("redelivered_copies") or 0)
     series = [{"event_date": day, **values} for day, values in sorted(daily.items())[-limit:]]
     return {
