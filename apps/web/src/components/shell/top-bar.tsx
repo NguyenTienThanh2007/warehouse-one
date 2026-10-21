@@ -1,9 +1,11 @@
+import Link from "next/link";
+
 const MODES = [
   { id: "explore", label: "Explore", phase: 1, active: true },
   { id: "build", label: "Build", phase: 2 },
   { id: "operate", label: "Operate", phase: 2 },
-  { id: "analytics", label: "Analytics", phase: 4 },
-  { id: "ai", label: "AI", phase: 5 },
+  { id: "analytics", label: "Analytics", phase: 4, href: "/analytics" },
+  { id: "ai", label: "AI", phase: 6 },
 ] as const;
 
 export function TopBar() {
@@ -18,7 +20,7 @@ export function TopBar() {
           </p>
         </div>
         <span className="ml-1 rounded-full border border-signal-400/30 bg-signal-400/10 px-2 py-0.5 text-[11px] font-medium text-signal-300">
-          Phase 2 · Live operations
+          Phase 3 · Recorded operations
         </span>
       </div>
 
@@ -32,6 +34,14 @@ export function TopBar() {
             >
               {m.label}
             </span>
+          ) : "href" in m ? (
+            <Link
+              key={m.id}
+              href={m.href}
+              className="rounded-[10px] px-3 py-1.5 text-xs text-fog-200 transition hover:bg-ink-700 hover:text-fog-50"
+            >
+              {m.label}
+            </Link>
           ) : (
             <button
               key={m.id}
