@@ -126,11 +126,21 @@ def overview(
     """Summary KPIs calculated from published gold marts, not from live UI state."""
     with engine.connect() as conn:
         snapshot = _snapshot(conn)
-        activity, _ = _rows(conn, snapshot["snapshot_id"], "gold_simulation_activity", simulation_id, 10_000)
-        orders, _ = _rows(conn, snapshot["snapshot_id"], "gold_order_fulfilment", simulation_id, 10_000)
-        tasks, _ = _rows(conn, snapshot["snapshot_id"], "gold_task_lifecycle", simulation_id, 10_000)
-        inventory, _ = _rows(conn, snapshot["snapshot_id"], "gold_inventory_movements", simulation_id, 10_000)
-        pallet_flows, _ = _rows(conn, snapshot["snapshot_id"], "gold_pallet_flows", simulation_id, 10_000)
+        activity, _ = _rows(
+            conn, snapshot["snapshot_id"], "gold_simulation_activity", simulation_id, 10_000
+        )
+        orders, _ = _rows(
+            conn, snapshot["snapshot_id"], "gold_order_fulfilment", simulation_id, 10_000
+        )
+        tasks, _ = _rows(
+            conn, snapshot["snapshot_id"], "gold_task_lifecycle", simulation_id, 10_000
+        )
+        inventory, _ = _rows(
+            conn, snapshot["snapshot_id"], "gold_inventory_movements", simulation_id, 10_000
+        )
+        pallet_flows, _ = _rows(
+            conn, snapshot["snapshot_id"], "gold_pallet_flows", simulation_id, 10_000
+        )
         quality, _ = _rows(conn, snapshot["snapshot_id"], "gold_data_quality", None, 10_000)
 
     shipped = [r for r in orders if r.get("status") == "shipped"]
@@ -156,10 +166,12 @@ def overview(
             "mean_order_lead_time_ms": sum(lead_times) / len(lead_times) if lead_times else None,
             "tasks_completed": len(completed),
             "mean_task_wait_ms": sum(wait_times) / len(wait_times) if wait_times else None,
-            "mean_task_service_ms": sum(service_times) / len(service_times) if service_times else None,
+            "mean_task_service_ms": (
+                sum(service_times) / len(service_times) if service_times else None
+            ),
             "inventory_movement_rows": len(inventory),
             "pallet_flow_events": len(pallet_flows),
-            "data_quality_errors": quality_errors,
+            "data_quality_errors_global": quality_errors,
         },
         "sample_counts": {
             "order_lead_time": len(lead_times),
