@@ -141,4 +141,5 @@ workflows timed out (CI runs 39463588226, 39469515802). **Decision:** a 50 ms ti
 on the same clock as the frames, so each millisecond is fed exactly once; the 250 ms cap still
 applies per call. **Consequences:** the simulation keeps its requested speed regardless of frame
 rate (measured locally: 79.9 ticks/s at 8× with frames slowed to ~2 FPS); a backgrounded tab still
-cannot cause a catch-up burst. Rendering is unchanged: it interpolates from `tickProgress` per frame.
+cannot cause a catch-up burst, but it now keeps advancing slowly (throttled timers, 250 ms per call)
+where it previously paused. Rendering is unchanged: it interpolates from `tickProgress` per frame.

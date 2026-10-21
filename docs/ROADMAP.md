@@ -7,7 +7,7 @@ Each phase is developed on `feature/p<N>-…`, reviewed through a pull request, 
 |-------|--------|-------|--------|
 | 0 | `feature/p0-foundation` | Foundation & architecture | **Accepted**, merged (`c512733`) |
 | 1 | `feature/p1-3d-world` | Premium 3D world | **Accepted**, merged (`d80a7f2`, follow-up `0463395`) |
-| 2 | `feature/p2-simulation` | Living warehouse simulation | **In development** (see `docs/phases/PHASE_2.md`) |
+| 2 | `feature/p2-simulation` | Living warehouse simulation | **In review** (see `docs/phases/PHASE_2.md`) |
 | 3 | `feature/p3-data-engineering` | Real data engineering | Not started |
 | 4 | `feature/p4-analytics` | Advanced operations analytics | Not started |
 | 5 | `feature/p5-ai-brain` | AI logistics brain | Not started |
@@ -26,7 +26,7 @@ desktop flows pass in Playwright; five bookmark screenshots captured; FPS and p9
 300 and 1,000 entities with the GPU string; visual review against the spec checklist; reference
 comparison recorded honestly. Results are in `docs/phases/PHASE_1.md`.
 
-## Phase 2 — Living warehouse simulation (in development)
+## Phase 2 — Living warehouse simulation (in review)
 
 Starts from the Phase 1 handoff: equipment becomes stateful (tasks, routing, battery), pallets get
 exact slots, docks gain door cycles and truck arrivals, and the renderer interpolates movement

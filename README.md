@@ -7,7 +7,7 @@ data engineering pipeline and AI-assisted optimisation planned on top. Every num
 from authoritative simulation state, and every state change is a typed, replayable domain event.
 
 > **Project status: Phase 1 (Premium 3D world) is merged; Phase 2 (living warehouse simulation) is
-> in development.** The facility, racks, stock and fleet are rendered from authoritative simulation
+> in review.** The facility, racks, stock and fleet are rendered from authoritative simulation
 > state. See [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for what is verified and what is not.
 
 ![WAREHOUSE ONE: rack bay selected, inspector showing live occupancy](docs/phases/evidence/phase-1/desktop-1440x900-5-inspector.jpg)
@@ -83,7 +83,7 @@ Measured Phase 0 results are recorded with their hardware context in
 
 ## Roadmap
 
-0 Foundation ✔ · 1 Premium 3D world ✔ · 2 Living simulation (in development) · 3 Data engineering (Kafka, MinIO/Parquet,
+0 Foundation ✔ · 1 Premium 3D world ✔ · 2 Living simulation (in review) · 3 Data engineering (Kafka, MinIO/Parquet,
 dbt, Airflow) · 4 Analytics · 5 AI logistics brain · 6 Digital twin scenarios · 7 Production release.
 
 ## Licence

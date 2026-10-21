@@ -2,7 +2,7 @@
 
 **Branch:** `feature/p2-simulation` · **Base:** `main` @ `04633958f0bc0cc81aab63da5a374d506ff94a54`
 (Phase 1 + follow-up #3 merged; CI run 39429621800 green)
-**Status:** IN DEVELOPMENT. Sections marked *(plan)* describe intent, not results.
+**Status:** READY FOR REVIEW (PR from `feature/p2-simulation`; not merged). Sections marked *(plan)* describe intent, not results.
 
 ## 1. Gate A (verified 2026-10-20)
 
@@ -117,7 +117,7 @@ Two further attempts (corridor locking with refuge/yield) fixed individual trace
 | Playwright e2e on GPU, retries disabled | PASS 18/18 |
 | Playwright e2e under `CI=1` (SwiftShader), retries disabled | PASS 18/18 (3.9 min) |
 | Phase 0 golden fixture | unchanged (byte-identical to base) |
-| GitHub Actions | Run 39463588226 on `1be594a` (manual dispatch): TypeScript, Python + migrations, Docker Compose PASS; e2e FAILED 22/23 (see below). Re-run on the fix: see the commit message / PR |
+| GitHub Actions | NOT RUN (branch not pushed) |
 
 ### Unresolved risks and open work
 
@@ -254,7 +254,7 @@ Unchanged: camera presets, quality tiers, scenarios, the Phase 0 golden fixture 
 | Playwright e2e, `CI=1` (SwiftShader), retries disabled | PASS 23/23 (6.3 min), on the final tree |
 | Phase 0 golden fixture | byte-identical (`git diff data/fixtures/foundation-demo` empty; golden test passes) |
 | Python (no Python changes) | ruff, ruff format, mypy: pass; pytest 20 passed; integration readiness (PostgreSQL) 1 passed; migration round-trip not run locally |
-| GitHub Actions | Run 39463588226 on `1be594a` (manual dispatch): TypeScript, Python + migrations, Docker Compose PASS; e2e FAILED 22/23 (see below). Re-run on the fix: see the commit message / PR |
+| GitHub Actions (manual dispatch; CI runs on PRs and `main`) | 39463588226 on `1be594a`: e2e FAILED 22/23, other 3 jobs PASS · 39469515802 on `92dadd7`: e2e CANCELLED at the 20-min job limit, other 3 jobs PASS · **39474541117 on `f456055`: all 4 jobs PASS, e2e 23/23 in 15.4 min** |
 
 New browser tests (`tests/e2e/operations.spec.ts`, state-based waits only):
 - Vehicles, trucks and carried pallets are drawn exactly at their simulated poses (paused, so no interpolation offset).
@@ -344,6 +344,6 @@ inspector with the trucks panel, orders panel, rejected order with explanation, 
 5. **Render interpolation** shows motion up to one tick (100 ms simulated) behind the simulation (DEC-021).
 6. Orders and trucks that finished are kept only from the events seen by this browser session (the last 8 orders); there is no history store yet.
 7. `inventory.move` and `inventory.adjust` have no operator forms (still available through the command contract).
-8. GitHub CI has not run on this branch.
+8. **Background tabs (DEC-023):** with the timer-fed clock, a hidden tab keeps advancing at a reduced rate (browsers throttle timers to ~1 Hz, each call capped at 250 ms), where it previously paused because animation frames stop. No catch-up burst occurs on return.
 9. bench-1000 High frame rate: one of two valid runs measured 55 FPS (§5.4).
 10. Order lead time is not bounded by any test: the soak margins are completion guards (§5.1); dock serialisation (DEC-020) makes 4-pallet orders take up to ~5,500 ticks.
