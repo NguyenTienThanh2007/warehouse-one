@@ -6,9 +6,8 @@ A browser-based 3D warehouse digital twin built on a deterministic simulation en
 data engineering pipeline and AI-assisted optimisation planned on top. Every number on screen comes
 from authoritative simulation state, and every state change is a typed, replayable domain event.
 
-> **Project status: Phases 0–2 are merged into `main` (Phase 2: living warehouse simulation,
-> PR #4). Phase 3 (data engineering) is in development on `feature/p3-data-engineering`.** See
-> [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for what is verified and what is not.
+> **Project status: Phases 0–3 are merged into `main`. Phase 3 data engineering passed its CI and end-to-end smoke checks. Phase 4 analytics is being planned on `feature/p4-analytics`.** See
+> [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for verified results and current scope.
 
 ![WAREHOUSE ONE: rack bay selected, inspector showing live occupancy](docs/phases/evidence/phase-1/desktop-1440x900-5-inspector.jpg)
 
@@ -37,7 +36,7 @@ from authoritative simulation state, and every state change is a typed, replayab
 - **Living operations** (Phase 2). Pallets with exact positions, routed forklifts and reach trucks,
   tasks, orders, inbound and outbound trucks at docks, all drawn live from simulation state, with an
   operator panel whose commands go through the engine's command path.
-- **Event store and data platform** (Phase 3, on its branch). Runs recorded from the browser or
+- **Event store and data platform** (Phase 3, merged into `main`). Runs recorded from the browser or
   headless go into PostgreSQL in one transaction per batch (append-only event log + transactional
   outbox). From there:
   - an outbox relay publishes them to Kafka (KRaft);
@@ -105,8 +104,8 @@ Measured Phase 0 results are recorded with their hardware context in
 
 ## Roadmap
 
-0 Foundation ✔ · 1 Premium 3D world ✔ · 2 Living simulation ✔ · 3 Data engineering (in development) ·
-4 Analytics · 5 AI logistics brain · 6 Digital twin scenarios · 7 Production release.
+0 Foundation ✔ · 1 Premium 3D world ✔ · 2 Living simulation ✔ · 3 Data engineering ✔ ·
+4 Analytics · 5 Multi-site logistics world · 6 AI + digital twin scenarios · 7 Production release.
 
 ## Licence
 
