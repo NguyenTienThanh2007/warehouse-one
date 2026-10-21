@@ -19,6 +19,7 @@ from sqlalchemy import Engine, create_engine
 
 from warehouse_api.logging import configure_logging
 from warehouse_pipeline import heartbeat, ops
+from warehouse_pipeline.analytics_publish import publish_analytics_snapshot
 from warehouse_pipeline.bronze import BronzeProcessor, rebuild_from_postgres
 from warehouse_pipeline.consumer import ConsumerService
 from warehouse_pipeline.kafka import ensure_topics
@@ -114,6 +115,12 @@ def replay(args: argparse.Namespace, settings: PipelineSettings) -> int:
     return 0
 
 
+def publish_analytics(_args: argparse.Namespace, settings: PipelineSettings) -> int:
+    result = publish_analytics_snapshot(_engine(settings), settings)
+    _print(result)
+    return 0
+
+
 def health(args: argparse.Namespace, settings: PipelineSettings) -> int:
     ok, report = heartbeat.check(_engine(settings), args.component, args.max_age)
     _print({"component": args.component, "healthy": ok, "instances": report})
@@ -130,6 +137,7 @@ COMMANDS: dict[str, Command] = {
     "status": status,
     "replay": replay,
     "health": health,
+    "publish-analytics": publish_analytics,
 }
 
 
