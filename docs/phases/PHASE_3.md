@@ -60,3 +60,130 @@ outputs are derived and rebuildable from it.
 **Order:** A → A′ → B → C/D → E → F → G (grows with each milestone) → H → docs and PR.
 
 **Out of scope:** scenario comparison, optimisation, AI, authentication, workers, conveyors, AMRs.
+
+## 3. What was built
+
+| Milestone | Where | Summary |
+|-----------|-------|---------|
+| A Event store | `apps/api/src/warehouse_api/{store,ingest,api}`, migration `0002_event_store` | `operations.simulation_runs`, `command_log` (ordered by `log_index`), `domain_events` (unique `event_id`, `(simulation_id, sequence)` and aggregate versions; UPDATE/DELETE rejected by triggers), `outbox`, `ingest_batches`; `PUT/POST/GET /api/v1/simulations…`; one transaction per batch; validation and duplicate rules in `docs/data/EVENT_CONTRACT.md`; Python port of the deterministic event ID and a Pydantic command mirror, both checked against the TypeScript fixtures |
+| A′ Producers | `packages/recorder`, `apps/web/src/lib/sim/store.ts`, `system-status.tsx` | `RunRecorder` (ordered batches at tick boundaries, stable `batch_id` across retries, bounded backoff, stops on 4xx); web **Record run** (fresh `simulation_id` per recorded session); `pnpm sim:record` (headless) and `pnpm sim:verify` (replay in the engine and compare every event) |
+| B Relay | `warehouse_pipeline/relay.py`, `kafka.py` | lease per run with `FOR UPDATE SKIP LOCKED`; ordered idempotent `acks=all` produce; marks only the acknowledged prefix; attempts, errors, exponential backoff; graceful shutdown releases leases; heartbeat with Kafka reachability |
+| C Consumers | `consumer.py`, `ledger.py` | manual commits after durable work; contract validation; dead letters to the DLQ topic and `pipeline.dead_letters`; infrastructure failures retried then rewound (never dead-lettered); ledger dedup, version and sequence checks |
+| D Bronze | `lake.py`, `bronze.py` | PyArrow Parquet (zstd) on S3, hive-partitioned by simulated `event_date` and `event_type`; deterministic keys; manifest; every delivery kept; rebuild from PostgreSQL for a date range (prunes manifest entries of lost objects) |
+| E dbt | `analytics/` | silver: deduplicated, version-aware, rejects listed; typed families; gold: event volume, inventory movements, pallet flows, task lifecycle, order fulfilment, run activity, data quality; 52 tests incl. 7 business invariants |
+| F Airflow | `infra/airflow` | image with isolated pipeline and dbt venvs; DAGs `warehouse_lake_refresh`, `warehouse_lake_backfill`, `warehouse_reconciliation`; `lake` pool; DAG validation script |
+| Reconciliation | `reconcile.py` | settled source events vs ledger, dead letters, data-quality issues, bronze (rows, hashes, manifest vs objects), silver, gold; report in PostgreSQL and the lake; exit 1 on violations |
+| G Local stack | `docker-compose.yml` (profile `data`), `apps/api/Dockerfile` (targets `api`, `pipeline`) | Kafka 4.2.2 KRaft, MinIO, init, relay, two consumers, Airflow 3.3.2 on its own database; health checks test the service (Kafka API request, MinIO readiness, heartbeat freshness, Airflow scheduler and DAG processor) |
+| H Proof | `scripts/data-platform-smoke.sh`, `warehouse-pipeline status/replay` | 10 steps, 18 checks; exits non-zero on the first failure |
+
+## 4. Verification (local, Apple M2, Docker Desktop with 4 GB)
+
+All results below were run on this machine against real services (a throwaway PostgreSQL 18,
+Kafka 4.2.2 and MinIO for the Python tests; a separate Compose project with the full stack for the
+smoke test). Nothing here is a CI result.
+
+| Check | Result |
+|-------|--------|
+| `pnpm check` (format, lint, typecheck, unit tests, build) | PASS: contracts 26, simulation 121, recorder 10, web 60 |
+| JSON Schema regeneration | no diff |
+| Phase 0 golden fixture | byte-identical (`git diff` empty; golden test passes) |
+| Python: ruff, ruff format, mypy `--strict` (30 files, both packages) | PASS |
+| Python unit tests | 41 passed |
+| Python integration, PostgreSQL | 24 passed (ingestion: atomicity, retries, overlap, conflicts, gaps, versions, contract, limits, append-only, concurrency; migrations up/down) |
+| Python integration, Kafka + S3 | 18 passed (relay 6, consumers/bronze 7, reconciliation 5) |
+| dbt build on real pipeline output | 68/68 (16 models, 52 tests) |
+| Airflow DAG validation (in the image) | OK: 3 DAGs, 9 tasks |
+| Browser tests, retries disabled (Phase 0–2 regression) | GPU: 23 passed, 1 skipped (recording, no API); `CI=1` (SwiftShader): 23 passed, 1 skipped |
+| Browser recording to the API (`RECORDING_API_URL`) | PASS: browser run stored completely, replays to identical events |
+| Replay verification (`pnpm sim:verify`) | 716/716 (showcase, 3,000 ticks) and 197/197 (operations demo) events identical |
+| Full stack health (`--profile data up --wait`) | all services healthy in ~33 s after the images were built |
+| **Smoke test** | **PASS: 18 checks in 220 s** (see below) |
+
+Smoke steps (one run, `scripts/data-platform-smoke.sh`):
+1. Record: run A, 197 events and 9 commands.
+2. Stored atomically, and `sim:verify` passes.
+3. Outbox drained.
+4. Ledger 197; bronze 197 rows in 10 Parquet objects.
+5. Refresh DAG success; gold has 197 events; reconciliation passed.
+6. **Kafka stopped:**
+   - the API still stored run B's 612 events;
+   - the relay reported degraded;
+   - after Kafka returned, all 612 were published and consumed.
+7. **MinIO stopped:**
+   - the ledger kept up with run C (106 events);
+   - bronze caught up after MinIO returned, with no dead letters.
+8. **Run A replayed (every event delivered twice):**
+   - the ledger still counts 197, with 394 deliveries;
+   - bronze holds 394 rows;
+   - after a refresh, gold still counts 197.
+9. **Relay and consumers restarted:** run D (76 events) processed, and run A unchanged.
+10. **Bronze object deleted:**
+    - the reconciliation DAG failed with `missing_in_bronze`;
+    - the backfill DAG rebuilt the date from PostgreSQL;
+    - reconciliation passed again.
+
+Footprint of the running stack (`docker stats`):
+
+| Service | Memory |
+|---------|-------:|
+| Airflow | 1.17 GiB |
+| Kafka | 321 MiB |
+| PostgreSQL, MinIO, API, relay, each consumer | 51–75 MiB each |
+| **Total** | **≈ 1.9 GiB** |
+
+Images: pipeline 628 MB; Airflow 4.97 GB (the official image plus two tool environments). The first
+Airflow build took about 10 minutes.
+
+## 5. Limitations and risks
+
+1. **Development-only infrastructure:**
+   - single Kafka broker with replication factor 1;
+   - no TLS or authentication on Kafka, MinIO or Airflow;
+   - Airflow runs `standalone` without login;
+   - MinIO is a frozen legacy build (DEC-031). Replace the Compose service for anything beyond local
+     use; the code talks plain S3.
+2. **The ingestion API has no authentication.** Anyone who can reach it can record runs. It must
+   not be exposed before authentication exists (later phase).
+3. **Business semantics are trusted at ingestion.** The API validates contract, identity, order and
+   versions; `pnpm sim:verify` checks semantics by replay, but it is run by the smoke test and on
+   demand, not automatically for every recorded run.
+4. **Full-refresh models.**
+   - Silver and gold are rebuilt from all of bronze on every run. Cost grows with the lake;
+     incremental models are not implemented.
+   - A backfill re-sources bronze for its date range and rebuilds every model.
+5. **Small files.**
+   - Bronze writes one object per consumer batch, partition, date and event type.
+   - Compaction is not implemented.
+6. **In-memory reconciliation.** The reconciliation loads event-ID sets into memory: right for
+   simulation-scale data, not for very large lakes.
+7. **Throughput is not benchmarked.** Pipeline throughput was not measured. The ledger processes
+   records one by one in a transaction per batch.
+8. **dbt-duckdb writes an all-NULL placeholder row for empty external models.** Readers outside
+   dbt must filter it (the reconciliation does).
+9. **Dead letters never clear on their own.** Reconciliation fails while any are in scope, and
+   there is no tool yet to acknowledge or replay them.
+10. **Browser recording:**
+    - it starts a new run (fresh `simulation_id`), and a page reload ends that run;
+    - the API URL is fixed at web build time (`NEXT_PUBLIC_API_URL`).
+11. **Noisy consumer logs during a broker outage.** Consumers log a stack trace per failed poll
+    cycle while the broker is down (they recover without intervention).
+12. **CI for this branch:** see §6 (pending until the pull request runs).
+
+## 6. CI
+
+To be recorded from the pull request's run.
+
+## 7. Acceptance checklist
+
+| Requirement | Status | Evidence |
+|-------------|--------|----------|
+| PostgreSQL event log and outbox; atomicity and idempotency tests | done | §4 PostgreSQL integration; smoke step 2 |
+| Relay and consumers: retries, ordering, dedup, DLQ | done | relay and consumer integration tests; smoke 3–9 |
+| Real Parquet bronze in MinIO | done | bronze tests; smoke step 4 (read back with DuckDB) |
+| dbt silver/gold built and tested on real data | done | 68/68; smoke step 5 |
+| Airflow processing, backfill, reconciliation doing real work | done | smoke steps 5, 8, 10 |
+| Reproducible end-to-end smoke test | done | §4 |
+| Failure, restart and duplicate behaviour proven | done | smoke 6–10; integration tests |
+| Phase 0–2 functionality and contracts intact | done locally | `pnpm check`; golden fixture; browser tests (§4) |
+| Documentation reflects the implementation | done | this file, EVENT_CONTRACT, ARCHITECTURE, DEVELOPMENT, DECISIONS |
+| CI passes on a reviewable PR | pending | §6 |

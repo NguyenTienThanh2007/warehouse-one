@@ -2,7 +2,7 @@
 
 **Branch:** `feature/p2-simulation` · **Base:** `main` @ `04633958f0bc0cc81aab63da5a374d506ff94a54`
 (Phase 1 + follow-up #3 merged; CI run 39429621800 green)
-**Status:** READY FOR REVIEW (PR from `feature/p2-simulation`; not merged). Sections marked *(plan)* describe intent, not results.
+**Status:** MERGED into `main` as `d2dc4d9` (PR #4, 2026-10-21). Sections marked *(plan)* describe intent, not results.
 
 ## 1. Gate A (verified 2026-10-20)
 

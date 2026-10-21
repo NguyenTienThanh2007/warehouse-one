@@ -151,8 +151,8 @@ services:
   relay:
     <<: *pipeline
     command: ["warehouse-pipeline", "relay"]
-    healthcheck: &pipeline-health
-      # Healthy only while the work loop beats `ok` (database and Kafka reachable).
+    healthcheck:
+      &pipeline-health # Healthy only while the work loop beats `ok` (database and Kafka reachable).
       test: ["CMD", "warehouse-pipeline", "health", "relay", "--max-age", "30"]
       interval: 10s
       timeout: 10s
@@ -228,7 +228,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "python -c \"import json,sys,urllib.request as u; h=json.load(u.urlopen('http://localhost:8080/api/v2/monitor/health', timeout=5)); sys.exit(0 if all(h.get(k, {}).get('status') == 'healthy' for k in ('metadatabase', 'scheduler', 'dag_processor')) else 1)\"",
+          'python -c "import json,sys,urllib.request as u; h=json.load(u.urlopen(''http://localhost:8080/api/v2/monitor/health'', timeout=5)); sys.exit(0 if all(h.get(k, {}).get(''status'') == ''healthy'' for k in (''metadatabase'', ''scheduler'', ''dag_processor'')) else 1)"',
         ]
       interval: 15s
       timeout: 10s
