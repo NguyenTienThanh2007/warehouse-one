@@ -65,6 +65,12 @@ class RelocatePalletPayload(_Strict):
     to_location_id: EntityId
 
 
+class RequestTransferPayload(_Strict):
+    from_site_id: EntityId
+    to_site_id: EntityId
+    lines: CargoLines
+
+
 class ReceiveInventoryCommand(_Strict):
     command_id: CommandId
     type: Literal["inventory.receive"]
@@ -107,6 +113,12 @@ class RelocatePalletCommand(_Strict):
     payload: RelocatePalletPayload
 
 
+class RequestTransferCommand(_Strict):
+    command_id: CommandId
+    type: Literal["transfer.request"]
+    payload: RequestTransferPayload
+
+
 SimulationCommand = Annotated[
     ReceiveInventoryCommand
     | MoveInventoryCommand
@@ -114,7 +126,8 @@ SimulationCommand = Annotated[
     | ScheduleInboundTruckCommand
     | CreateOrderCommand
     | CancelOrderCommand
-    | RelocatePalletCommand,
+    | RelocatePalletCommand
+    | RequestTransferCommand,
     Field(discriminator="type"),
 ]
 
@@ -126,6 +139,7 @@ COMMAND_MODELS: dict[str, type[BaseModel]] = {
     "order.create": CreateOrderCommand,
     "order.cancel": CancelOrderCommand,
     "pallet.relocate": RelocatePalletCommand,
+    "transfer.request": RequestTransferCommand,
 }
 
 COMMAND_ADAPTER: TypeAdapter[SimulationCommand] = TypeAdapter(SimulationCommand)

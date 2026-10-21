@@ -28,6 +28,9 @@ vars:
     equipment.status_changed: [1]
     truck.status_changed: [1]
     order.status_changed: [1]
+    transfer.status_changed: [1]
+    linehaul.status_changed: [1]
+    site.stock_changed: [1]
 
 models:
   warehouse_one:

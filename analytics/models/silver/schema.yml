@@ -29,11 +29,15 @@ models:
                   - equipment.status_changed
                   - truck.status_changed
                   - order.status_changed
+                  - transfer.status_changed
+                  - linehaul.status_changed
+                  - site.stock_changed
       - name: aggregate_type
         data_tests:
           - accepted_values:
               arguments:
-                values: [inventory_item, pallet, task, equipment, truck, order]
+                values:
+                  [inventory_item, pallet, task, equipment, truck, order, transfer, linehaul, site]
       - name: delivery_copies
         data_tests: [not_null]
 

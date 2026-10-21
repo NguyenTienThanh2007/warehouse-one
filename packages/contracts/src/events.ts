@@ -2,9 +2,11 @@ import { z } from "zod";
 import {
   CargoLine,
   EquipmentStatus,
+  LinehaulStatus,
   OrderStatus,
   PalletPosition,
   TaskType,
+  TransferStatus,
   TruckDirection,
   TruckStatus,
 } from "./operations";
@@ -131,6 +133,46 @@ export const OrderStatusChangedPayload = z.object({
   lines: z.array(CargoLine),
 });
 
+// ---------------------------------------------------------------------------------------------
+// Phase 5 logistics-network events.
+
+export const TransferStatusChangedPayload = z.object({
+  transfer_id: EntityId,
+  /** The scheduled lane that created it, or null for an operator request (`transfer.request`). */
+  lane_id: EntityId.nullable(),
+  from_site_id: EntityId,
+  to_site_id: EntityId,
+  /** null when the transfer is planned. */
+  from: TransferStatus.nullable(),
+  to: TransferStatus,
+  vehicle_id: EntityId.nullable(),
+  lines: z.array(CargoLine),
+});
+
+export const LinehaulStatusChangedPayload = z.object({
+  vehicle_id: EntityId,
+  from: LinehaulStatus,
+  to: LinehaulStatus,
+  /** Road node the truck is at or last passed. */
+  node_id: NodeId,
+  /** Site the truck is at, or null on the road. */
+  site_id: EntityId.nullable(),
+  transfer_id: EntityId.nullable(),
+  /** Total distance driven on the road network since the run started. */
+  odometer_m: z.int().nonnegative(),
+});
+
+export const SiteStockChangedPayload = z.object({
+  site_id: EntityId,
+  /** Pallets are counted per SKU; containers (terminal only) have no SKU. */
+  unit: z.enum(["pallet", "container"]),
+  sku: EntityId.nullable(),
+  delta: z.int().refine((d) => d !== 0, "delta must be non-zero"),
+  quantity_after: z.int().nonnegative(),
+  reason: z.enum(["loaded", "unloaded", "devanned", "vessel_discharge"]),
+  transfer_id: EntityId.nullable(),
+});
+
 /** Registry: event_type -> payload schema, schema version and aggregate type. */
 export const EVENT_PAYLOADS = {
   "inventory.received": {
@@ -158,6 +200,17 @@ export const EVENT_PAYLOADS = {
   },
   "truck.status_changed": { schema: TruckStatusChangedPayload, version: 1, aggregate: "truck" },
   "order.status_changed": { schema: OrderStatusChangedPayload, version: 1, aggregate: "order" },
+  "transfer.status_changed": {
+    schema: TransferStatusChangedPayload,
+    version: 1,
+    aggregate: "transfer",
+  },
+  "linehaul.status_changed": {
+    schema: LinehaulStatusChangedPayload,
+    version: 1,
+    aggregate: "linehaul",
+  },
+  "site.stock_changed": { schema: SiteStockChangedPayload, version: 1, aggregate: "site" },
 } as const;
 
 export type EventType = keyof typeof EVENT_PAYLOADS;
@@ -211,6 +264,16 @@ export const OrderStatusChangedEvent = eventSchema(
   OrderStatusChangedPayload,
 );
 
+export const TransferStatusChangedEvent = eventSchema(
+  "transfer.status_changed",
+  TransferStatusChangedPayload,
+);
+export const LinehaulStatusChangedEvent = eventSchema(
+  "linehaul.status_changed",
+  LinehaulStatusChangedPayload,
+);
+export const SiteStockChangedEvent = eventSchema("site.stock_changed", SiteStockChangedPayload);
+
 export const DomainEvent = z.discriminatedUnion("event_type", [
   InventoryReceivedEvent,
   InventoryMovedEvent,
@@ -225,6 +288,9 @@ export const DomainEvent = z.discriminatedUnion("event_type", [
   EquipmentStatusChangedEvent,
   TruckStatusChangedEvent,
   OrderStatusChangedEvent,
+  TransferStatusChangedEvent,
+  LinehaulStatusChangedEvent,
+  SiteStockChangedEvent,
 ]);
 
 export type InventoryReceivedEvent = z.infer<typeof InventoryReceivedEvent>;
