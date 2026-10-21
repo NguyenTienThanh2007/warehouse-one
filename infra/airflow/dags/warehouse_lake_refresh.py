@@ -12,6 +12,7 @@ from warehouse_common import (
     DEFAULT_ARGS,
     dbt_build,
     pipeline_health,
+    publish_analytics,
     reconcile,
 )
 
@@ -46,4 +47,6 @@ with DAG(
         execution_timeout=timedelta(minutes=5),
     )
     check = reconcile()
+    publish = publish_analytics()
     health >> build >> [freshness, check]
+    [freshness, check] >> publish
