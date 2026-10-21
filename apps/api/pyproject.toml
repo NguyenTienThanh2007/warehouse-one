@@ -14,6 +14,18 @@ dependencies = [
   "psycopg[binary]==3.3.6",
 ]
 
+[project.optional-dependencies]
+# Data-platform services (outbox relay, consumers, bronze writer, reconciliation). Not needed by
+# the API process; installed in the pipeline image and for development (uv sync --all-extras).
+pipeline = [
+  "confluent-kafka==2.15.1",
+  "pyarrow==25.0.1",
+  "duckdb==1.5.5",
+]
+
+[project.scripts]
+warehouse-pipeline = "warehouse_pipeline.cli:main"
+
 [dependency-groups]
 dev = [
   "pytest==9.1.1",
@@ -28,12 +40,16 @@ requires = ["hatchling==1.32.4"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/warehouse_api"]
+packages = ["src/warehouse_api", "src/warehouse_pipeline"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers -m 'not integration'"
-markers = ["integration: requires a running PostgreSQL (WAREHOUSE_DATABASE_URL)"]
+markers = [
+  "integration: requires a running PostgreSQL (WAREHOUSE_DATABASE_URL)",
+  "kafka: also requires a Kafka broker (WAREHOUSE_KAFKA_BOOTSTRAP_SERVERS)",
+  "lake: also requires an S3-compatible object store (WAREHOUSE_S3_*)",
+]
 
 [tool.ruff]
 line-length = 100
@@ -53,4 +69,9 @@ python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
 mypy_path = "src"
-packages = ["warehouse_api"]
+packages = ["warehouse_api", "warehouse_pipeline"]
+
+[[tool.mypy.overrides]]
+# PyArrow ships no type information; its objects are typed as Any at this boundary.
+module = ["pyarrow", "pyarrow.*"]
+ignore_missing_imports = true

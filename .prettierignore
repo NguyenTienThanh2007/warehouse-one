@@ -10,3 +10,5 @@ data/schemas
 data/fixtures
 *.md
 docs/phases/evidence
+analytics/target
+analytics/logs

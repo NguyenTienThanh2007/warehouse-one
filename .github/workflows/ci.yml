@@ -65,12 +65,15 @@ jobs:
         with:
           version: "0.12.21"
           enable-cache: true
-      - run: uv sync --locked --python 3.12
+      # --all-extras: the data-platform package (warehouse_pipeline) is linted, typed and tested too.
+      - run: uv sync --locked --python 3.12 --all-extras
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+      - run: uv run ruff check --config pyproject.toml ../../infra/airflow
       - run: uv run mypy
       - run: uv run pytest
-      - run: uv run pytest -m integration
+      # PostgreSQL-backed tests; Kafka/S3 tests run in the data-platform job.
+      - run: uv run pytest -m "integration and not kafka"
 
   e2e:
     name: Browser end-to-end (Playwright)
@@ -97,6 +100,64 @@ jobs:
             tests/e2e/playwright-report
             test-results/e2e
           retention-days: 7
+
+  data-platform:
+    name: Data platform · Kafka, MinIO, Airflow, dbt, end-to-end
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    needs: python
+    env:
+      API_PORT: "8000"
+      WAREHOUSE_DATABASE_URL: postgresql+psycopg://warehouse:warehouse_dev@localhost:5432/warehouse_one
+      WAREHOUSE_KAFKA_BOOTSTRAP_SERVERS: localhost:9094
+      WAREHOUSE_S3_ENDPOINT: localhost:9000
+      # Local-development credentials of the Compose MinIO service (not secrets).
+      WAREHOUSE_S3_ACCESS_KEY: warehouse
+      WAREHOUSE_S3_SECRET_KEY: warehouse_dev_minio
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.12.21"
+          enable-cache: true
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: docker compose --profile data config --quiet
+      - name: Build images (API, pipeline, Airflow)
+        run: docker compose --profile data build
+      # 1. Kafka/S3 integration tests run before the pipeline services start: they truncate the
+      #    pipeline tables and use their own topics, buckets and consumer instances.
+      - name: Start PostgreSQL, Kafka and MinIO
+        run: docker compose --profile data up -d --wait postgres kafka minio
+      - name: Relay, consumer, bronze and reconciliation integration tests
+        working-directory: apps/api
+        run: |
+          uv sync --locked --python 3.12 --all-extras
+          uv run pytest -m kafka
+      # 2. DAG validation inside the Airflow image.
+      - name: Airflow DAG validation
+        run: >-
+          docker compose --profile data run --rm --no-deps --entrypoint python airflow
+          /opt/airflow/dag_tests/check_dags.py
+      # 3. The whole stack, healthy, then the end-to-end proof.
+      - name: Start the full data-platform stack
+        run: GIT_SHA=${GITHUB_SHA::7} docker compose --profile data up -d --wait --wait-timeout 600
+      - name: End-to-end smoke test
+        run: scripts/data-platform-smoke.sh
+      # 4. The browser records a run to the API and the stored run replays identically.
+      - name: Browser recording to the API
+        run: |
+          NEXT_PUBLIC_API_URL=http://localhost:8000 pnpm --filter @warehouse-one/web build
+          pnpm exec playwright install --with-deps chromium
+          RECORDING_API_URL=http://localhost:8000 pnpm test:e2e recording
+      - if: failure()
+        run: docker compose --profile data ps -a && docker compose --profile data logs --no-color --tail 300
+      - if: always()
+        run: docker compose --profile data down -v
 
   docker:
     name: Docker Compose stack

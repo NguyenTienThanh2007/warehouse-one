@@ -22,13 +22,18 @@
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "bench:render": "tsx tests/performance/render-benchmark.ts",
     "capture:bookmarks": "tsx tests/performance/capture-bookmarks.ts",
-    "capture:operations": "tsx tests/performance/capture-operations.ts"
+    "capture:operations": "tsx tests/performance/capture-operations.ts",
+    "sim:record": "pnpm --filter @warehouse-one/recorder record",
+    "sim:verify": "pnpm --filter @warehouse-one/recorder verify"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@next/eslint-plugin-next": "16.3.8",
     "@playwright/test": "1.63.0",
     "@types/node": "24.19.1",
+    "@warehouse-one/contracts": "workspace:*",
+    "@warehouse-one/recorder": "workspace:*",
+    "@warehouse-one/simulation": "workspace:*",
     "eslint": "9.39.5",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.13.0",

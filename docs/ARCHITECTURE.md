@@ -1,36 +1,50 @@
 # Architecture
 
-**Status:** describes what exists after Phase 1, then the target architecture. Components marked
-*(planned)* do not exist yet.
+**Status:** describes what exists after Phase 3 (data platform on `feature/p3-data-engineering`).
+Components marked *(planned)* do not exist yet.
 
 ## 1. System overview
 
 ```text
-                          ┌─────────────────────────────── Browser ───────────────────────────────┐
-                          │  apps/web (Next.js 16, React 19)                                       │
- user input ──► commands ─┼─► SimulationRunner ──► step() (packages/simulation, pure, deterministic)│
-                          │        │  frozen state            │ domain events                       │
-                          │        ▼                          ▼                                     │
-                          │   Zustand projection ──► R3F scene + HUD (read-only)                    │
-                          └────────────────────────────────────┬───────────────────────────────────┘
-                                                               │ (Phase 3) events / commands over HTTP
-                          ┌────────────────────────────────────▼───────────────────────────────────┐
-                          │  apps/api (FastAPI)  ── PostgreSQL 18 (operational store)               │
-                          │   /health /health/ready /version          + outbox, event log (planned) │
-                          └────────────────────────────────────┬───────────────────────────────────┘
-                                                (planned)      ▼
-                     outbox relay ─► Kafka ─► consumers ─► MinIO (Parquet bronze) ─► dbt silver/gold
-                                                                    └─► DuckDB/Postgres marts ─► Analytics UI, AI
+ ┌──────────────────────────── Browser (apps/web) ────────────────────────────┐
+ │ user input ─► commands ─► SimulationRunner ─► step() (packages/simulation, │
+ │                              │ frozen state      pure, deterministic)       │
+ │                              ▼                   │ domain events            │
+ │        Zustand projection ─► R3F scene + HUD     │                          │
+ │                                                  ▼                          │
+ │                  RunRecorder (opt-in "Record run", packages/recorder)       │
+ └──────────────────────────────────────────────────┬─────────────────────────┘
+          headless: pnpm sim:record ────────────────┤ HTTP: run config, command log, events
+                                                    ▼
+ ┌────────────── apps/api (FastAPI) ── one transaction per batch ──────────────┐
+ │ validate contract, event_id, sequence, aggregate_version, simulated time    │
+ │ PostgreSQL operations.*: simulation_runs, command_log, domain_events        │
+ │                          (append-only), outbox, ingest_batches              │
+ └────────────────────────────────────────────────────┬────────────────────────┘
+                     outbox relay (lease per run) ─────┤ acks=all, key = simulation_id
+                                                      ▼
+                         Kafka (KRaft) warehouse.domain-events.v1  ──► .dlq
+                   ┌──────────────────────┴───────────────────────┐
+                   ▼                                              ▼
+   ledger consumer (dedup, versions)              bronze consumer (raw Parquet)
+   PostgreSQL pipeline.consumer_events            MinIO s3://warehouse-lake/bronze/…
+                                                  + pipeline.bronze_objects manifest
+                                                                  │
+                         dbt (DuckDB over S3): silver ─► gold (Parquet in the lake)
+                                                                  │
+  Airflow: lake refresh · backfill (rebuild bronze from PostgreSQL) · reconciliation
+           (PostgreSQL ↔ ledger ↔ dead letters ↔ bronze ↔ silver ↔ gold) → reports
 ```
 
 ## 2. Ownership of state (single source of truth)
 
 | State | Owner | Others hold |
 |-------|-------|-------------|
-| Warehouse operational state (inventory, later orders, vehicles, workers) | **Simulation engine** (`packages/simulation`) | Projections only |
-| Command log + snapshots of a run | Simulation runner today, durably in PostgreSQL from Phase 3 | — |
-| Domain events | Emitted by the engine, made durable by the API's event log and outbox (Phase 3) | Kafka, lake and dbt are **derived and replayable** |
-| Analytical aggregates | dbt gold models | Read-only in the dashboards and AI |
+| Simulation rules and operational state | **Simulation engine** (`packages/simulation`) | Projections only; Python never re-simulates |
+| A recorded run: config, command log, events | **PostgreSQL** `operations.*` (append-only events and commands, enforced by triggers) | Kafka, bronze, ledger, silver and gold are **derived and rebuildable** |
+| Delivery state | `operations.outbox` (relay), Kafka consumer offsets (consumers) | — |
+| Processing state | `pipeline.*`: ledger, aggregate versions, dead letters, data-quality issues, bronze manifest, heartbeats, reconciliation reports | — |
+| Analytical datasets | dbt silver/gold Parquet in the lake | Read-only for dashboards and AI (later phases) |
 | UI state (selection, camera, panels) | Web app (Zustand) | — |
 
 Rendering is an adapter. It reads the frozen state the runner publishes and cannot write to it.
@@ -41,23 +55,29 @@ Mutation attempts throw, and a test covers this.
 ```text
 apps/web            Next.js app: HUD, 3D world (src/world: pure derivation, geometry, materials;
                     src/components/world: R3F scene, camera, lighting, effects), simulation loop
-apps/api            FastAPI service, SQLAlchemy/Alembic, Pydantic contract mirror, Dockerfile
+apps/api            FastAPI service (warehouse_api: ingestion, store, contracts) and the data
+                    platform (warehouse_pipeline: relay, consumers, lake, reconciliation, CLI);
+                    Alembic migrations; Dockerfile targets `api` and `pipeline`
 packages/contracts  Zod schemas for commands and events; JSON Schema generation
 packages/simulation Deterministic engine, runner, snapshots, replay, scenarios, benchmarks
+packages/recorder   RunRecorder (web + headless), replay verification, sim:record / sim:verify
+analytics/          dbt project (DuckDB over the S3 lake): staging, silver, gold, tests
+infra/airflow       Airflow image, DAGs, DAG validation
+scripts/            data-platform-smoke.sh (end-to-end proof)
 data/schemas        Generated JSON Schemas (language-neutral contract)
-data/fixtures       Golden deterministic run used by TS and Python tests
-tests/e2e           Playwright browser tests (production build)
-tests/performance   Renderer frame-time benchmark, visual bookmark capture
+data/fixtures       Deterministic reference runs (foundation-demo, operations-demo)
+tests/e2e           Playwright browser tests (production build; recording needs an API)
+tests/performance   Renderer frame-time benchmark, visual bookmark and operations captures
 docs/               Product, architecture, data, design, phase records
 .github/workflows   CI
 ```
 
 Directories from the master brief that are **not yet created**, because nothing real would live in
 them: `packages/graphics` and `packages/ui` (extracted from `apps/web` when a second consumer
-appears), `data/dbt` and `data/pipelines` (Phase 3), `infrastructure/` (Kafka/MinIO/monitoring
-compose files, Phase 3; the Phase 0 compose file lives at the repo root),
-`tests/integration` (Phase 0 integration tests live with the API in `apps/api/tests/integration`).
-See DEC-007.
+appears). Phase 3 placed the dbt project in `analytics/` (its own uv project, so dbt's
+dependencies never mix with the API's) and the orchestration in `infra/airflow`; the Compose file
+stays at the repository root with a `data` profile. Integration tests live with the code they test
+(`apps/api/tests/integration`). See DEC-007.
 
 ## 4. Simulation engine
 
@@ -109,22 +129,40 @@ SimulationState.inventory (frozen) ───────────────
 ## 6. Backend
 
 FastAPI app factory (`create_app(settings)`), configured by `WAREHOUSE_*` environment variables
-through pydantic-settings. JSON logs to stdout with request IDs: accepted from `X-Request-ID` when
-safe, minted otherwise, and echoed back. Liveness never touches dependencies. Readiness checks
-PostgreSQL with a 3 s connect timeout and returns 503 when it is down, hiding error class names in
-production. Alembic manages schema changes. The baseline migration creates the `operations` schema
-only, and Phase 3 adds the outbox and event-log tables.
+through pydantic-settings.
 
-## 7. Data platform (planned, Phase 3)
+- **Logging:** JSON logs to stdout with request IDs. A caller's `X-Request-ID` is accepted when
+  safe, otherwise one is minted; either way it is echoed back.
+- **Health:** liveness never touches dependencies. Readiness checks PostgreSQL with a 3 s connect
+  timeout and returns 503 when it is down, hiding error class names in production.
+- **Ingestion API (`/api/v1/simulations`, DEC-024):** run registration, atomic command and event
+  batches, run status, and command and event export for replay. Errors are
+  `{"error": {code, message, details}}` with stable codes.
+- **Limits:** request bodies above 4 MiB are refused (413); a missing `Content-Length` gets 411.
+- **Schema:** Alembic manages it. `0001` creates the `operations` schema; `0002` adds the event
+  store, outbox and the `pipeline` schema, plus append-only triggers on events and commands.
 
-1. API persists commands and events in one transaction (event log + **transactional outbox**).
-2. Relay publishes outbox rows to Kafka (key = `simulation_id`), marks them sent, and retries with backoff.
-3. Consumers: idempotent upsert keyed on `event_id`, `aggregate_version` continuity checks,
-   dead-letter topic for poison messages.
-4. Bronze: raw events as Parquet on MinIO, partitioned by `event_date/event_type`.
-5. dbt (DuckDB adapter over Parquet, or Postgres) builds silver (typed, deduplicated) and gold facts
-   and dimensions, with tests for uniqueness, relationships, not-null, accepted values and source freshness.
-6. Airflow orchestrates batch loads, backfills and reconciliation reports.
+## 7. Data platform (Phase 3)
+
+1. **Event store (DEC-024):** each batch is stored in one transaction with its outbox rows (see
+   `docs/data/EVENT_CONTRACT.md` for what is validated and what is trusted).
+2. **Relay (DEC-025):** one lease per run (`FOR UPDATE SKIP LOCKED`, short transactions). It
+   produces in `sequence` order with an idempotent `acks=all` producer and marks only the
+   acknowledged prefix. Backoff is bounded and exponential, and it heartbeats for health.
+3. **Kafka (DEC-026):** KRaft single broker locally. The events topic has 6 partitions and is
+   keyed by `simulation_id`; a DLQ topic sits beside it. Delivery is at least once.
+4. **Consumers (DEC-027):** manual commits after durable work, contract validation and a durable
+   DLQ.
+   - The **ledger** deduplicates by `event_id` and checks versions.
+   - **Bronze** writes Parquet with deterministic keys plus a manifest, and keeps every delivery.
+5. **Lake (DEC-028, DEC-031):** any S3-compatible store; locally a pinned MinIO build. Layout is
+   `bronze/domain_events/event_date=…/event_type=…/`, `silver/*.parquet`, `gold/*.parquet` and
+   `reports/reconciliation/*.json`.
+6. **dbt (DEC-029):** DuckDB reads bronze from S3 and writes silver and gold as Parquet (full
+   refresh). Tests cover keys, relationships, accepted values and business invariants.
+7. **Airflow (DEC-030):** lake refresh, date-range backfill and reconciliation. Tasks call the
+   pipeline and dbt CLIs in isolated virtualenvs, and the reconciliation fails on any violated
+   invariant.
 
 ## 8. Cross-cutting
 
@@ -132,6 +170,8 @@ only, and Phase 3 adds the outbox and event-log tables.
   `NEXT_PUBLIC_*` values are public by definition.
 - **Security headers** on the web app (nosniff, frame deny, referrer policy). CORS on the API is an
   explicit allow-list.
-- **Observability:** structured logs today. Metrics and tracing are introduced with the pipeline
-  (Phase 3) where there is something to observe.
+- **Observability:** structured JSON logs from the API and every pipeline process. Heartbeats in
+  `pipeline.heartbeats` (with Kafka reachability and consumer lag) back the health checks.
+  Reconciliation reports are stored in PostgreSQL and the lake. Metrics and tracing are not
+  implemented.
 - **Quality gates:** see `docs/phases/PHASE_0.md` and `.github/workflows/ci.yml`.

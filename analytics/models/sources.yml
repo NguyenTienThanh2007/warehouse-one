@@ -1,0 +1,28 @@
+version: 2
+
+sources:
+  - name: lake
+    description: Bronze layer written by the bronze consumer and the PostgreSQL rebuild (DEC-028).
+    tables:
+      - name: bronze_domain_events
+        description: Every delivered domain event (redeliveries included), hive-partitioned by event_date and event_type.
+        meta:
+          # Every Parquet object under the bronze prefix, with hive partition columns.
+          external_location: >-
+            read_parquet('s3://{{ env_var("WAREHOUSE_LAKE_BUCKET", "warehouse-lake") }}/bronze/domain_events/**/*.parquet',
+            hive_partitioning = true, union_by_name = true)
+        loaded_at_field: ingested_at
+        freshness:
+          # Recording is driven by people running simulations; long quiet periods are normal
+          # locally. The orchestrator reports freshness as a warning, never as a failure.
+          warn_after: { count: 24, period: hour }
+        columns:
+          - name: event_id
+            data_tests: [not_null]
+          - name: envelope_sha256
+            data_tests: [not_null]
+          - name: source
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ["kafka", "postgres-rebuild"]

@@ -1,0 +1,16 @@
+# Credentials and endpoints come from the environment only (see docs/DEVELOPMENT.md).
+warehouse_one:
+  target: lake
+  outputs:
+    lake:
+      type: duckdb
+      path: "{{ env_var('DBT_DUCKDB_PATH', 'target/warehouse.duckdb') }}"
+      threads: 2
+      extensions: [httpfs, parquet]
+      settings:
+        s3_endpoint: "{{ env_var('WAREHOUSE_S3_ENDPOINT', 'localhost:9000') }}"
+        s3_access_key_id: "{{ env_var('WAREHOUSE_S3_ACCESS_KEY') }}"
+        s3_secret_access_key: "{{ env_var('WAREHOUSE_S3_SECRET_KEY') }}"
+        s3_region: "{{ env_var('WAREHOUSE_S3_REGION', 'us-east-1') }}"
+        s3_url_style: path
+        s3_use_ssl: "{{ 'true' if env_var('WAREHOUSE_S3_SCHEME', 'http') == 'https' else 'false' }}"

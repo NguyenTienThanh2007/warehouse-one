@@ -1,0 +1,66 @@
+version: 2
+
+models:
+  - name: gold_event_volume_daily
+    description: Distinct events per simulated business date and event type.
+    columns:
+      - name: event_date
+        data_tests: [not_null]
+      - name: events
+        data_tests: [not_null]
+
+  - name: gold_inventory_movements
+    description: Signed stock changes per location and SKU (receipts, both sides of transfers, adjustments).
+    columns:
+      - name: event_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('silver_events')
+                field: event_id
+      - name: movement_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [receipt, transfer_out, transfer_in, adjustment]
+
+  - name: gold_pallet_flows
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: flow
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [created, moved, removed]
+
+  - name: gold_task_lifecycle
+    columns:
+      - name: task_id
+        data_tests: [not_null]
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [pending, assigned, completed, cancelled]
+
+  - name: gold_order_fulfilment
+    columns:
+      - name: order_id
+        data_tests: [not_null]
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [open, in_progress, shipped, cancelled]
+
+  - name: gold_simulation_activity
+    columns:
+      - name: simulation_id
+        data_tests: [unique, not_null]
+
+  - name: gold_data_quality
+    columns:
+      - name: check_name
+        data_tests: [unique, not_null]

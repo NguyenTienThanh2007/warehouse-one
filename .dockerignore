@@ -1,0 +1,19 @@
+# Build context for images built from the repository root (infra/airflow).
+**/node_modules
+**/.next
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.env
+**/.env.*
+apps/web
+packages
+tests
+test-results
+docs
+data/lake
+analytics/target
+analytics/logs
+.git

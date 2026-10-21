@@ -3,7 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Workspace packages ship TypeScript source; Next compiles them.
-  transpilePackages: ["@warehouse-one/contracts", "@warehouse-one/simulation"],
+  transpilePackages: [
+    "@warehouse-one/contracts",
+    "@warehouse-one/simulation",
+    "@warehouse-one/recorder",
+  ],
   poweredByHeader: false,
   async headers() {
     return [

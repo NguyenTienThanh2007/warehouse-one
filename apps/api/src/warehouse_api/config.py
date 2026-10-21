@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     database_connect_timeout_s: int = Field(default=3, ge=1, le=30)
     cors_origins: list[str] = ["http://localhost:3000"]
     git_sha: str = "unknown"
+    # Largest accepted request body for the ingestion API (a full batch is well below this).
+    max_request_bytes: int = Field(default=4 * 1024 * 1024, ge=1024)
+    # Kafka topic recorded on outbox rows (DEC-026).
+    kafka_events_topic: str = "warehouse.domain-events.v1"
 
     @property
     def expose_error_details(self) -> bool:

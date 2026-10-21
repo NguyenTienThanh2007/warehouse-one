@@ -7,8 +7,8 @@ Each phase is developed on `feature/p<N>-…`, reviewed through a pull request, 
 |-------|--------|-------|--------|
 | 0 | `feature/p0-foundation` | Foundation & architecture | **Accepted**, merged (`c512733`) |
 | 1 | `feature/p1-3d-world` | Premium 3D world | **Accepted**, merged (`d80a7f2`, follow-up `0463395`) |
-| 2 | `feature/p2-simulation` | Living warehouse simulation | **In review** (see `docs/phases/PHASE_2.md`) |
-| 3 | `feature/p3-data-engineering` | Real data engineering | Not started |
+| 2 | `feature/p2-simulation` | Living warehouse simulation | **Merged** (PR #4, `d2dc4d9`, 2026-10-21; `main` CI 4/4 green) |
+| 3 | `feature/p3-data-engineering` | Real data engineering | **In development** (see `docs/phases/PHASE_3.md`) |
 | 4 | `feature/p4-analytics` | Advanced operations analytics | Not started |
 | 5 | `feature/p5-ai-brain` | AI logistics brain | Not started |
 | 6 | `feature/p6-digital-twin` | Advanced digital twin | Not started |
@@ -26,11 +26,18 @@ desktop flows pass in Playwright; five bookmark screenshots captured; FPS and p9
 300 and 1,000 entities with the GPU string; visual review against the spec checklist; reference
 comparison recorded honestly. Results are in `docs/phases/PHASE_1.md`.
 
-## Phase 2 — Living warehouse simulation (in review)
+## Phase 2 — Living warehouse simulation (merged)
 
-Starts from the Phase 1 handoff: equipment becomes stateful (tasks, routing, battery), pallets get
-exact slots, docks gain door cycles and truck arrivals, and the renderer interpolates movement
-between ticks.
+Equipment became stateful (tasks, routing, battery), pallets got exact positions, docks gained
+truck arrivals and departures, and the renderer draws all of it from simulation state. Workers were
+deferred. Record and limitations: `docs/phases/PHASE_2.md`.
+
+## Phase 3 — Real data engineering (in development)
+
+PostgreSQL event store and transactional outbox behind an ingestion API, Kafka (KRaft), idempotent
+consumers with a DLQ, Parquet bronze on S3-compatible storage, dbt silver/gold, Airflow refresh,
+backfill and reconciliation, and an end-to-end smoke test. Plan, evidence and limitations:
+`docs/phases/PHASE_3.md`.
 
 ## Phases 2–7
 

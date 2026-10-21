@@ -6,9 +6,9 @@ A browser-based 3D warehouse digital twin built on a deterministic simulation en
 data engineering pipeline and AI-assisted optimisation planned on top. Every number on screen comes
 from authoritative simulation state, and every state change is a typed, replayable domain event.
 
-> **Project status: Phase 1 (Premium 3D world) is merged; Phase 2 (living warehouse simulation) is
-> in review.** The facility, racks, stock and fleet are rendered from authoritative simulation
-> state. See [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for what is verified and what is not.
+> **Project status: Phases 0–2 are merged into `main` (Phase 2: living warehouse simulation,
+> PR #4). Phase 3 (data engineering) is in development on `feature/p3-data-engineering`.** See
+> [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for what is verified and what is not.
 
 ![WAREHOUSE ONE: rack bay selected, inspector showing live occupancy](docs/phases/evidence/phase-1/desktop-1440x900-5-inspector.jpg)
 
@@ -34,18 +34,31 @@ from authoritative simulation state, and every state change is a typed, replayab
   [details](docs/architecture/PERFORMANCE.md)).
 - **Scenarios** (`packages/simulation`). Showcase, empty, and benchmark facilities with exactly
   100 / 300 / 1,000 pallets, all stocked through the normal command path.
-- **API** (`apps/api`). FastAPI with structured JSON logs, request IDs, liveness/readiness/version
-  endpoints, SQLAlchemy and Alembic on PostgreSQL 18, and a Dockerfile.
+- **Living operations** (Phase 2). Pallets with exact positions, routed forklifts and reach trucks,
+  tasks, orders, inbound and outbound trucks at docks, all drawn live from simulation state, with an
+  operator panel whose commands go through the engine's command path.
+- **Event store and data platform** (Phase 3, on its branch). Runs recorded from the browser or
+  headless go into PostgreSQL in one transaction per batch (append-only event log + transactional
+  outbox). From there:
+  - an outbox relay publishes them to Kafka (KRaft);
+  - idempotent consumers write a deduplicated ledger and raw Parquet bronze on MinIO, with a DLQ;
+  - dbt (DuckDB) builds silver and gold back into the lake;
+  - Airflow runs refresh, backfill and a reconciliation that fails on any mismatch.
+
+  A smoke test proves the whole path, including outages, replays and an injected discrepancy.
+- **API** (`apps/api`). FastAPI: ingestion endpoints (`/api/v1/simulations`), structured JSON logs,
+  request IDs, liveness/readiness/version, SQLAlchemy and Alembic on PostgreSQL 18.
 - **Quality gates.** ESLint/Prettier/tsc, Vitest, pytest (unit and integration), ruff, mypy
   `--strict`, Playwright e2e and a GitHub Actions CI with Docker Compose verification.
 
 ## Architecture
 
 ```text
-commands ─► Simulation (pure, deterministic) ─► domain events ─► [Phase 3] outbox ─► Kafka ─► Parquet lake ─► dbt ─► analytics & AI
-                 │ frozen state
-                 ▼
-     Zustand projection ─► React Three Fiber scene + HUD   (rendering is read-only)
+commands ─► Simulation (pure, deterministic) ─► domain events ─► API ─► PostgreSQL event log + outbox
+                 │ frozen state                                                   │
+                 ▼                                                   relay ─► Kafka ─► ledger · Parquet bronze (MinIO)
+     Zustand projection ─► 3D scene + HUD (read-only)                              │
+                                                     dbt silver/gold ◄─────────────┘   Airflow: refresh · backfill · reconcile
 ```
 
 Read more: [Architecture](docs/ARCHITECTURE.md) · [Event contract](docs/data/EVENT_CONTRACT.md) ·
@@ -62,6 +75,15 @@ docker compose up -d --build --wait    # PostgreSQL + migrations + API on :8000
 pnpm dev                               # http://localhost:3000
 ```
 
+The Phase 3 data platform is an opt-in Compose profile (Kafka, MinIO, relay, consumers, Airflow;
+about 2 GB of memory):
+
+```bash
+docker compose --profile data up -d --build --wait
+pnpm sim:record --api http://localhost:8000 --scenario showcase --ticks 3000
+scripts/data-platform-smoke.sh         # end-to-end proof; exits non-zero on any failed check
+```
+
 Controls: drag to orbit, scroll to zoom, right-drag to pan. Click a bay, vehicle or dock to inspect
 it, or double-click to fly to it. Camera: `O` overview, `D` docks, `A` aisle, `T` plan, `F` focus
 selection. Simulation: `Space` pause/resume, `.` step, `1`–`5` speed. `Esc` clears the selection.
@@ -73,7 +95,7 @@ More detail, including port overrides, is in [docs/DEVELOPMENT.md](docs/DEVELOPM
 ```bash
 pnpm check                      # format, lint, typecheck, unit tests, production build
 pnpm test:e2e                   # browser tests against the production build
-cd apps/api && uv run pytest && uv run pytest -m integration
+cd apps/api && uv sync --all-extras && uv run pytest && uv run pytest -m "integration and not kafka"
 pnpm bench:sim                  # simulation throughput
 ```
 
@@ -83,8 +105,8 @@ Measured Phase 0 results are recorded with their hardware context in
 
 ## Roadmap
 
-0 Foundation ✔ · 1 Premium 3D world ✔ · 2 Living simulation (in review) · 3 Data engineering (Kafka, MinIO/Parquet,
-dbt, Airflow) · 4 Analytics · 5 AI logistics brain · 6 Digital twin scenarios · 7 Production release.
+0 Foundation ✔ · 1 Premium 3D world ✔ · 2 Living simulation ✔ · 3 Data engineering (in development) ·
+4 Analytics · 5 AI logistics brain · 6 Digital twin scenarios · 7 Production release.
 
 ## Licence
 

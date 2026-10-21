@@ -1,0 +1,114 @@
+version: 2
+
+models:
+  - name: silver_events
+    description: One row per domain event (deduplicated by event_id, identical copies only, supported schema versions).
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: simulation_id
+        data_tests: [not_null]
+      - name: sequence
+        data_tests: [not_null]
+      - name: event_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - inventory.received
+                  - inventory.moved
+                  - inventory.adjusted
+                  - pallet.created
+                  - pallet.moved
+                  - pallet.removed
+                  - task.created
+                  - task.assigned
+                  - task.completed
+                  - task.cancelled
+                  - equipment.status_changed
+                  - truck.status_changed
+                  - order.status_changed
+      - name: aggregate_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [inventory_item, pallet, task, equipment, truck, order]
+      - name: delivery_copies
+        data_tests: [not_null]
+
+  - name: silver_rejected_events
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: reason
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [conflicting_copies, unsupported_schema_version]
+
+  - name: silver_inventory_events
+    columns:
+      - name: event_id
+        data_tests:
+          - unique
+          - relationships:
+              arguments:
+                to: ref('silver_events')
+                field: event_id
+      - name: sku
+        data_tests: [not_null]
+
+  - name: silver_pallet_events
+    columns:
+      - name: event_id
+        data_tests:
+          - unique
+          - relationships:
+              arguments:
+                to: ref('silver_events')
+                field: event_id
+      - name: pallet_id
+        data_tests: [not_null]
+
+  - name: silver_task_events
+    columns:
+      - name: event_id
+        data_tests: [unique]
+      - name: task_id
+        data_tests: [not_null]
+
+  - name: silver_truck_events
+    columns:
+      - name: truck_id
+        data_tests: [not_null]
+      - name: direction
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [inbound, outbound]
+      - name: to_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [yard, docking, docked, departing, departed]
+
+  - name: silver_order_events
+    columns:
+      - name: order_id
+        data_tests: [not_null]
+      - name: to_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [open, in_progress, shipped, cancelled]
+
+  - name: silver_equipment_events
+    columns:
+      - name: equipment_id
+        data_tests: [not_null]
+      - name: to_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [idle, travelling, handling, charging]
