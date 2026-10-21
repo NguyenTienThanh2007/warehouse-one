@@ -74,8 +74,35 @@ run_dag() {
     sleep 5
   done
   airflow dags pause "$dag" >/dev/null
+  LAST_REPORT_BY="airflow:$dag:$run_id"
   [[ $state == "$want" ]] || die "$dag run $run_id ended $state, expected $want"
   ok "Airflow $dag → $state ($run_id)"
+}
+
+# run_report: the reconciliation report written by the last DAG run started by run_dag, as JSON
+# {status, violations}. Not "the latest report": unpausing a scheduled DAG lets Airflow start its
+# most recent scheduled run next to ours, and that run's report (other settle window) can be newer.
+LAST_REPORT_BY=""
+run_report() {
+  "${COMPOSE[@]}" exec -T relay python - "$LAST_REPORT_BY" 2>/dev/null <<'PY'
+import json
+import sys
+
+from sqlalchemy import create_engine, select
+
+from warehouse_api.store.tables import reconciliation_reports as r
+from warehouse_pipeline.settings import get_pipeline_settings
+
+engine = create_engine(get_pipeline_settings().sqlalchemy_url)
+with engine.connect() as conn:
+    row = conn.execute(
+        select(r.c.status, r.c.violations)
+        .where(r.c.triggered_by == sys.argv[1])
+        .order_by(r.c.started_at.desc())
+        .limit(1)
+    ).first()
+print(json.dumps(None if row is None else {"status": row.status, "violations": row.violations}))
+PY
 }
 
 step "0. Stack health (each check exercises the service, not just its process)"
@@ -117,7 +144,7 @@ step "5. Airflow: dbt silver/gold + reconciliation"
 run_dag warehouse_lake_refresh success
 S=$(status "$SIM_A")
 [[ $(echo "$S" | field "d['gold_events']") == "$EVENTS_A" ]] || die "gold events != source: $S"
-[[ $(echo "$S" | field "d['latest_reconciliation']['status']") == passed ]] || die "reconciliation did not pass"
+[[ $(run_report | field "d['status']") == passed ]] || die "reconciliation did not pass: $(run_report)"
 ok "gold has $EVENTS_A events for the run; reconciliation passed"
 
 step "6. Temporary Kafka outage: events stay durable, then flow"
@@ -176,14 +203,14 @@ from warehouse_pipeline.settings import get_pipeline_settings as g
 s = g(); key = sorted(k for k in list_objects(s) if 'part-' in k)[0]; delete_object(s, key); print(key)" 2>/dev/null)
 ok "deleted bronze object $KEY"
 run_dag warehouse_reconciliation failed
-S=$(status "$SIM_A")
-[[ $(echo "$S" | field "d['latest_reconciliation']['status']") == failed ]] || die "discrepancy not reported"
-echo "$S" | field "[v['check'] for v in d['latest_reconciliation']['violations']]" | grep -q missing_in_bronze ||
-  die "missing_in_bronze not among the violations"
+R=$(run_report)
+[[ $(echo "$R" | field "d['status']") == failed ]] || die "discrepancy not reported: $R"
+echo "$R" | field "[v['check'] for v in d['violations']]" | grep -q missing_in_bronze ||
+  die "missing_in_bronze not among the violations: $R"
 ok "reconciliation failed with missing_in_bronze, as it must"
 DAY=$(curl -fsS "$API_URL/api/v1/simulations/$SIM_A/events?limit=1" | field "d['events'][0]['occurred_at'][:10]")
 run_dag warehouse_lake_backfill success "{\"start_date\": \"$DAY\", \"end_date\": \"$DAY\", \"settle_s\": 0}"
-[[ $(status "$SIM_A" | field "d['latest_reconciliation']['status']") == passed ]] || die "backfill did not repair"
+[[ $(run_report | field "d['status']") == passed ]] || die "backfill did not repair: $(run_report)"
 ok "backfill rebuilt bronze for $DAY from PostgreSQL; reconciliation passed again"
 
 printf '\n✅ Data-platform smoke test passed: %s checks in %ss\n' "$CHECKS" "$(($(date +%s) - STARTED))"
