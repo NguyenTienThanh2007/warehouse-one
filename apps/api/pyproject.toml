@@ -70,3 +70,8 @@ strict = true
 plugins = ["pydantic.mypy"]
 mypy_path = "src"
 packages = ["warehouse_api", "warehouse_pipeline"]
+
+[[tool.mypy.overrides]]
+# PyArrow ships no type information; its objects are typed as Any at this boundary.
+module = ["pyarrow", "pyarrow.*"]
+ignore_missing_imports = true

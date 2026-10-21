@@ -15,7 +15,7 @@ import pytest
 from sqlalchemy import Engine, func, select, update
 
 from tests.integration.conftest import RunFixture
-from tests.integration.kafka_support import drain, store_run, isolated_settings
+from tests.integration.kafka_support import drain, isolated_settings, store_run
 from warehouse_api.store.tables import outbox, simulation_runs
 from warehouse_pipeline.kafka import ensure_topics
 from warehouse_pipeline.relay import OutboxRelay, backoff_s, wait_until_published
