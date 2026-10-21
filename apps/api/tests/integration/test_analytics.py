@@ -68,6 +68,26 @@ def test_overview_calculates_kpis_from_one_published_snapshot(
             {"simulation_id": str(simulation_id), "quantity_change": 5},
         ),
         ("gold_pallet_flows", {"simulation_id": str(simulation_id), "flow": "moved"}),
+        (
+            "gold_event_volume_daily",
+            {
+                "event_date": "2026-10-20",
+                "event_type": "task.completed",
+                "events": 50,
+                "simulations": 1,
+                "redelivered_copies": 1,
+            },
+        ),
+        (
+            "gold_event_volume_daily",
+            {
+                "event_date": "2026-10-20",
+                "event_type": "order.status_changed",
+                "events": 70,
+                "simulations": 1,
+                "redelivered_copies": 0,
+            },
+        ),
         ("gold_data_quality", {"check_name": "conflicting_copies", "kind": "error", "value": 2}),
     ]
     with engine.begin() as conn:
@@ -128,6 +148,17 @@ def test_overview_calculates_kpis_from_one_published_snapshot(
         "task_wait_time": 1,
         "task_service_time": 1,
     }
+
+    throughput = client.get("/api/v1/analytics/throughput?limit=14")
+    assert throughput.status_code == 200, throughput.text
+    assert throughput.json()["daily"] == [
+        {
+            "event_date": "2026-10-20",
+            "events": 120,
+            "simulations": 2,
+            "redelivered_copies": 1,
+        }
+    ]
 
 
 def test_orders_endpoint_filters_and_paginates_published_rows(
