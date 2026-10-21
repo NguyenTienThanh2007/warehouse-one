@@ -27,11 +27,42 @@ export interface SimState {
   };
 }
 
+/** The logistics network (Phase 5) as the browser tests read it. */
+export interface NetState {
+  tick: number;
+  network: {
+    sites: Record<string, { stock: Record<string, number>; containers: number; received: number }>;
+    vehicles: Record<
+      string,
+      {
+        id: string;
+        status: string;
+        node: string;
+        route: string[];
+        transfer_id: string | null;
+        site_id: string | null;
+      }
+    >;
+    transfers: Record<
+      string,
+      {
+        id: string;
+        status: string;
+        lane_id: string | null;
+        vehicle_id: string | null;
+        from_site: string;
+        to_site: string;
+      }
+    >;
+  };
+}
+
 interface SimHook {
   state(): SimState;
   poses(): {
     vehicles: { id: string; x: number; z: number; yaw: number; fork: number }[];
     trucks: { id: string; x: number; z: number }[];
+    linehaul: { id: string; x: number; z: number; yaw: number }[];
   };
   finishedOrders(): { order_id: string; status: string }[];
 }
@@ -41,6 +72,13 @@ export const scene = (page: Page) => page.evaluate(() => window.__WAREHOUSE_ONE_
 export const simState = (page: Page) =>
   page.evaluate(() =>
     (window as unknown as { __WAREHOUSE_ONE_SIM__: SimHook }).__WAREHOUSE_ONE_SIM__.state(),
+  );
+
+export const netState = (page: Page) =>
+  page.evaluate(() =>
+    (
+      window as unknown as { __WAREHOUSE_ONE_SIM__: { state(): NetState } }
+    ).__WAREHOUSE_ONE_SIM__.state(),
   );
 
 export const simPoses = (page: Page) =>
@@ -57,6 +95,21 @@ export async function openWorld(page: Page, query = "") {
     timeout: 45_000,
   });
 }
+
+/** Wait until the camera has come to rest after the latest move (camera-controls 'rest'). */
+export async function cameraRest(page: Page, before: number) {
+  await expect
+    .poll(
+      async () => {
+        const m = (await scene(page))?.cameraMotion;
+        return !!m && m.rests > before && !m.moving;
+      },
+      { timeout: 45_000, intervals: [250] },
+    )
+    .toBe(true);
+}
+
+export const rests = async (page: Page) => (await scene(page))?.cameraMotion?.rests ?? 0;
 
 /** Pause the run (no-op when already paused). */
 export async function pause(page: Page) {

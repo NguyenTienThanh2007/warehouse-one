@@ -19,7 +19,7 @@ test.describe("3D world reflects authoritative simulation state", () => {
   test("rendered pallets, vehicles, trucks, bays and docks equal simulation state and facility data", async ({
     page,
   }) => {
-    await openWorld(page);
+    await openWorld(page, "?scenario=showcase");
     await expect(page.getByTestId("scene-loading")).toHaveCount(0);
     await pause(page);
     const s = await simState(page);
@@ -40,7 +40,7 @@ test.describe("3D world reflects authoritative simulation state", () => {
   });
 
   test("pallets follow the simulation as it runs", async ({ page }) => {
-    await openWorld(page);
+    await openWorld(page, "?scenario=showcase");
     const start = (await simState(page)).tick;
     await page.locator("body").press("5"); // 8× speed
     // Wait for the run to progress (pallets move in the first few hundred ticks), not for a time.
@@ -77,7 +77,7 @@ test.describe("3D world reflects authoritative simulation state", () => {
 
 test.describe("selection and camera", () => {
   test("clicking a forklift opens its inspector with live simulation state", async ({ page }) => {
-    await openWorld(page);
+    await openWorld(page, "?scenario=showcase");
     await pause(page);
     await clickEntity(page, "equipment", "fl-01");
     const inspector = page.getByTestId("inspector");
@@ -98,7 +98,7 @@ test.describe("selection and camera", () => {
   });
 
   test("clicking a rack bay shows its live occupancy", async ({ page }) => {
-    await openWorld(page);
+    await openWorld(page, "?scenario=showcase");
     await pause(page);
     await clickEntity(page, "location", "loc-05-007");
     await expect(page.getByTestId("inspector")).toContainText("loc-05-007");
@@ -108,7 +108,7 @@ test.describe("selection and camera", () => {
   test("the keyboard location picker selects a bay and flies the camera to it", async ({
     page,
   }) => {
-    await openWorld(page);
+    await openWorld(page, "?scenario=showcase");
     const before = (await scene(page))!.camera!;
     await page.getByTestId("location-picker").selectOption("loc-02-010");
     await expect(page.getByTestId("inspector")).toContainText("loc-02-010");
@@ -124,7 +124,7 @@ test.describe("selection and camera", () => {
   });
 
   test("camera presets produce distinct, sensible poses", async ({ page }) => {
-    await openWorld(page);
+    await openWorld(page, "?scenario=showcase");
     /**
      * Wait for the camera to come to rest after a preset click (camera-controls 'rest' event, via
      * the read-only scene hook). Sampling the pose cannot tell "stopped" from "no frame rendered
@@ -160,7 +160,7 @@ test.describe("selection and camera", () => {
   });
 
   test("overview frames every rack bay on a desktop screen", async ({ page }) => {
-    await openWorld(page);
+    await openWorld(page, "?scenario=showcase");
     await expect
       .poll(
         async () =>
@@ -204,7 +204,7 @@ test.describe("states and quality", () => {
   });
 
   test("quality can be switched manually", async ({ page }) => {
-    await openWorld(page);
+    await openWorld(page, "?scenario=showcase");
     await page.getByTestId("quality-mode").selectOption("low");
     await expect(page.getByTestId("quality-tier")).toHaveText("low");
     await page.getByTestId("quality-mode").selectOption("high");
@@ -216,7 +216,7 @@ test.describe("phone layout", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
   test("frames the whole facility in portrait without horizontal scrolling", async ({ page }) => {
-    await openWorld(page);
+    await openWorld(page, "?scenario=showcase");
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
     ).toBe(false);

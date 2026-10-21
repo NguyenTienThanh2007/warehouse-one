@@ -23,7 +23,7 @@ test.describe("live operations in the 3D world", () => {
   test("vehicles, trucks and carried pallets are drawn exactly at their simulated poses", async ({
     page,
   }) => {
-    await openWorld(page);
+    await openWorld(page, "?scenario=showcase");
     await page.locator("body").press("5"); // 8× speed
     // Wait until a pallet is on forks and a truck is on site, then freeze the run.
     await expect
@@ -76,7 +76,7 @@ test.describe("live operations in the 3D world", () => {
   });
 
   test("a truck can be selected and inspected while it is on site", async ({ page }) => {
-    await openWorld(page);
+    await openWorld(page, "?scenario=showcase");
     await page.locator("body").press("5");
     await expect
       .poll(async () => Object.keys((await simState(page)).ops.trucks).length, {
