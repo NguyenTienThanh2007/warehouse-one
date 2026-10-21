@@ -70,6 +70,9 @@ class Report:
 
 def duck(settings: PipelineSettings) -> duckdb.DuckDBPyConnection:
     con = duckdb.connect()
+    # INSTALL is a no-op when the extension is present (the images install it at build time);
+    # on a fresh machine it downloads it once into ~/.duckdb.
+    con.execute("INSTALL httpfs")
     con.execute("LOAD httpfs")
     con.execute("SET s3_endpoint = ?", [settings.s3_endpoint])
     con.execute("SET s3_access_key_id = ?", [settings.s3_access_key.get_secret_value()])
