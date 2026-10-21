@@ -1,7 +1,8 @@
 # Architecture
 
-**Status:** describes what exists after Phase 3 (data platform on `feature/p3-data-engineering`).
-Components marked *(planned)* do not exist yet.
+**Status:** describes the implementation merged into `main` through Phase 3 (`0b25fa4`).
+Components marked *(planned)* do not exist yet. The current 3D scene models one facility; multi-site
+spatial hierarchy and inter-site logistics are planned for Phase 5, with city-scale expansion in Phase 6.
 
 ## 1. System overview
 
