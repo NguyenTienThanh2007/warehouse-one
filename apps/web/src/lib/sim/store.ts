@@ -18,7 +18,9 @@ import {
   type SimulationConfig,
   type SimulationState,
 } from "@warehouse-one/simulation";
+import { RunRecorder, withFreshRunId, type RecorderStatus } from "@warehouse-one/recorder";
 import { create } from "zustand";
+import { API_URL } from "../api/health";
 import { truckViews, vehicleViews } from "../../world/ops-view";
 
 /** What the user has selected in the world. IDs always refer to config/state entities. */
@@ -84,6 +86,8 @@ export interface SimulationView {
   readonly commands: readonly CommandRecord[];
   /** Most recently finished orders first. */
   readonly finishedOrders: readonly FinishedOrder[];
+  /** Recording to the API (DEC-024): null when off, else the recorder's live status. */
+  readonly recording: RecorderStatus | null;
 }
 
 interface SimulationActions {
@@ -100,6 +104,11 @@ interface SimulationActions {
    * other input. Schema errors are rejected immediately; business rules are checked by the engine.
    */
   submitCommand(input: CommandInput): CommandRecord;
+  /**
+   * Turn recording on or off. Turning it on restarts the current scenario as a new run with a
+   * fresh simulation_id (so its event IDs are unique) and streams it to the API from tick 1.
+   */
+  setRecording(on: boolean): void;
 }
 
 export const SPEED_PRESETS = [0.5, 1, 2, 4, 8] as const;
@@ -114,9 +123,49 @@ interface Started {
   rejections: number;
 }
 
-/** Opening stock goes through submit + step like any command: logged, validated, replayable. */
-function start(scenario: Scenario): Started {
-  const runner = new SimulationRunner(scenario.config);
+/** How often the recorder sends what the run produced since the last batch. */
+const RECORD_FLUSH_MS = 1000;
+let recorder: RunRecorder | null = null;
+let flushTimer: ReturnType<typeof setInterval> | null = null;
+let publishRecording: (status: RecorderStatus | null) => void = () => {};
+
+/** The active recorder's status (a function, so callers never see a stale narrowed value). */
+function currentRecording(): RecorderStatus | null {
+  return recorder?.status() ?? null;
+}
+
+function stopRecorder(): RecorderStatus | null {
+  if (flushTimer) clearInterval(flushTimer);
+  flushTimer = null;
+  const last = recorder?.status() ?? null;
+  recorder?.stop();
+  recorder = null;
+  return last ? { ...last, state: last.state === "failed" ? "failed" : "stopped" } : null;
+}
+
+/**
+ * Opening stock goes through submit + step like any command: logged, validated, replayable. A
+ * recorded run gets a fresh simulation_id and its recorder is attached before the first step, so
+ * the opening commands and events are recorded too.
+ */
+function start(scenario: Scenario, record = false): Started {
+  const config = record ? withFreshRunId(scenario.config) : scenario.config;
+  const runner = new SimulationRunner(config);
+  if (record) {
+    recorder = new RunRecorder({
+      apiUrl: API_URL,
+      config,
+      scenarioId: scenario.id,
+      source: "web",
+      onStatus: (s) => publishRecording(s),
+    });
+    recorder.attach(runner);
+    const active = recorder;
+    flushTimer = setInterval(() => {
+      // Failures are reported through the status; a rejected run stays stopped.
+      if (active.status().state !== "failed") active.flush().catch(() => {});
+    }, RECORD_FLUSH_MS);
+  }
   if (scenario.openingCommands.length === 0) return { runner, events: [], rejections: 0 };
   for (const c of scenario.openingCommands) runner.submit(c);
   const r = runner.stepOnce();
@@ -218,6 +267,7 @@ function settle(
 }
 
 export const useSimulation = create<SimulationView & SimulationActions>()((set, get) => {
+  publishRecording = (recording) => set({ recording });
   const absorb = (events: readonly DomainEvent[], rejections: readonly CommandRejection[]) => {
     const s = get();
     set({
@@ -243,6 +293,7 @@ export const useSimulation = create<SimulationView & SimulationActions>()((set, 
     selection: null,
     commands: [],
     finishedOrders: [],
+    recording: null,
 
     advance(realDeltaMs) {
       const r = runner.advance(realDeltaMs);
@@ -270,7 +321,10 @@ export const useSimulation = create<SimulationView & SimulationActions>()((set, 
     loadScenario(id) {
       const wasPaused = runner.paused;
       unsubscribe();
-      const started = start(createScenario(id));
+      // A recording session follows the user to the new scenario as a new recorded run.
+      const record = recorder !== null;
+      stopRecorder();
+      const started = start(createScenario(id), record);
       runner = started.runner;
       unsubscribe = track(runner);
       runner.setSpeed(get().speed);
@@ -285,7 +339,35 @@ export const useSimulation = create<SimulationView & SimulationActions>()((set, 
         selection: null,
         commands: [],
         finishedOrders: [],
+        recording: currentRecording(),
       });
+    },
+    setRecording(on) {
+      if (on === (recorder !== null)) return;
+      if (on) {
+        // Restart the scenario as a fresh recorded run (see setRecording's contract).
+        const id = get().scenarioId;
+        const wasPaused = runner.paused;
+        unsubscribe();
+        const started = start(createScenario(id), true);
+        runner = started.runner;
+        unsubscribe = track(runner);
+        runner.setSpeed(get().speed);
+        if (!wasPaused) runner.resume();
+        set({
+          config: runner.config,
+          ...project(runner),
+          eventCount: started.events.length,
+          rejectionCount: started.rejections,
+          recentEvents: recent(started.events),
+          selection: null,
+          commands: [],
+          finishedOrders: [],
+          recording: currentRecording(),
+        });
+      } else {
+        set({ recording: stopRecorder() });
+      }
     },
     submitCommand(input) {
       const command_id = `ui-${String(++commandSeq).padStart(4, "0")}`;

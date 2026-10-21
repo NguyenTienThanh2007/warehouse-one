@@ -1,0 +1,24 @@
+{
+  "name": "@warehouse-one/recorder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Records a simulation run (config, command log, domain events) to the WAREHOUSE ONE API, and verifies stored runs by replaying them in the engine.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "record": "tsx scripts/record.ts",
+    "verify": "tsx scripts/verify.ts"
+  },
+  "dependencies": {
+    "@warehouse-one/contracts": "workspace:*",
+    "@warehouse-one/simulation": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15",
+    "vitest": "5.0.3"
+  }
+}
