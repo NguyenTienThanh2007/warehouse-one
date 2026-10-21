@@ -72,3 +72,15 @@ def reconcile(extra_args: str = "") -> BashOperator:
         retries=0,
         execution_timeout=timedelta(minutes=10),
     )
+
+
+
+def publish_analytics() -> BashOperator:
+    """Expose the current gold marts only after dbt freshness and reconciliation have succeeded."""
+    return BashOperator(
+        task_id="publish_analytics_snapshot",
+        bash_command=f"{PIPELINE} publish-analytics",
+        pool=LAKE_POOL,
+        retries=2,
+        execution_timeout=timedelta(minutes=20),
+    )
