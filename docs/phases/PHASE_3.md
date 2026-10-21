@@ -1,8 +1,7 @@
 # Phase 3 — Real Data Engineering
 
-**Branch:** `feature/p3-data-engineering` · **Base:** `main` @ `d2dc4d9` (PR #4, Phase 2, merged
-2026-10-21; `main` CI run 39536339237: 4/4 jobs green)
-**Status:** IN DEVELOPMENT. Sections marked *(plan)* describe intent, not results.
+**Branch:** `feature/p3-data-engineering` · **Merged into:** `main` @ `0b25fa4` (PR #5, 2026-10-21)
+**Status:** ACCEPTED. Sections marked *(plan)* describe original intent; §3–7 record the implementation and evidence.
 
 ## 1. Starting point (verified 2026-10-21)
 
@@ -78,9 +77,9 @@ outputs are derived and rebuildable from it.
 
 ## 4. Verification (local, Apple M2, Docker Desktop with 4 GB)
 
-All results below were run on this machine against real services (a throwaway PostgreSQL 18,
-Kafka 4.2.2 and MinIO for the Python tests; a separate Compose project with the full stack for the
-smoke test). Nothing here is a CI result.
+Local results below were run against real services (a throwaway PostgreSQL 18, Kafka 4.2.2 and
+MinIO for Python tests; a separate Compose project with the full stack for the smoke test). The
+GitHub Actions result is recorded separately in §6.
 
 | Check | Result |
 |-------|--------|
@@ -167,11 +166,15 @@ Airflow build took about 10 minutes.
     - the API URL is fixed at web build time (`NEXT_PUBLIC_API_URL`).
 11. **Noisy consumer logs during a broker outage.** Consumers log a stack trace per failed poll
     cycle while the broker is down (they recover without intervention).
-12. **CI for this branch:** see §6 (pending until the pull request runs).
+12. **Operational limits:** the stack is a local development proof, not a production deployment; see §5.
 
 ## 6. CI
 
-To be recorded from the pull request's run.
+- PR #5 merged on 2026-10-21 as `0b25fa4`.
+- PR CI passed all 5 jobs: TypeScript checks, Python API checks, Docker Compose stack, data-platform
+  integration and browser E2E.
+- Main push CI run [39560402887](https://github.com/NguyenTienThanh2007/warehouse-one/actions/runs/39560402887)
+  completed successfully on merge commit `0b25fa4`.
 
 ## 7. Acceptance checklist
 
@@ -186,4 +189,4 @@ To be recorded from the pull request's run.
 | Failure, restart and duplicate behaviour proven | done | smoke 6–10; integration tests |
 | Phase 0–2 functionality and contracts intact | done locally | `pnpm check`; golden fixture; browser tests (§4) |
 | Documentation reflects the implementation | done | this file, EVENT_CONTRACT, ARCHITECTURE, DEVELOPMENT, DECISIONS |
-| CI passes on a reviewable PR | pending | §6 |
+| CI passes on a reviewable PR | done | PR #5 CI and main run 39560402887 (§6) |
