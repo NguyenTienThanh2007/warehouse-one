@@ -38,7 +38,7 @@ def test_command_models_match_json_schema(schema: dict[str, Any]) -> None:
         }, command_type
 
 
-@pytest.mark.parametrize("fixture", ["foundation-demo", "operations-demo"])
+@pytest.mark.parametrize("fixture", ["foundation-demo", "operations-demo", "network-demo"])
 def test_fixture_command_logs_parse(repo_root: Path, fixture: str) -> None:
     lines = (repo_root / "data/fixtures" / fixture / "commands.jsonl").read_text().splitlines()
     assert lines

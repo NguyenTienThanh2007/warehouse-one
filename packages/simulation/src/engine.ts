@@ -1,6 +1,10 @@
 import { EntityId, parseCommand, Uuid } from "@warehouse-one/contracts";
 import { TickDraft } from "./draft";
 import { applyCommand } from "./handlers";
+import { initialNetwork } from "./network/init";
+import { checkNetworkInvariants } from "./network/invariants";
+import { networkSystem } from "./network/system";
+import { validateNetwork } from "./network/validate";
 import { initialOperations } from "./ops/init";
 import { checkOpsInvariants } from "./ops/invariants";
 import { navGraph } from "./ops/nav";
@@ -16,7 +20,13 @@ import type {
 } from "./types";
 
 /** Systems run every tick, after commands, in this fixed order. */
-const SYSTEMS = [syntheticWorkloadSystem, operationsSystem] as const;
+const SYSTEMS = [
+  syntheticWorkloadSystem,
+  operationsSystem,
+  (d: TickDraft) => {
+    if (d.net) networkSystem(d.net);
+  },
+] as const;
 
 interface Indexes {
   locations: ReadonlyMap<string, SimulationConfig["locations"][number]>;
@@ -64,6 +74,10 @@ export function validateConfig(config: SimulationConfig): string[] {
     skus.add(s.id);
   }
   if (config.facility) problems.push(...validateFacility(config));
+  if (config.network) {
+    if (!config.facility) problems.push("network requires facility data (its primary site)");
+    else if (problems.length === 0) problems.push(...validateNetwork(config));
+  }
   const w = config.synthetic_workload;
   if (w) {
     for (const p of [w.inbound_probability, w.move_probability]) {
@@ -171,6 +185,7 @@ export function createInitialState(config: SimulationConfig): SimulationState {
   const problems = validateConfig(config);
   if (problems.length > 0) throw new Error(`invalid simulation config: ${problems.join("; ")}`);
   const ops = initialOperations(config);
+  const network = initialNetwork(config);
   return {
     tick: 0,
     sequence: 0,
@@ -178,6 +193,7 @@ export function createInitialState(config: SimulationConfig): SimulationState {
     inventory: {},
     aggregate_versions: {},
     ...(ops ? { ops } : {}),
+    ...(network ? { network } : {}),
   };
 }
 
@@ -273,6 +289,7 @@ export function checkInvariants(config: SimulationConfig, state: SimulationState
       violations.push(`location '${locationId}' over capacity (${total}/${loc.capacity})`);
   }
   violations.push(...checkOpsInvariants(config, state));
+  violations.push(...checkNetworkInvariants(config, state));
   return violations;
 }
 

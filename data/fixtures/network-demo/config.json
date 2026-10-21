@@ -1,0 +1,2477 @@
+{
+  "simulation_id": "1f54e195-a02e-815c-9e93-4266b6c0f97f",
+  "seed": "warehouse-one-network",
+  "tick_ms": 100,
+  "epoch": "2026-01-05T06:00:00.000Z",
+  "locations": [
+    {
+      "id": "loc-00-001",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -15.6,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-002",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -13.2,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-003",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -10.8,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-004",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -8.4,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-005",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -6,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-006",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -3.6,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-007",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": -1.2,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-008",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 1.2,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-009",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 3.6,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-010",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 6,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-011",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 8.4,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-012",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 10.8,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-013",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 13.2,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-00-014",
+      "zone": "row-a",
+      "capacity": 8,
+      "position": {
+        "x": 15.6,
+        "z": -12.5
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-01-001",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -15.6,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-002",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -13.2,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-003",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -10.8,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-004",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -8.4,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-005",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -6,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-006",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -3.6,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-007",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": -1.2,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-008",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 1.2,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-009",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 3.6,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-010",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 6,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-011",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 8.4,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-012",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 10.8,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-013",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 13.2,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-01-014",
+      "zone": "row-b",
+      "capacity": 8,
+      "position": {
+        "x": 15.6,
+        "z": -11.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-02-001",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -15.6,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-002",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -13.2,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-003",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -10.8,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-004",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -8.4,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-005",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -6,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-006",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -3.6,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-007",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": -1.2,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-008",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 1.2,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-009",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 3.6,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-010",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 6,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-011",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 8.4,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-012",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 10.8,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-013",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 13.2,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-02-014",
+      "zone": "row-c",
+      "capacity": 8,
+      "position": {
+        "x": 15.6,
+        "z": -6.4
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-03-001",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -15.6,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-002",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -13.2,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-003",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -10.8,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-004",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -8.4,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-005",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -6,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-006",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -3.6,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-007",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": -1.2,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-008",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 1.2,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-009",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 3.6,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-010",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 6,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-011",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 8.4,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-012",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 10.8,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-013",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 13.2,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-03-014",
+      "zone": "row-d",
+      "capacity": 8,
+      "position": {
+        "x": 15.6,
+        "z": -5
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-04-001",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -15.6,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-002",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -13.2,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-003",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -10.8,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-004",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -8.4,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-005",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -6,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-006",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -3.6,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-007",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": -1.2,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-008",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 1.2,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-009",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 3.6,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-010",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 6,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-011",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 8.4,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-012",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 10.8,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-013",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 13.2,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-04-014",
+      "zone": "row-e",
+      "capacity": 8,
+      "position": {
+        "x": 15.6,
+        "z": -0.3
+      },
+      "yaw": 3.141592653589793
+    },
+    {
+      "id": "loc-05-001",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -15.6,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-002",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -13.2,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-003",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -10.8,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-004",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -8.4,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-005",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -6,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-006",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -3.6,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-007",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": -1.2,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-008",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 1.2,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-009",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 3.6,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-010",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 6,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-011",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 8.4,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-012",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 10.8,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-013",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 13.2,
+        "z": 1.1
+      },
+      "yaw": 0
+    },
+    {
+      "id": "loc-05-014",
+      "zone": "row-f",
+      "capacity": 8,
+      "position": {
+        "x": 15.6,
+        "z": 1.1
+      },
+      "yaw": 0
+    }
+  ],
+  "skus": [
+    {
+      "id": "sku-std-pallet",
+      "name": "Mixed cartons (ambient)"
+    },
+    {
+      "id": "sku-cold-chain",
+      "name": "Insulated cold-chain container"
+    },
+    {
+      "id": "sku-bulk-bags",
+      "name": "Bulk bags (FIBC)"
+    },
+    {
+      "id": "sku-electronics",
+      "name": "Boxed electronics"
+    }
+  ],
+  "facility": {
+    "name": "WAREHOUSE ONE · Northgate DC",
+    "building": {
+      "min": {
+        "x": -24.8,
+        "z": -16.65
+      },
+      "max": {
+        "x": 21.8,
+        "z": 16.65
+      },
+      "height": 10
+    },
+    "site": {
+      "min": {
+        "x": -32.8,
+        "z": -22.65
+      },
+      "max": {
+        "x": 29.8,
+        "z": 58.65
+      }
+    },
+    "rack": {
+      "bay_width": 2.4,
+      "depth": 1.1,
+      "level_height": 1.6,
+      "positions_per_level": 2
+    },
+    "aisle_width": 3.6,
+    "docks": [
+      {
+        "id": "dock-01",
+        "position": {
+          "x": -6.4,
+          "z": 16.65
+        },
+        "yaw": 0
+      },
+      {
+        "id": "dock-02",
+        "position": {
+          "x": -1.8,
+          "z": 16.65
+        },
+        "yaw": 0
+      },
+      {
+        "id": "dock-03",
+        "position": {
+          "x": 2.8,
+          "z": 16.65
+        },
+        "yaw": 0
+      },
+      {
+        "id": "dock-04",
+        "position": {
+          "x": 7.4,
+          "z": 16.65
+        },
+        "yaw": 0
+      }
+    ],
+    "equipment": [
+      {
+        "id": "fl-01",
+        "kind": "counterbalance_forklift",
+        "label": "Counterbalance forklift FL-01",
+        "position": {
+          "x": -22.400000000000002,
+          "z": 13.65
+        },
+        "yaw": 1.5707963267948966,
+        "rated_capacity_kg": 2500,
+        "battery_permille": 1000
+      },
+      {
+        "id": "fl-02",
+        "kind": "counterbalance_forklift",
+        "label": "Counterbalance forklift FL-02",
+        "position": {
+          "x": -22.400000000000002,
+          "z": 11.05
+        },
+        "yaw": 1.5707963267948966,
+        "rated_capacity_kg": 2500,
+        "battery_permille": 860
+      },
+      {
+        "id": "fl-03",
+        "kind": "counterbalance_forklift",
+        "label": "Counterbalance forklift FL-03",
+        "position": {
+          "x": -22.400000000000002,
+          "z": 8.45
+        },
+        "yaw": 1.5707963267948966,
+        "rated_capacity_kg": 2500,
+        "battery_permille": 720
+      },
+      {
+        "id": "rt-01",
+        "kind": "reach_truck",
+        "label": "Reach truck RT-01",
+        "position": {
+          "x": -22.400000000000002,
+          "z": 5.45
+        },
+        "yaw": 1.5707963267948966,
+        "rated_capacity_kg": 1600,
+        "battery_permille": 940
+      }
+    ]
+  },
+  "operations_workload": {
+    "inbound_interval_ticks": 0,
+    "outbound_interval_ticks": 0,
+    "relocate_interval_ticks": 1800,
+    "min_pallets": 2,
+    "max_pallets": 4
+  },
+  "network": {
+    "name": "Northgate logistics park",
+    "primary_site": "northgate-dc",
+    "sites": [
+      {
+        "id": "northgate-dc",
+        "kind": "distribution_center",
+        "name": "Northgate distribution centre",
+        "bounds": {
+          "min": {
+            "x": -32.8,
+            "z": -22.65
+          },
+          "max": {
+            "x": 58.3,
+            "z": 58.65
+          }
+        },
+        "gate_node": "dc-gate",
+        "stands": [
+          {
+            "id": "dc-my-01",
+            "kind": "staging",
+            "approach_node": "dc-my-a01",
+            "position": {
+              "x": 48.05,
+              "z": 56.00000000000001
+            },
+            "yaw": -1.5707963267948966
+          },
+          {
+            "id": "dc-my-02",
+            "kind": "staging",
+            "approach_node": "dc-my-a02",
+            "position": {
+              "x": 48.05,
+              "z": 50.00000000000001
+            },
+            "yaw": -1.5707963267948966
+          },
+          {
+            "id": "dc-my-03",
+            "kind": "staging",
+            "approach_node": "dc-my-a03",
+            "position": {
+              "x": 48.05,
+              "z": 44.00000000000001
+            },
+            "yaw": -1.5707963267948966
+          },
+          {
+            "id": "dc-my-04",
+            "kind": "staging",
+            "approach_node": "dc-my-a04",
+            "position": {
+              "x": 48.05,
+              "z": 38.00000000000001
+            },
+            "yaw": -1.5707963267948966
+          },
+          {
+            "id": "dc-my-05",
+            "kind": "staging",
+            "approach_node": "dc-my-a05",
+            "position": {
+              "x": 48.05,
+              "z": 32.00000000000001
+            },
+            "yaw": -1.5707963267948966
+          },
+          {
+            "id": "dc-my-06",
+            "kind": "staging",
+            "approach_node": "dc-my-a06",
+            "position": {
+              "x": 48.05,
+              "z": 26.000000000000007
+            },
+            "yaw": -1.5707963267948966
+          }
+        ],
+        "buildings": [],
+        "pallet_capacity": 0,
+        "handling_ticks_per_pallet": 1
+      },
+      {
+        "id": "harbour-terminal",
+        "kind": "container_terminal",
+        "name": "Harbour container terminal",
+        "bounds": {
+          "min": {
+            "x": -300,
+            "z": -70
+          },
+          "max": {
+            "x": -110,
+            "z": 62
+          }
+        },
+        "gate_node": "term-gate",
+        "stands": [
+          {
+            "id": "term-door-01",
+            "kind": "door",
+            "approach_node": "term-door-a01",
+            "position": {
+              "x": -180,
+              "z": -11.149999999999999
+            },
+            "yaw": 0
+          },
+          {
+            "id": "term-door-02",
+            "kind": "door",
+            "approach_node": "term-door-a02",
+            "position": {
+              "x": -168,
+              "z": -11.149999999999999
+            },
+            "yaw": 0
+          },
+          {
+            "id": "term-door-03",
+            "kind": "door",
+            "approach_node": "term-door-a03",
+            "position": {
+              "x": -156,
+              "z": -11.149999999999999
+            },
+            "yaw": 0
+          },
+          {
+            "id": "term-door-04",
+            "kind": "door",
+            "approach_node": "term-door-a04",
+            "position": {
+              "x": -144,
+              "z": -11.149999999999999
+            },
+            "yaw": 0
+          },
+          {
+            "id": "term-stall-01",
+            "kind": "staging",
+            "approach_node": "term-door-a01",
+            "position": {
+              "x": -180,
+              "z": 20.25
+            },
+            "yaw": 3.141592653589793
+          },
+          {
+            "id": "term-stall-02",
+            "kind": "staging",
+            "approach_node": "term-door-a02",
+            "position": {
+              "x": -168,
+              "z": 20.25
+            },
+            "yaw": 3.141592653589793
+          },
+          {
+            "id": "term-stall-03",
+            "kind": "staging",
+            "approach_node": "term-door-a03",
+            "position": {
+              "x": -156,
+              "z": 20.25
+            },
+            "yaw": 3.141592653589793
+          },
+          {
+            "id": "term-stall-04",
+            "kind": "staging",
+            "approach_node": "term-door-a04",
+            "position": {
+              "x": -144,
+              "z": 20.25
+            },
+            "yaw": 3.141592653589793
+          }
+        ],
+        "buildings": [
+          {
+            "id": "term-cfs",
+            "label": "Container freight station",
+            "style": "cfs_shed",
+            "min": {
+              "x": -192,
+              "z": -52
+            },
+            "max": {
+              "x": -132,
+              "z": -20
+            },
+            "height": 11
+          },
+          {
+            "id": "term-gatehouse",
+            "label": "Terminal gatehouse",
+            "style": "gatehouse",
+            "min": {
+              "x": -124,
+              "z": 46
+            },
+            "max": {
+              "x": -118,
+              "z": 52
+            },
+            "height": 3.2
+          }
+        ],
+        "pallet_capacity": 160,
+        "opening_stock": [
+          {
+            "sku": "sku-bulk-bags",
+            "quantity": 18
+          },
+          {
+            "sku": "sku-cold-chain",
+            "quantity": 14
+          },
+          {
+            "sku": "sku-electronics",
+            "quantity": 20
+          },
+          {
+            "sku": "sku-std-pallet",
+            "quantity": 22
+          }
+        ],
+        "handling_ticks_per_pallet": 25,
+        "containers": {
+          "capacity": 360,
+          "opening": 150,
+          "pallets_per_container": 12,
+          "devan_ticks": 300,
+          "devan_below": 60,
+          "vessel": {
+            "interval_ticks": 9000,
+            "phase_ticks": 4500,
+            "min": 18,
+            "max": 30
+          },
+          "blocks": [
+            {
+              "id": "blk-a",
+              "origin": {
+                "x": -292,
+                "z": -60
+              },
+              "bays": 5,
+              "rows": 8,
+              "tiers": 3
+            },
+            {
+              "id": "blk-b",
+              "origin": {
+                "x": -292,
+                "z": -30
+              },
+              "bays": 5,
+              "rows": 8,
+              "tiers": 3
+            },
+            {
+              "id": "blk-c",
+              "origin": {
+                "x": -292,
+                "z": 0
+              },
+              "bays": 5,
+              "rows": 8,
+              "tiers": 3
+            },
+            {
+              "id": "blk-d",
+              "origin": {
+                "x": -222,
+                "z": -60
+              },
+              "bays": 2,
+              "rows": 8,
+              "tiers": 3
+            },
+            {
+              "id": "blk-e",
+              "origin": {
+                "x": -222,
+                "z": -30
+              },
+              "bays": 2,
+              "rows": 8,
+              "tiers": 3
+            }
+          ]
+        }
+      },
+      {
+        "id": "riverside-xd",
+        "kind": "cross_dock",
+        "name": "Riverside cross-dock",
+        "bounds": {
+          "min": {
+            "x": 62,
+            "z": -32
+          },
+          "max": {
+            "x": 198,
+            "z": 62
+          }
+        },
+        "gate_node": "xd-gate",
+        "stands": [
+          {
+            "id": "xd-in-01",
+            "kind": "door",
+            "approach_node": "xd-in-a01",
+            "position": {
+              "x": 105,
+              "z": 34.85
+            },
+            "yaw": 0,
+            "role": "inbound"
+          },
+          {
+            "id": "xd-in-02",
+            "kind": "door",
+            "approach_node": "xd-in-a02",
+            "position": {
+              "x": 115,
+              "z": 34.85
+            },
+            "yaw": 0,
+            "role": "inbound"
+          },
+          {
+            "id": "xd-in-03",
+            "kind": "door",
+            "approach_node": "xd-in-a03",
+            "position": {
+              "x": 125,
+              "z": 34.85
+            },
+            "yaw": 0,
+            "role": "inbound"
+          },
+          {
+            "id": "xd-in-04",
+            "kind": "door",
+            "approach_node": "xd-in-a04",
+            "position": {
+              "x": 135,
+              "z": 34.85
+            },
+            "yaw": 0,
+            "role": "inbound"
+          },
+          {
+            "id": "xd-in-05",
+            "kind": "door",
+            "approach_node": "xd-in-a05",
+            "position": {
+              "x": 145,
+              "z": 34.85
+            },
+            "yaw": 0,
+            "role": "inbound"
+          },
+          {
+            "id": "xd-in-06",
+            "kind": "door",
+            "approach_node": "xd-in-a06",
+            "position": {
+              "x": 155,
+              "z": 34.85
+            },
+            "yaw": 0,
+            "role": "inbound"
+          },
+          {
+            "id": "xd-out-01",
+            "kind": "door",
+            "approach_node": "xd-out-a01",
+            "position": {
+              "x": 105,
+              "z": -6.850000000000001
+            },
+            "yaw": 3.141592653589793,
+            "role": "outbound"
+          },
+          {
+            "id": "xd-out-02",
+            "kind": "door",
+            "approach_node": "xd-out-a02",
+            "position": {
+              "x": 115,
+              "z": -6.850000000000001
+            },
+            "yaw": 3.141592653589793,
+            "role": "outbound"
+          },
+          {
+            "id": "xd-out-03",
+            "kind": "door",
+            "approach_node": "xd-out-a03",
+            "position": {
+              "x": 125,
+              "z": -6.850000000000001
+            },
+            "yaw": 3.141592653589793,
+            "role": "outbound"
+          },
+          {
+            "id": "xd-out-04",
+            "kind": "door",
+            "approach_node": "xd-out-a04",
+            "position": {
+              "x": 135,
+              "z": -6.850000000000001
+            },
+            "yaw": 3.141592653589793,
+            "role": "outbound"
+          },
+          {
+            "id": "xd-out-05",
+            "kind": "door",
+            "approach_node": "xd-out-a05",
+            "position": {
+              "x": 145,
+              "z": -6.850000000000001
+            },
+            "yaw": 3.141592653589793,
+            "role": "outbound"
+          },
+          {
+            "id": "xd-out-06",
+            "kind": "door",
+            "approach_node": "xd-out-a06",
+            "position": {
+              "x": 155,
+              "z": -6.850000000000001
+            },
+            "yaw": 3.141592653589793,
+            "role": "outbound"
+          },
+          {
+            "id": "xd-stall-01",
+            "kind": "staging",
+            "approach_node": "xd-stall-a01",
+            "position": {
+              "x": 82.25,
+              "z": 8
+            },
+            "yaw": -1.5707963267948966
+          },
+          {
+            "id": "xd-stall-02",
+            "kind": "staging",
+            "approach_node": "xd-stall-a02",
+            "position": {
+              "x": 82.25,
+              "z": 14
+            },
+            "yaw": -1.5707963267948966
+          },
+          {
+            "id": "xd-stall-03",
+            "kind": "staging",
+            "approach_node": "xd-stall-a03",
+            "position": {
+              "x": 82.25,
+              "z": 20
+            },
+            "yaw": -1.5707963267948966
+          },
+          {
+            "id": "xd-stall-04",
+            "kind": "staging",
+            "approach_node": "xd-stall-a04",
+            "position": {
+              "x": 82.25,
+              "z": 26
+            },
+            "yaw": -1.5707963267948966
+          }
+        ],
+        "buildings": [
+          {
+            "id": "xd-building",
+            "label": "Cross-dock hall",
+            "style": "cross_dock",
+            "min": {
+              "x": 95,
+              "z": 2
+            },
+            "max": {
+              "x": 165,
+              "z": 26
+            },
+            "height": 9
+          },
+          {
+            "id": "xd-office",
+            "label": "Dispatch office",
+            "style": "office",
+            "min": {
+              "x": 170,
+              "z": 6
+            },
+            "max": {
+              "x": 184,
+              "z": 20
+            },
+            "height": 4.5
+          }
+        ],
+        "pallet_capacity": 200,
+        "opening_stock": [
+          {
+            "sku": "sku-bulk-bags",
+            "quantity": 12
+          },
+          {
+            "sku": "sku-cold-chain",
+            "quantity": 16
+          },
+          {
+            "sku": "sku-electronics",
+            "quantity": 14
+          },
+          {
+            "sku": "sku-std-pallet",
+            "quantity": 18
+          }
+        ],
+        "handling_ticks_per_pallet": 20
+      },
+      {
+        "id": "fleet-depot",
+        "kind": "fleet_depot",
+        "name": "Fleet depot & workshop",
+        "bounds": {
+          "min": {
+            "x": -86,
+            "z": 88.15
+          },
+          "max": {
+            "x": 36,
+            "z": 144.15
+          }
+        },
+        "gate_node": "depot-gate",
+        "stands": [
+          {
+            "id": "depot-park-01",
+            "kind": "parking",
+            "approach_node": "depot-park-a01",
+            "position": {
+              "x": -70,
+              "z": 112.4
+            },
+            "yaw": 3.141592653589793
+          },
+          {
+            "id": "depot-park-02",
+            "kind": "parking",
+            "approach_node": "depot-park-a02",
+            "position": {
+              "x": -64,
+              "z": 112.4
+            },
+            "yaw": 3.141592653589793
+          },
+          {
+            "id": "depot-park-03",
+            "kind": "parking",
+            "approach_node": "depot-park-a03",
+            "position": {
+              "x": -58,
+              "z": 112.4
+            },
+            "yaw": 3.141592653589793
+          },
+          {
+            "id": "depot-park-04",
+            "kind": "parking",
+            "approach_node": "depot-park-a04",
+            "position": {
+              "x": -52,
+              "z": 112.4
+            },
+            "yaw": 3.141592653589793
+          },
+          {
+            "id": "depot-park-05",
+            "kind": "parking",
+            "approach_node": "depot-park-a05",
+            "position": {
+              "x": -46,
+              "z": 112.4
+            },
+            "yaw": 3.141592653589793
+          },
+          {
+            "id": "depot-park-06",
+            "kind": "parking",
+            "approach_node": "depot-park-a06",
+            "position": {
+              "x": -40,
+              "z": 112.4
+            },
+            "yaw": 3.141592653589793
+          },
+          {
+            "id": "depot-svc-01",
+            "kind": "service",
+            "approach_node": "depot-svc-a01",
+            "position": {
+              "x": 8,
+              "z": 124.4
+            },
+            "yaw": 3.141592653589793
+          },
+          {
+            "id": "depot-svc-02",
+            "kind": "service",
+            "approach_node": "depot-svc-a02",
+            "position": {
+              "x": 20,
+              "z": 124.4
+            },
+            "yaw": 3.141592653589793
+          }
+        ],
+        "buildings": [
+          {
+            "id": "depot-workshop",
+            "label": "Maintenance workshop",
+            "style": "workshop",
+            "min": {
+              "x": 0,
+              "z": 115.15
+            },
+            "max": {
+              "x": 28,
+              "z": 140.15
+            },
+            "height": 8
+          },
+          {
+            "id": "depot-office",
+            "label": "Fleet office",
+            "style": "office",
+            "min": {
+              "x": -30,
+              "z": 116.15
+            },
+            "max": {
+              "x": -14,
+              "z": 128.15
+            },
+            "height": 4
+          }
+        ],
+        "pallet_capacity": 0,
+        "handling_ticks_per_pallet": 1
+      },
+      {
+        "id": "east-gateway",
+        "kind": "gateway",
+        "name": "East highway gateway",
+        "bounds": {
+          "min": {
+            "x": 232,
+            "z": 61.150000000000006
+          },
+          "max": {
+            "x": 276,
+            "z": 89.15
+          }
+        },
+        "gate_node": "gw-exit",
+        "stands": [],
+        "buildings": [],
+        "pallet_capacity": 0,
+        "handling_ticks_per_pallet": 1
+      }
+    ],
+    "nodes": [
+      {
+        "id": "dc-gate",
+        "position": {
+          "x": 0.5,
+          "z": 75.15
+        }
+      },
+      {
+        "id": "dc-my-j",
+        "position": {
+          "x": 35.8,
+          "z": 75.15
+        }
+      },
+      {
+        "id": "dc-my-a01",
+        "position": {
+          "x": 35.8,
+          "z": 56.00000000000001
+        }
+      },
+      {
+        "id": "dc-my-a02",
+        "position": {
+          "x": 35.8,
+          "z": 50.00000000000001
+        }
+      },
+      {
+        "id": "dc-my-a03",
+        "position": {
+          "x": 35.8,
+          "z": 44.00000000000001
+        }
+      },
+      {
+        "id": "dc-my-a04",
+        "position": {
+          "x": 35.8,
+          "z": 38.00000000000001
+        }
+      },
+      {
+        "id": "dc-my-a05",
+        "position": {
+          "x": 35.8,
+          "z": 32.00000000000001
+        }
+      },
+      {
+        "id": "dc-my-a06",
+        "position": {
+          "x": 35.8,
+          "z": 26.000000000000007
+        }
+      },
+      {
+        "id": "term-gate",
+        "position": {
+          "x": -130,
+          "z": 75.15
+        }
+      },
+      {
+        "id": "term-j",
+        "position": {
+          "x": -130,
+          "z": 8
+        }
+      },
+      {
+        "id": "term-lw",
+        "position": {
+          "x": -192,
+          "z": 8
+        }
+      },
+      {
+        "id": "term-le",
+        "position": {
+          "x": -116,
+          "z": 8
+        }
+      },
+      {
+        "id": "term-door-a01",
+        "position": {
+          "x": -180,
+          "z": 8
+        }
+      },
+      {
+        "id": "term-door-a02",
+        "position": {
+          "x": -168,
+          "z": 8
+        }
+      },
+      {
+        "id": "term-door-a03",
+        "position": {
+          "x": -156,
+          "z": 8
+        }
+      },
+      {
+        "id": "term-door-a04",
+        "position": {
+          "x": -144,
+          "z": 8
+        }
+      },
+      {
+        "id": "xd-gate",
+        "position": {
+          "x": 130,
+          "z": 75.15
+        }
+      },
+      {
+        "id": "xd-s130",
+        "position": {
+          "x": 130,
+          "z": 52
+        }
+      },
+      {
+        "id": "xd-sw",
+        "position": {
+          "x": 70,
+          "z": 52
+        }
+      },
+      {
+        "id": "xd-se",
+        "position": {
+          "x": 190,
+          "z": 52
+        }
+      },
+      {
+        "id": "xd-nw",
+        "position": {
+          "x": 70,
+          "z": -24
+        }
+      },
+      {
+        "id": "xd-ne",
+        "position": {
+          "x": 190,
+          "z": -24
+        }
+      },
+      {
+        "id": "xd-in-a01",
+        "position": {
+          "x": 105,
+          "z": 52
+        }
+      },
+      {
+        "id": "xd-in-a02",
+        "position": {
+          "x": 115,
+          "z": 52
+        }
+      },
+      {
+        "id": "xd-in-a03",
+        "position": {
+          "x": 125,
+          "z": 52
+        }
+      },
+      {
+        "id": "xd-in-a04",
+        "position": {
+          "x": 135,
+          "z": 52
+        }
+      },
+      {
+        "id": "xd-in-a05",
+        "position": {
+          "x": 145,
+          "z": 52
+        }
+      },
+      {
+        "id": "xd-in-a06",
+        "position": {
+          "x": 155,
+          "z": 52
+        }
+      },
+      {
+        "id": "xd-out-a01",
+        "position": {
+          "x": 105,
+          "z": -24
+        }
+      },
+      {
+        "id": "xd-out-a02",
+        "position": {
+          "x": 115,
+          "z": -24
+        }
+      },
+      {
+        "id": "xd-out-a03",
+        "position": {
+          "x": 125,
+          "z": -24
+        }
+      },
+      {
+        "id": "xd-out-a04",
+        "position": {
+          "x": 135,
+          "z": -24
+        }
+      },
+      {
+        "id": "xd-out-a05",
+        "position": {
+          "x": 145,
+          "z": -24
+        }
+      },
+      {
+        "id": "xd-out-a06",
+        "position": {
+          "x": 155,
+          "z": -24
+        }
+      },
+      {
+        "id": "xd-stall-a01",
+        "position": {
+          "x": 70,
+          "z": 8
+        }
+      },
+      {
+        "id": "xd-stall-a02",
+        "position": {
+          "x": 70,
+          "z": 14
+        }
+      },
+      {
+        "id": "xd-stall-a03",
+        "position": {
+          "x": 70,
+          "z": 20
+        }
+      },
+      {
+        "id": "xd-stall-a04",
+        "position": {
+          "x": 70,
+          "z": 26
+        }
+      },
+      {
+        "id": "depot-gate",
+        "position": {
+          "x": -20,
+          "z": 75.15
+        }
+      },
+      {
+        "id": "depot-j",
+        "position": {
+          "x": -20,
+          "z": 100.15
+        }
+      },
+      {
+        "id": "depot-park-a01",
+        "position": {
+          "x": -70,
+          "z": 100.15
+        }
+      },
+      {
+        "id": "depot-park-a02",
+        "position": {
+          "x": -64,
+          "z": 100.15
+        }
+      },
+      {
+        "id": "depot-park-a03",
+        "position": {
+          "x": -58,
+          "z": 100.15
+        }
+      },
+      {
+        "id": "depot-park-a04",
+        "position": {
+          "x": -52,
+          "z": 100.15
+        }
+      },
+      {
+        "id": "depot-park-a05",
+        "position": {
+          "x": -46,
+          "z": 100.15
+        }
+      },
+      {
+        "id": "depot-park-a06",
+        "position": {
+          "x": -40,
+          "z": 100.15
+        }
+      },
+      {
+        "id": "depot-svc-a01",
+        "position": {
+          "x": 8,
+          "z": 100.15
+        }
+      },
+      {
+        "id": "depot-svc-a02",
+        "position": {
+          "x": 20,
+          "z": 100.15
+        }
+      },
+      {
+        "id": "depot-lw",
+        "position": {
+          "x": -80,
+          "z": 100.15
+        }
+      },
+      {
+        "id": "depot-le",
+        "position": {
+          "x": 30,
+          "z": 100.15
+        }
+      },
+      {
+        "id": "gw-exit",
+        "position": {
+          "x": 262,
+          "z": 75.15
+        }
+      },
+      {
+        "id": "av-w",
+        "position": {
+          "x": -300,
+          "z": 75.15
+        }
+      },
+      {
+        "id": "nl-w",
+        "position": {
+          "x": -100,
+          "z": -40.65
+        }
+      },
+      {
+        "id": "nl-e",
+        "position": {
+          "x": 60,
+          "z": -40.65
+        }
+      }
+    ],
+    "roads": [
+      {
+        "id": "rd-dc-my-j-dc-my-a01",
+        "from": "dc-my-j",
+        "to": "dc-my-a01",
+        "kind": "service"
+      },
+      {
+        "id": "rd-dc-my-a01-dc-my-a02",
+        "from": "dc-my-a01",
+        "to": "dc-my-a02",
+        "kind": "service"
+      },
+      {
+        "id": "rd-dc-my-a02-dc-my-a03",
+        "from": "dc-my-a02",
+        "to": "dc-my-a03",
+        "kind": "service"
+      },
+      {
+        "id": "rd-dc-my-a03-dc-my-a04",
+        "from": "dc-my-a03",
+        "to": "dc-my-a04",
+        "kind": "service"
+      },
+      {
+        "id": "rd-dc-my-a04-dc-my-a05",
+        "from": "dc-my-a04",
+        "to": "dc-my-a05",
+        "kind": "service"
+      },
+      {
+        "id": "rd-dc-my-a05-dc-my-a06",
+        "from": "dc-my-a05",
+        "to": "dc-my-a06",
+        "kind": "service"
+      },
+      {
+        "id": "rd-term-lw-term-door-a01",
+        "from": "term-lw",
+        "to": "term-door-a01",
+        "kind": "service"
+      },
+      {
+        "id": "rd-term-door-a01-term-door-a02",
+        "from": "term-door-a01",
+        "to": "term-door-a02",
+        "kind": "service"
+      },
+      {
+        "id": "rd-term-door-a02-term-door-a03",
+        "from": "term-door-a02",
+        "to": "term-door-a03",
+        "kind": "service"
+      },
+      {
+        "id": "rd-term-door-a03-term-door-a04",
+        "from": "term-door-a03",
+        "to": "term-door-a04",
+        "kind": "service"
+      },
+      {
+        "id": "rd-term-door-a04-term-j",
+        "from": "term-door-a04",
+        "to": "term-j",
+        "kind": "service"
+      },
+      {
+        "id": "rd-term-j-term-le",
+        "from": "term-j",
+        "to": "term-le",
+        "kind": "service"
+      },
+      {
+        "id": "rd-term-gate-term-j",
+        "from": "term-gate",
+        "to": "term-j",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-sw-xd-in-a01",
+        "from": "xd-sw",
+        "to": "xd-in-a01",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-in-a01-xd-in-a02",
+        "from": "xd-in-a01",
+        "to": "xd-in-a02",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-in-a02-xd-in-a03",
+        "from": "xd-in-a02",
+        "to": "xd-in-a03",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-in-a03-xd-s130",
+        "from": "xd-in-a03",
+        "to": "xd-s130",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-s130-xd-in-a04",
+        "from": "xd-s130",
+        "to": "xd-in-a04",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-in-a04-xd-in-a05",
+        "from": "xd-in-a04",
+        "to": "xd-in-a05",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-in-a05-xd-in-a06",
+        "from": "xd-in-a05",
+        "to": "xd-in-a06",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-in-a06-xd-se",
+        "from": "xd-in-a06",
+        "to": "xd-se",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-nw-xd-out-a01",
+        "from": "xd-nw",
+        "to": "xd-out-a01",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-out-a01-xd-out-a02",
+        "from": "xd-out-a01",
+        "to": "xd-out-a02",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-out-a02-xd-out-a03",
+        "from": "xd-out-a02",
+        "to": "xd-out-a03",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-out-a03-xd-out-a04",
+        "from": "xd-out-a03",
+        "to": "xd-out-a04",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-out-a04-xd-out-a05",
+        "from": "xd-out-a04",
+        "to": "xd-out-a05",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-out-a05-xd-out-a06",
+        "from": "xd-out-a05",
+        "to": "xd-out-a06",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-out-a06-xd-ne",
+        "from": "xd-out-a06",
+        "to": "xd-ne",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-nw-xd-stall-a01",
+        "from": "xd-nw",
+        "to": "xd-stall-a01",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-stall-a01-xd-stall-a02",
+        "from": "xd-stall-a01",
+        "to": "xd-stall-a02",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-stall-a02-xd-stall-a03",
+        "from": "xd-stall-a02",
+        "to": "xd-stall-a03",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-stall-a03-xd-stall-a04",
+        "from": "xd-stall-a03",
+        "to": "xd-stall-a04",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-stall-a04-xd-sw",
+        "from": "xd-stall-a04",
+        "to": "xd-sw",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-ne-xd-se",
+        "from": "xd-ne",
+        "to": "xd-se",
+        "kind": "service"
+      },
+      {
+        "id": "rd-xd-gate-xd-s130",
+        "from": "xd-gate",
+        "to": "xd-s130",
+        "kind": "service"
+      },
+      {
+        "id": "rd-depot-lw-depot-park-a01",
+        "from": "depot-lw",
+        "to": "depot-park-a01",
+        "kind": "service"
+      },
+      {
+        "id": "rd-depot-park-a01-depot-park-a02",
+        "from": "depot-park-a01",
+        "to": "depot-park-a02",
+        "kind": "service"
+      },
+      {
+        "id": "rd-depot-park-a02-depot-park-a03",
+        "from": "depot-park-a02",
+        "to": "depot-park-a03",
+        "kind": "service"
+      },
+      {
+        "id": "rd-depot-park-a03-depot-park-a04",
+        "from": "depot-park-a03",
+        "to": "depot-park-a04",
+        "kind": "service"
+      },
+      {
+        "id": "rd-depot-park-a04-depot-park-a05",
+        "from": "depot-park-a04",
+        "to": "depot-park-a05",
+        "kind": "service"
+      },
+      {
+        "id": "rd-depot-park-a05-depot-park-a06",
+        "from": "depot-park-a05",
+        "to": "depot-park-a06",
+        "kind": "service"
+      },
+      {
+        "id": "rd-depot-park-a06-depot-j",
+        "from": "depot-park-a06",
+        "to": "depot-j",
+        "kind": "service"
+      },
+      {
+        "id": "rd-depot-j-depot-svc-a01",
+        "from": "depot-j",
+        "to": "depot-svc-a01",
+        "kind": "service"
+      },
+      {
+        "id": "rd-depot-svc-a01-depot-svc-a02",
+        "from": "depot-svc-a01",
+        "to": "depot-svc-a02",
+        "kind": "service"
+      },
+      {
+        "id": "rd-depot-svc-a02-depot-le",
+        "from": "depot-svc-a02",
+        "to": "depot-le",
+        "kind": "service"
+      },
+      {
+        "id": "rd-depot-gate-depot-j",
+        "from": "depot-gate",
+        "to": "depot-j",
+        "kind": "service"
+      },
+      {
+        "id": "rd-av-w-term-gate",
+        "from": "av-w",
+        "to": "term-gate",
+        "kind": "arterial"
+      },
+      {
+        "id": "rd-term-gate-depot-gate",
+        "from": "term-gate",
+        "to": "depot-gate",
+        "kind": "arterial"
+      },
+      {
+        "id": "rd-depot-gate-dc-gate",
+        "from": "depot-gate",
+        "to": "dc-gate",
+        "kind": "arterial"
+      },
+      {
+        "id": "rd-dc-gate-dc-my-j",
+        "from": "dc-gate",
+        "to": "dc-my-j",
+        "kind": "arterial"
+      },
+      {
+        "id": "rd-dc-my-j-xd-gate",
+        "from": "dc-my-j",
+        "to": "xd-gate",
+        "kind": "arterial"
+      },
+      {
+        "id": "rd-xd-gate-gw-exit",
+        "from": "xd-gate",
+        "to": "gw-exit",
+        "kind": "arterial"
+      },
+      {
+        "id": "rd-term-le-nl-w",
+        "from": "term-le",
+        "to": "nl-w",
+        "kind": "arterial"
+      },
+      {
+        "id": "rd-nl-w-nl-e",
+        "from": "nl-w",
+        "to": "nl-e",
+        "kind": "arterial"
+      },
+      {
+        "id": "rd-nl-e-xd-nw",
+        "from": "nl-e",
+        "to": "xd-nw",
+        "kind": "arterial"
+      }
+    ],
+    "vehicles": [
+      {
+        "id": "lh-01",
+        "label": "Line-haul truck LH-01",
+        "home_stand": "depot-park-01"
+      },
+      {
+        "id": "lh-02",
+        "label": "Line-haul truck LH-02",
+        "home_stand": "depot-park-02"
+      },
+      {
+        "id": "lh-03",
+        "label": "Line-haul truck LH-03",
+        "home_stand": "depot-park-03"
+      },
+      {
+        "id": "lh-04",
+        "label": "Line-haul truck LH-04",
+        "home_stand": "depot-park-04"
+      },
+      {
+        "id": "lh-05",
+        "label": "Line-haul truck LH-05",
+        "home_stand": "depot-park-05"
+      },
+      {
+        "id": "lh-06",
+        "label": "Line-haul truck LH-06",
+        "home_stand": "depot-park-06"
+      }
+    ],
+    "lanes": [
+      {
+        "id": "lane-import",
+        "from_site": "harbour-terminal",
+        "to_site": "riverside-xd",
+        "interval_ticks": 900,
+        "phase_ticks": 20,
+        "min_pallets": 10,
+        "max_pallets": 18,
+        "max_open": 2
+      },
+      {
+        "id": "lane-last-mile",
+        "from_site": "riverside-xd",
+        "to_site": "east-gateway",
+        "interval_ticks": 1200,
+        "phase_ticks": 80,
+        "min_pallets": 6,
+        "max_pallets": 12,
+        "max_open": 2
+      },
+      {
+        "id": "lane-dc-replenish",
+        "from_site": "riverside-xd",
+        "to_site": "northgate-dc",
+        "interval_ticks": 3600,
+        "phase_ticks": 200,
+        "min_pallets": 2,
+        "max_pallets": 4,
+        "max_open": 1
+      },
+      {
+        "id": "lane-dc-outbound",
+        "from_site": "northgate-dc",
+        "to_site": "riverside-xd",
+        "interval_ticks": 3600,
+        "phase_ticks": 420,
+        "min_pallets": 2,
+        "max_pallets": 4,
+        "max_open": 1
+      },
+      {
+        "id": "lane-direct-import",
+        "from_site": "harbour-terminal",
+        "to_site": "northgate-dc",
+        "interval_ticks": 7200,
+        "phase_ticks": 1500,
+        "min_pallets": 2,
+        "max_pallets": 4,
+        "max_open": 1
+      }
+    ],
+    "service_interval_mm": 5000000,
+    "service_ticks": 900,
+    "off_network_ticks": 1800
+  }
+}

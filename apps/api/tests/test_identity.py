@@ -7,7 +7,7 @@ import pytest
 
 from warehouse_api.contracts.identity import cyrb128, deterministic_uuid
 
-FIXTURES = ["foundation-demo", "operations-demo"]
+FIXTURES = ["foundation-demo", "operations-demo", "network-demo"]
 
 
 @pytest.mark.parametrize("fixture", FIXTURES)

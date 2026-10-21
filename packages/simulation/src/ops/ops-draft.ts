@@ -16,7 +16,7 @@ import type { NavGraph } from "./nav";
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
 /** Copy-on-write record: the base object is copied on the first write in a tick. */
-class Cow<V> {
+export class Cow<V> {
   private copied = false;
   constructor(private data: Readonly<Record<string, V>>) {}
   get(id: string): V | undefined {
@@ -90,6 +90,12 @@ export class OpsDraft {
 
   newId(kind: "pallet" | "task" | "truck" | "order"): string {
     this.nextId[kind] += 1;
+    const prefix = { pallet: "plt", task: "tsk", truck: "trk", order: "ord" } as const;
+    return formatId(prefix[kind], this.nextId[kind]);
+  }
+
+  /** The id most recently issued for a kind (Phase 5: the truck an admitted line-haul truck became). */
+  lastId(kind: "pallet" | "task" | "truck" | "order"): string {
     const prefix = { pallet: "plt", task: "tsk", truck: "trk", order: "ord" } as const;
     return formatId(prefix[kind], this.nextId[kind]);
   }

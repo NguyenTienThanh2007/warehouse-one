@@ -5,6 +5,7 @@ import {
   type EventType,
 } from "@warehouse-one/contracts";
 import { deterministicUuid } from "./hash";
+import { NetworkDraft } from "./network/draft";
 import { navGraph } from "./ops/nav";
 import { OpsDraft } from "./ops/ops-draft";
 import { nextFloat, nextInt, type RngState } from "./rng";
@@ -24,6 +25,8 @@ export class TickDraft {
   readonly events: DomainEvent[] = [];
   /** Operational working copy; null for configs without facility data (Phase 0 behaviour). */
   readonly ops: OpsDraft | null;
+  /** Phase 5 network working copy; null for configs without a network. */
+  readonly net: NetworkDraft | null;
   readonly locationIndex: ReadonlyMap<string, SimulationConfig["locations"][number]>;
   readonly skuIds: ReadonlySet<string>;
 
@@ -43,6 +46,7 @@ export class TickDraft {
     this.locationIndex = indexes.locations;
     this.skuIds = indexes.skus;
     this.ops = base.ops ? new OpsDraft(this, navGraph(config), base.ops) : null;
+    this.net = base.network ? new NetworkDraft(this, base.network) : null;
   }
 
   get simulationTimeMs(): number {
@@ -124,6 +128,7 @@ export class TickDraft {
       inventory: this.inventory,
       aggregate_versions: this.versions,
       ...(this.ops ? { ops: this.ops.commit() } : {}),
+      ...(this.net ? { network: this.net.commit() } : {}),
     };
   }
 }

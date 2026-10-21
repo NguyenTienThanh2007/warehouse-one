@@ -1,0 +1,58 @@
+{
+  "simulation_id": "1f54e195-a02e-815c-9e93-4266b6c0f97f",
+  "ticks": 3000,
+  "event_count": 737,
+  "event_counts_by_type": {
+    "equipment.status_changed": 55,
+    "inventory.received": 96,
+    "linehaul.status_changed": 66,
+    "order.status_changed": 2,
+    "pallet.created": 379,
+    "pallet.moved": 15,
+    "site.stock_changed": 32,
+    "task.assigned": 9,
+    "task.completed": 7,
+    "task.created": 15,
+    "transfer.status_changed": 50,
+    "truck.status_changed": 11
+  },
+  "rejection_codes": {
+    "net-0002": "INVALID_TRANSFER",
+    "net-0003": "INSUFFICIENT_STOCK"
+  },
+  "transfers": {
+    "xfr-000001": "delivered",
+    "xfr-000002": "delivered",
+    "xfr-000003": "delivered",
+    "xfr-000004": "delivered",
+    "xfr-000005": "loading",
+    "xfr-000006": "delivered",
+    "xfr-000007": "delivered",
+    "xfr-000008": "unloading",
+    "xfr-000009": "loading",
+    "xfr-000010": "in_transit",
+    "xfr-000011": "planned"
+  },
+  "pallets_delivered_by_lane": {
+    "harbour-terminal->riverside-xd": 21,
+    "riverside-xd->east-gateway": 19,
+    "riverside-xd->harbour-terminal": 3,
+    "riverside-xd->northgate-dc": 2
+  },
+  "vehicles": {
+    "lh-01": "driving",
+    "lh-02": "at_dc",
+    "lh-03": "loading",
+    "lh-04": "off_network",
+    "lh-05": "off_network",
+    "lh-06": "at_dc"
+  },
+  "site_stock": {
+    "east-gateway": 0,
+    "fleet-depot": 0,
+    "harbour-terminal": 64,
+    "northgate-dc": 0,
+    "riverside-xd": 46
+  },
+  "final_state_hash": "980b16a13984f5087dccdc400750de43"
+}
