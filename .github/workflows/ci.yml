@@ -78,7 +78,10 @@ jobs:
   e2e:
     name: Browser end-to-end (Playwright)
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Software WebGL (SwiftShader) makes every test take 20–40 s. On main the e2e step took 14m41s
+    # for 24 tests (run 39560402887); Phase 5 adds 5 tests of the multi-site world, measured at
+    # 14–38 s each in CI mode locally, so 20 minutes no longer leaves headroom.
+    timeout-minutes: 35
     needs: typescript
     steps:
       - uses: actions/checkout@v7.0.1

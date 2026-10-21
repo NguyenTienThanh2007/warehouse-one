@@ -1,4 +1,5 @@
 import type { DomainEvent, SimulationCommand } from "@warehouse-one/contracts";
+import type { NetworkConfig, NetworkState } from "./network/model";
 import type { OperationsState, OperationsWorkloadConfig } from "./ops/model";
 import type { RngState } from "./rng";
 
@@ -51,6 +52,11 @@ export interface SimulationConfig {
   readonly facility?: FacilityConfig;
   /** Phase 2: seeded generator of trucks, orders and relocations. Disabled when absent. */
   readonly operations_workload?: OperationsWorkloadConfig;
+  /**
+   * Phase 5: the logistics network around the facility (sites, roads, line-haul trucks, transfer
+   * lanes). Requires `facility`: the network's primary site is that facility. Absent = single site.
+   */
+  readonly network?: NetworkConfig;
 }
 
 export interface Point2 {
@@ -128,6 +134,8 @@ export interface SimulationState {
    * when the config has facility data; `inventory` is then a checked projection of slotted pallets.
    */
   readonly ops?: OperationsState;
+  /** Phase 5 network state (sites, line-haul trucks, transfers). Present only with `config.network`. */
+  readonly network?: NetworkState;
 }
 
 export type RejectionCode =
@@ -145,7 +153,11 @@ export type RejectionCode =
   | "NO_CAPACITY"
   | "YARD_FULL"
   | "UNKNOWN_ORDER"
-  | "ORDER_NOT_CANCELLABLE";
+  | "ORDER_NOT_CANCELLABLE"
+  // Phase 5 logistics network
+  | "NETWORK_DISABLED"
+  | "UNKNOWN_SITE"
+  | "INVALID_TRANSFER";
 
 export interface CommandRejection {
   readonly command_id: string;

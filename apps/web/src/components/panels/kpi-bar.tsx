@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { stockSummary, useSimulation } from "@/lib/sim/store";
 import { resolveFacility } from "@/world/derive";
+import { networkSummary } from "@/world/network-view";
 import { opsSummary } from "@/world/ops-view";
 
 /** Facility KPIs computed live from authoritative state and config (nothing estimated). */
@@ -13,6 +14,8 @@ export function KpiBar() {
   const s = useMemo(() => stockSummary(config, inventory), [config, inventory]);
   const o = useMemo(() => (ops ? opsSummary(ops) : null), [ops]);
   const mhe = resolveFacility(config).equipment.filter((e) => e.kind !== "truck").length;
+  const state = useSimulation((s) => s.state);
+  const n = useMemo(() => networkSummary(state), [state]);
 
   const chips = [
     {
@@ -49,6 +52,22 @@ export function KpiBar() {
             value: `${o.trucks}`,
             unit: `${o.docksOccupied} / ${o.docks} docks`,
             testid: "kpi-trucks",
+          },
+        ]
+      : []),
+    ...(n
+      ? [
+          {
+            label: "Line-haul moving",
+            value: `${n.moving}`,
+            unit: `/ ${n.trucks} trucks`,
+            testid: "kpi-linehaul",
+          },
+          {
+            label: "Transfers",
+            value: `${n.activeTransfers}`,
+            unit: `${n.inTransitPallets} pallets aboard`,
+            testid: "kpi-transfers",
           },
         ]
       : []),

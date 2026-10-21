@@ -9,6 +9,7 @@ import type {
 import {
   createScenario,
   isScenarioId,
+  linehaulPose,
   SimulationRunner,
   stateHash,
   type CommandRejection,
@@ -28,7 +29,10 @@ export type Selection =
   | { readonly kind: "location"; readonly id: string }
   | { readonly kind: "equipment"; readonly id: string }
   | { readonly kind: "dock"; readonly id: string }
-  | { readonly kind: "truck"; readonly id: string };
+  | { readonly kind: "truck"; readonly id: string }
+  /** Phase 5: a site of the logistics network, and a line-haul truck. */
+  | { readonly kind: "site"; readonly id: string }
+  | { readonly kind: "linehaul"; readonly id: string };
 
 /** A command as the operator UI builds it; the store adds the command id. */
 export type CommandInput = {
@@ -112,7 +116,8 @@ interface SimulationActions {
 }
 
 export const SPEED_PRESETS = [0.5, 1, 2, 4, 8] as const;
-export const DEFAULT_SCENARIO: ScenarioId = "showcase";
+/** The multi-site logistics park; `?scenario=showcase` opens the single-site DC. */
+export const DEFAULT_SCENARIO: ScenarioId = "network";
 const RECENT_EVENTS = 6;
 const RECENT_COMMANDS = 8;
 const RECENT_ORDERS = 8;
@@ -408,6 +413,8 @@ export function summarizeCommand(c: CommandInput): string {
       return `Cancel ${c.payload.order_id}`;
     case "pallet.relocate":
       return `Relocate ${c.payload.pallet_id} → ${c.payload.to_location_id}`;
+    case "transfer.request":
+      return `Transfer ${lines(c.payload.lines)} ${c.payload.from_site_id} → ${c.payload.to_site_id}`;
     case "inventory.receive":
       return `Receive ${c.payload.quantity} × ${c.payload.sku} → ${c.payload.location_id}`;
     case "inventory.move":
@@ -436,7 +443,12 @@ export const REJECTION_EXPLANATION: Record<RejectionCode, string> = {
   YARD_FULL: "Every yard slot is taken. Wait for a truck to dock or leave, then try again.",
   UNKNOWN_ORDER: "The order does not exist or has already finished.",
   ORDER_NOT_CANCELLABLE:
-    "Its truck already has a dock and picking has started, so it can no longer be cancelled.",
+    "Its truck already has a dock and picking has started, or it loads a line-haul truck for an inter-site transfer, so it can no longer be cancelled.",
+  NETWORK_DISABLED:
+    "This scenario is a single site. Open the logistics network scenario to move pallets between sites.",
+  UNKNOWN_SITE: "That site is not part of this logistics network.",
+  INVALID_TRANSFER:
+    "Pallets can only leave the terminal, the cross-dock or the DC, and cannot be sent to the fleet depot.",
 };
 
 /** Format simulated time as the warehouse wall clock (epoch + elapsed), in UTC. */
@@ -482,6 +494,8 @@ export interface SimulationDebug {
   poses(): {
     vehicles: { id: string; x: number; z: number; yaw: number; fork: number }[];
     trucks: { id: string; x: number; z: number }[];
+    /** Line-haul trucks drawn by the network (null while drawn as a DC truck or off the map). */
+    linehaul: { id: string; x: number; z: number; yaw: number }[];
   };
 }
 
@@ -499,8 +513,15 @@ if (typeof window !== "undefined") {
     finishedOrders: () => useSimulation.getState().finishedOrders,
     poses: () => {
       const ops = runner.state.ops;
-      if (!ops) return { vehicles: [], trucks: [] };
+      if (!ops) return { vehicles: [], trucks: [], linehaul: [] };
+      const net = runner.state.network;
       return {
+        linehaul: net
+          ? Object.values(net.vehicles).flatMap((v) => {
+              const p = linehaulPose(runner.config, runner.state, v);
+              return p ? [{ id: v.id, ...p }] : [];
+            })
+          : [],
         vehicles: vehicleViews(runner.config, undefined, ops, 1).map((v) => ({
           id: v.id,
           ...v.pose,

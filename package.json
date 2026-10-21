@@ -23,6 +23,7 @@
     "bench:render": "tsx tests/performance/render-benchmark.ts",
     "capture:bookmarks": "tsx tests/performance/capture-bookmarks.ts",
     "capture:operations": "tsx tests/performance/capture-operations.ts",
+    "capture:network": "tsx tests/performance/capture-network.ts",
     "sim:record": "pnpm --filter @warehouse-one/recorder record",
     "sim:verify": "pnpm --filter @warehouse-one/recorder verify"
   },

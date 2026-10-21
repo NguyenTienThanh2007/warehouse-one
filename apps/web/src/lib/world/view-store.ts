@@ -2,9 +2,16 @@
 
 import { create } from "zustand";
 
-/** Camera presets. "focus" frames the current selection. */
-export const CAMERA_PRESETS = ["overview", "docks", "aisle", "top", "focus"] as const;
-export type CameraPreset = (typeof CAMERA_PRESETS)[number];
+/**
+ * Camera presets. "world" frames the whole logistics network; "overview", "docks", "aisle" and
+ * "top" frame the distribution centre; "focus" frames the current selection; "site" frames the site
+ * named in the request.
+ */
+export const CAMERA_PRESETS = ["world", "overview", "docks", "aisle", "top", "focus"] as const;
+export type CameraPreset = (typeof CAMERA_PRESETS)[number] | "site";
+
+/** What the camera shows: the whole network, or one site (facility view). */
+export type ViewScope = { kind: "world" } | { kind: "site"; siteId: string };
 
 export const QUALITY_TIERS = ["high", "medium", "low"] as const;
 export type QualityTier = (typeof QUALITY_TIERS)[number];
@@ -15,12 +22,22 @@ export type WorldStatus =
 
 interface ViewState {
   /** Last requested camera move; `nonce` makes repeated requests for the same preset distinct. */
-  cameraRequest: { preset: CameraPreset; nonce: number; instant?: boolean } | null;
+  cameraRequest: {
+    preset: CameraPreset;
+    nonce: number;
+    instant?: boolean;
+    siteId?: string;
+  } | null;
+  /** Set by the camera rig when it moves: world view or the site being looked at. */
+  scope: ViewScope;
   qualityMode: QualityMode;
   /** Tier currently rendered (equals the mode unless the mode is "auto"). */
   tier: QualityTier;
   status: WorldStatus;
   requestCamera(preset: CameraPreset, instant?: boolean): void;
+  /** Fly to one site of the network (the facility view of that site). */
+  requestSite(siteId: string, instant?: boolean): void;
+  setScope(scope: ViewScope): void;
   setQualityMode(mode: QualityMode): void;
   setTier(tier: QualityTier): void;
   setStatus(status: WorldStatus): void;
@@ -28,11 +45,30 @@ interface ViewState {
 
 export const useView = create<ViewState>()((set, get) => ({
   cameraRequest: null,
+  scope: { kind: "world" },
   qualityMode: "auto",
   tier: "high",
   status: { kind: "loading" },
   requestCamera(preset, instant) {
     set({ cameraRequest: { preset, nonce: (get().cameraRequest?.nonce ?? 0) + 1, instant } });
+  },
+  requestSite(siteId, instant) {
+    set({
+      cameraRequest: {
+        preset: "site",
+        siteId,
+        nonce: (get().cameraRequest?.nonce ?? 0) + 1,
+        instant,
+      },
+    });
+  },
+  setScope(scope) {
+    const now = get().scope;
+    if (
+      now.kind !== scope.kind ||
+      (now.kind === "site" && scope.kind === "site" && now.siteId !== scope.siteId)
+    )
+      set({ scope });
   },
   setQualityMode(mode) {
     set(mode === "auto" ? { qualityMode: mode } : { qualityMode: mode, tier: mode });

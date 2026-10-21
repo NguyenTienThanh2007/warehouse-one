@@ -4,28 +4,22 @@ _Last updated: 2026-10-21_
 
 | Item | State |
 |------|-------|
-| Active phase | **Phase 3: Real data engineering**, in development on `feature/p3-data-engineering` (base `d2dc4d9`) |
-| `main` | `d2dc4d9`: Phases 0, 1 and 2 merged (PR #1, #2, #3, #4); `main` CI run 39536339237: 4/4 jobs green |
-| Last merged phase | Phase 2, Living warehouse simulation (`docs/phases/PHASE_2.md`), merged 2026-10-21 |
+| Active phase | **Phase 5: Multi-site logistics world**, in review on `feature/p5-multi-site-world` (base `0b25fa4`) |
+| `main` | `0b25fa4`: Phases 0–3 merged (PR #1–#5) |
+| Last merged phase | Phase 3, Real data engineering (`docs/phases/PHASE_3.md`), PR #5 |
+| Not started | Phase 4 analytics (scope proposed in PR #6, closed unmerged) |
 
-## Phase 2 at merge (verified)
+## Phase 5 (branch `feature/p5-multi-site-world`)
 
-- PR #4 merged as `d2dc4d9`; the PR's CI run 39534274827 on `6812be4` and `main` CI run
-  39536339237 on `d2dc4d9`: TypeScript, Python (with migrations), Docker Compose and Playwright,
-  all green.
-- Open Phase 2 limitations (from `PHASE_2.md`):
-  - workers are deferred;
-  - order lead time is not bounded by a test;
-  - bench-1000 High tier measured 55 and 60 FPS in two runs.
-
-## Phase 3 progress (branch `feature/p3-data-engineering`)
-
-See `docs/phases/PHASE_3.md` for the milestone record, the test evidence and the limitations. CI
-for the branch runs on its pull request; its result is recorded there once known.
+The DC inside a connected logistics park (container terminal, cross-dock, fleet depot, highway
+gateway, road network) with deterministic line-haul transfers that hand over to the DC simulation;
+world and facility views. Record, verification and limitations: `docs/phases/PHASE_5.md`. CI for
+the branch runs on its pull request; the result is recorded there.
 
 ## Pending
 
-- Phase 3 review and merge decision (owner)
+- Phase 5 review and merge decision (owner)
+- Phase 4 analytics implementation
 - Owner decisions: repository licence, public-demo hosting (Phase 7)
 
 ## Known blockers
@@ -33,4 +27,4 @@ for the branch runs on its pull request; its result is recorded there once known
 None. Ports 3000 and 8000 are used by other projects on the development machine; documented
 overrides are in `docs/DEVELOPMENT.md`.
 
-Details: [Phase 3](phases/PHASE_3.md) · [Phase 2](phases/PHASE_2.md) · [Phase 1](phases/PHASE_1.md) · [Phase 0](phases/PHASE_0.md).
+Details: [Phase 5](phases/PHASE_5.md) · [Phase 3](phases/PHASE_3.md) · [Phase 2](phases/PHASE_2.md) · [Phase 1](phases/PHASE_1.md) · [Phase 0](phases/PHASE_0.md).

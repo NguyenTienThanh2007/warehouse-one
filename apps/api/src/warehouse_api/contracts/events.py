@@ -48,6 +48,22 @@ NonNegative = Annotated[int, Field(ge=0)]
 EquipmentStatus = Literal["idle", "travelling", "handling", "charging"]
 TruckStatus = Literal["yard", "docking", "docked", "departing", "departed"]
 OrderStatus = Literal["open", "in_progress", "shipped", "cancelled"]
+# Phase 5 logistics network
+TransferStatus = Literal[
+    "planned", "assigned", "loading", "in_transit", "unloading", "delivered", "cancelled"
+]
+LinehaulStatus = Literal[
+    "parked",
+    "driving",
+    "docking",
+    "loading",
+    "unloading",
+    "waiting",
+    "undocking",
+    "at_dc",
+    "off_network",
+    "servicing",
+]
 
 
 class SlotPosition(_Strict):
@@ -160,6 +176,38 @@ class OrderStatusChangedPayload(_Strict):
     lines: list[CargoLine]
 
 
+class TransferStatusChangedPayload(_Strict):
+    transfer_id: EntityId
+    lane_id: EntityId | None
+    from_site_id: EntityId
+    to_site_id: EntityId
+    from_: TransferStatus | None = Field(alias="from")
+    to: TransferStatus
+    vehicle_id: EntityId | None
+    lines: list[CargoLine]
+
+
+class LinehaulStatusChangedPayload(_Strict):
+    vehicle_id: EntityId
+    from_: LinehaulStatus = Field(alias="from")
+    to: LinehaulStatus
+    node_id: NodeId
+    site_id: EntityId | None
+    transfer_id: EntityId | None
+    odometer_m: NonNegative
+
+
+class SiteStockChangedPayload(_Strict):
+    site_id: EntityId
+    unit: Literal["pallet", "container"]
+    sku: EntityId | None
+    # Non-zero (a Zod refinement, not representable in JSON Schema).
+    delta: int
+    quantity_after: NonNegative
+    reason: Literal["loaded", "unloaded", "devanned", "vessel_discharge"]
+    transfer_id: EntityId | None
+
+
 class _Envelope(_Strict):
     event_id: UUID
     schema_version: Annotated[int, Field(gt=0)]
@@ -251,6 +299,24 @@ class OrderStatusChanged(_Envelope):
     payload: OrderStatusChangedPayload
 
 
+class TransferStatusChanged(_Envelope):
+    aggregate_type: Literal["transfer"]
+    event_type: Literal["transfer.status_changed"]
+    payload: TransferStatusChangedPayload
+
+
+class LinehaulStatusChanged(_Envelope):
+    aggregate_type: Literal["linehaul"]
+    event_type: Literal["linehaul.status_changed"]
+    payload: LinehaulStatusChangedPayload
+
+
+class SiteStockChanged(_Envelope):
+    aggregate_type: Literal["site"]
+    event_type: Literal["site.stock_changed"]
+    payload: SiteStockChangedPayload
+
+
 AnyEvent = (
     InventoryReceived
     | InventoryMoved
@@ -265,6 +331,9 @@ AnyEvent = (
     | EquipmentStatusChanged
     | TruckStatusChanged
     | OrderStatusChanged
+    | TransferStatusChanged
+    | LinehaulStatusChanged
+    | SiteStockChanged
 )
 DomainEvent = Annotated[AnyEvent, Field(discriminator="event_type")]
 domain_event_adapter: TypeAdapter[DomainEvent] = TypeAdapter(DomainEvent)
@@ -283,6 +352,9 @@ EVENT_MODELS: dict[str, type[_Envelope]] = {
     "equipment.status_changed": EquipmentStatusChanged,
     "truck.status_changed": TruckStatusChanged,
     "order.status_changed": OrderStatusChanged,
+    "transfer.status_changed": TransferStatusChanged,
+    "linehaul.status_changed": LinehaulStatusChanged,
+    "site.stock_changed": SiteStockChanged,
 }
 
 

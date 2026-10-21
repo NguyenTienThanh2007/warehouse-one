@@ -33,9 +33,16 @@ function transition(o: OpsDraft, t: TruckState, next: TruckState): void {
  * - Docks are assigned first-come (lowest truck id) to the lowest free dock; a dock holds one truck.
  * - Inbound trucks leave once every pallet is unloaded; outbound trucks once their order is loaded.
  * - A dock is released only when its truck has fully departed.
+ * - A truck on hold (Phase 5 line-haul arrival) gets no dock until its hold has run out.
  */
 export function truckSystem(o: OpsDraft): void {
   for (const t of o.trucks.sorted()) {
+    if (t.status === "yard" && t.hold_ticks_left !== undefined) {
+      // Phase 5: a line-haul truck is still reversing into this yard slot.
+      const { hold_ticks_left: left, ...rest } = t;
+      o.trucks.set(t.id, left > 1 ? { ...t, hold_ticks_left: left - 1 } : rest);
+      continue;
+    }
     if (t.status === "docking" || t.status === "departing") {
       const left = t.motion_ticks_left - 1;
       if (left > 0) {
@@ -82,7 +89,9 @@ export function truckSystem(o: OpsDraft): void {
   const free = Object.keys(o.docks.snapshot())
     .sort()
     .filter((id) => o.docks.get(id)?.truck_id === null);
-  for (const t of o.trucks.sorted().filter((x) => x.status === "yard")) {
+  for (const t of o.trucks
+    .sorted()
+    .filter((x) => x.status === "yard" && x.hold_ticks_left === undefined)) {
     const dockId = free.shift();
     if (!dockId) break;
     o.docks.set(dockId, { truck_id: t.id });

@@ -48,6 +48,22 @@ def test_fixture_events_parse_with_pydantic(raw_events: list[str]) -> None:
     assert {e.event_type for e in parsed} <= set(EVENT_MODELS)
 
 
+@pytest.mark.parametrize("fixture", ["operations-demo", "network-demo"])
+def test_operational_fixtures_satisfy_schema_and_pydantic(
+    schema: dict[str, Any], fixture_dir: Path, fixture: str
+) -> None:
+    """Phase 2 and Phase 5 runs: every event type they emit is accepted by both contracts."""
+    lines = (fixture_dir.parent / fixture / "events.jsonl").read_text().splitlines()
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    types = set()
+    for line in lines:
+        errors = list(validator.iter_errors(json.loads(line)))
+        assert errors == [], errors[0].message if errors else ""
+        types.add(parse_event(line).event_type)
+    if fixture == "network-demo":
+        assert {"transfer.status_changed", "linehaul.status_changed", "site.stock_changed"} <= types
+
+
 def _wire_names(model: type[BaseModel]) -> set[str]:
     """JSON field names: the alias where one exists (`from` is a Python keyword, so `from_`)."""
     return {field.alias or name for name, field in model.model_fields.items()}

@@ -378,3 +378,80 @@ function line(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number,
   ctx.lineTo(x1, y1);
   ctx.stroke();
 }
+
+// ---------------------------------------------------------------------------------------------
+// Phase 5: the logistics network around the facility.
+
+export interface NetworkMaterials {
+  terrain: MeshStandardMaterial;
+  verge: MeshStandardMaterial;
+  road: MeshStandardMaterial;
+  pad: MeshStandardMaterial;
+  padDark: MeshStandardMaterial;
+  marking: MeshStandardMaterial;
+  markingYellow: MeshStandardMaterial;
+  water: MeshStandardMaterial;
+  quay: MeshStandardMaterial;
+  roof: MeshStandardMaterial;
+  trim: MeshStandardMaterial;
+  glazing: MeshStandardMaterial;
+  craneYellow: MeshStandardMaterial;
+  craneBlue: MeshStandardMaterial;
+  container: MeshStandardMaterial;
+  fence: MeshStandardMaterial;
+  lampHead: MeshStandardMaterial;
+  tree: MeshStandardMaterial;
+  trunk: MeshStandardMaterial;
+}
+
+let networkCached: NetworkMaterials | null = null;
+
+export function networkMaterials(): NetworkMaterials {
+  if (networkCached) return networkCached;
+  networkCached = {
+    // Dark, slightly green ground under little sky light, so paved sites read clearly against it.
+    terrain: std("#070c12", 1, 0, { envMapIntensity: 0.25 }),
+    verge: std("#101713", 1),
+    // Cool greys: the warm key light would otherwise turn neutral grey paving brown.
+    road: std("#14171c", 0.9, 0, { envMapIntensity: 0.5 }),
+    pad: std("#394049", 0.93),
+    padDark: std("#2b3139", 0.95),
+    marking: std("#e6eaef", 0.7, 0, { emissive: new Color("#e6eaef"), emissiveIntensity: 0.08 }),
+    markingYellow: std("#f2c230", 0.6, 0, {
+      emissive: new Color("#f2c230"),
+      emissiveIntensity: 0.12,
+    }),
+    water: std("#06121d", 0.32, 0.15),
+    quay: std("#8b8d8f", 0.85),
+    roof: std("#59616b", 0.6, 0.45),
+    trim: std("#2c333c", 0.55, 0.5),
+    glazing: std("#1c2c3b", 0.1, 0.7, {
+      emissive: new Color("#7fb2e6"),
+      emissiveIntensity: 0.35,
+    }),
+    craneYellow: std("#e2a52b", 0.45, 0.35),
+    craneBlue: std("#2c5f93", 0.45, 0.4),
+    // White base; each container's colour comes from its instance colour.
+    container: std("#ffffff", 0.62, 0.25),
+    fence: std("#59626d", 0.6, 0.6),
+    lampHead: std("#fff3d6", 0.4, 0, {
+      emissive: new Color("#ffe2a8"),
+      emissiveIntensity: 2.2,
+    }),
+    tree: std("#1f3b2c", 0.95),
+    trunk: std("#3a2e24", 0.9),
+  };
+  return networkCached;
+}
+
+/** Shipping-line container colours (generic, no brands). */
+export const CONTAINER_COLORS = [
+  "#2f6db5",
+  "#b8432f",
+  "#2e8a63",
+  "#c9ced4",
+  "#d9822b",
+  "#6b4c9a",
+  "#8a2f3b",
+  "#3f8fa6",
+] as const;

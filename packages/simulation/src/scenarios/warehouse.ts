@@ -1,6 +1,7 @@
 import type { SimulationCommand } from "@warehouse-one/contracts";
 import type { OperationsWorkloadConfig } from "../ops/model";
 import { deterministicUuid } from "../hash";
+import { buildLogisticsPark, PARK_SITES } from "./network";
 import { nextFloat, nextInt, seedRng, type RngState } from "../rng";
 import type {
   DockConfig,
@@ -172,7 +173,14 @@ export interface Scenario {
   readonly openingCommands: readonly SimulationCommand[];
 }
 
-export const SCENARIO_IDS = ["showcase", "empty", "bench-100", "bench-300", "bench-1000"] as const;
+export const SCENARIO_IDS = [
+  "network",
+  "showcase",
+  "empty",
+  "bench-100",
+  "bench-300",
+  "bench-1000",
+] as const;
 export type ScenarioId = (typeof SCENARIO_IDS)[number];
 
 function baseConfig(
@@ -358,8 +366,90 @@ export function createBenchmarkScenario(pallets: 100 | 300 | 1000): Scenario {
   };
 }
 
+/**
+ * Phase 5: the showcase DC inside the Northgate logistics park. The DC is the same building, fleet
+ * and opening stock as the showcase; its inbound trucks and outbound orders now come from
+ * inter-site transfers instead of the synthetic generator (relocations stay).
+ */
+export function createNetworkScenario(): Scenario {
+  const layout = buildWarehouse({
+    name: "WAREHOUSE ONE · Northgate DC",
+    rows: 6,
+    bays: 14,
+    docks: 4,
+    ...FLEET,
+  });
+  const lane = (
+    id: string,
+    from: string,
+    to: string,
+    interval: number,
+    phase: number,
+    min: number,
+    max: number,
+    maxOpen = 1,
+  ) => ({
+    id,
+    from_site: from,
+    to_site: to,
+    interval_ticks: interval,
+    phase_ticks: phase,
+    min_pallets: min,
+    max_pallets: max,
+    max_open: maxOpen,
+  });
+  const network = buildLogisticsPark(layout.facility, {
+    dcSiteId: PARK_SITES.dc,
+    dcName: "Northgate distribution centre",
+    fleet: 6,
+    openingStock: {
+      terminal: [
+        { sku: "sku-bulk-bags", quantity: 18 },
+        { sku: "sku-cold-chain", quantity: 14 },
+        { sku: "sku-electronics", quantity: 20 },
+        { sku: "sku-std-pallet", quantity: 22 },
+      ],
+      crossDock: [
+        { sku: "sku-bulk-bags", quantity: 12 },
+        { sku: "sku-cold-chain", quantity: 16 },
+        { sku: "sku-electronics", quantity: 14 },
+        { sku: "sku-std-pallet", quantity: 18 },
+      ],
+    },
+    // DC lanes carry the same volume as the showcase's synthetic trucks (2–4 pallets per hour).
+    lanes: [
+      // Phases are staggered so several trucks are on the road within the first minute.
+      lane("lane-import", PARK_SITES.terminal, PARK_SITES.crossDock, 900, 20, 10, 18, 2),
+      lane("lane-last-mile", PARK_SITES.crossDock, PARK_SITES.gateway, 1200, 80, 6, 12, 2),
+      lane("lane-dc-replenish", PARK_SITES.crossDock, PARK_SITES.dc, 3600, 200, 2, 4),
+      lane("lane-dc-outbound", PARK_SITES.dc, PARK_SITES.crossDock, 3600, 420, 2, 4),
+      lane("lane-direct-import", PARK_SITES.terminal, PARK_SITES.dc, 7200, 1500, 2, 4),
+    ],
+  });
+  const config: SimulationConfig = {
+    ...baseConfig("network", layout, {
+      inbound_interval_ticks: 0,
+      outbound_interval_ticks: 0,
+      relocate_interval_ticks: 1800,
+      min_pallets: 2,
+      max_pallets: 4,
+    }),
+    network,
+  };
+  return {
+    id: "network",
+    label: "Logistics network",
+    description:
+      "The showcase DC inside a logistics park: container terminal, cross-dock, fleet depot and highway gateway, 6 line-haul trucks on seeded transfer lanes.",
+    config,
+    openingCommands: openingStock(config, 0.55),
+  };
+}
+
 export function createScenario(id: ScenarioId): Scenario {
   switch (id) {
+    case "network":
+      return createNetworkScenario();
     case "showcase":
       return createShowcaseScenario();
     case "empty":

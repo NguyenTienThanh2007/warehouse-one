@@ -5,21 +5,25 @@ import { useEffect } from "react";
 import { CameraToolbar } from "@/components/panels/camera-toolbar";
 import { InspectorPanel } from "@/components/panels/inspector-panel";
 import { KpiBar } from "@/components/panels/kpi-bar";
+import { NetworkPanel } from "@/components/panels/network-panel";
 import { OperationsPanel } from "@/components/panels/operations-panel";
 import { RendererPanel } from "@/components/panels/renderer-panel";
 import { ScenarioPicker } from "@/components/panels/scenario-picker";
 import { SimulationPanel } from "@/components/panels/simulation-panel";
+import { SiteNavigator } from "@/components/panels/site-navigator";
 import { SystemStatus } from "@/components/panels/system-status";
 import { scenarioFromSearch, SPEED_PRESETS, useSimulation } from "@/lib/sim/store";
 import { useSimulationLoop } from "@/lib/sim/use-simulation-loop";
 import { qualityFromSearch, useView, type CameraPreset } from "@/lib/world/view-store";
 import { EmptyStockNotice, SceneErrorBoundary, SceneStatusOverlay } from "./scene-states";
+import { SiteLabelsOverlay } from "./site-labels";
 import { TopBar } from "./top-bar";
 
 // WebGL only exists in the browser; the status overlay covers the canvas until it is ready.
 const SceneCanvas = dynamic(() => import("@/components/viewport/scene-canvas"), { ssr: false });
 
 const CAMERA_KEYS: Record<string, CameraPreset> = {
+  w: "world",
   o: "overview",
   d: "docks",
   a: "aisle",
@@ -45,6 +49,7 @@ function useKeyboardShortcuts() {
       } else if (e.key === ".") sim.stepOnce();
       else if (e.key === "Escape") sim.select(null);
       else if (/^[1-5]$/.test(e.key)) sim.setSpeed(SPEED_PRESETS[Number(e.key) - 1] ?? 1);
+      else if (camera === "world" && !sim.config.network) return;
       else if (camera && (camera !== "focus" || sim.selection))
         useView.getState().requestCamera(camera);
     };
@@ -63,6 +68,15 @@ function useUrlOptions() {
   }, []);
 }
 
+/** The DC's task/order panel in its facility view; the network panel everywhere else. */
+function LeftPanel() {
+  const network = useSimulation((s) => s.config.network);
+  const scope = useView((s) => s.scope);
+  if (!network || (scope.kind === "site" && scope.siteId === network.primary_site))
+    return <OperationsPanel />;
+  return <NetworkPanel />;
+}
+
 export function WarehouseApp() {
   useUrlOptions();
   useSimulationLoop();
@@ -76,6 +90,7 @@ export function WarehouseApp() {
           <SceneCanvas />
         </SceneErrorBoundary>
       </div>
+      <SiteLabelsOverlay />
       <SceneStatusOverlay />
 
       <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-3 sm:gap-3 sm:p-4">
@@ -83,13 +98,14 @@ export function WarehouseApp() {
           <div className="flex min-w-0 flex-col gap-2">
             <TopBar />
             <KpiBar />
+            <SiteNavigator />
           </div>
           <div className="hidden sm:block">
             <ScenarioPicker />
           </div>
         </div>
         <div className="flex min-h-0 flex-1 items-start justify-end gap-3">
-          <OperationsPanel />
+          <LeftPanel />
           <InspectorPanel />
           <CameraToolbar />
         </div>

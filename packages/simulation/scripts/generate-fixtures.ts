@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderGoldenFiles, runGolden } from "../src/scenarios/golden";
+import { runNetworkDemo } from "../src/scenarios/network-demo";
 import { runOperationsDemo } from "../src/scenarios/operations-demo";
 
 const fixtures = resolve(dirname(fileURLToPath(import.meta.url)), "../../../data/fixtures");
@@ -26,4 +27,11 @@ if (ops.invariantViolations.length) throw new Error(ops.invariantViolations.join
 write("operations-demo", renderGoldenFiles(ops));
 console.log(
   `operations-demo: events=${ops.summary.event_count} hash=${ops.summary.final_state_hash}`,
+);
+
+const network = runNetworkDemo();
+if (network.invariantViolations.length) throw new Error(network.invariantViolations.join("\n"));
+write("network-demo", renderGoldenFiles(network));
+console.log(
+  `network-demo: events=${network.events.length} hash=${String(network.summary.final_state_hash)}`,
 );

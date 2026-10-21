@@ -103,6 +103,11 @@ export interface TruckState {
   readonly motion_ticks_left: number;
   readonly status_since_tick: number;
   readonly correlation_id: string;
+  /**
+   * Phase 5: ticks the truck stays in the yard before it may be given a dock, while the line-haul
+   * truck it belongs to reverses into its yard slot. Absent for trucks scheduled any other way.
+   */
+  readonly hold_ticks_left?: number;
 }
 
 export interface OrderState {

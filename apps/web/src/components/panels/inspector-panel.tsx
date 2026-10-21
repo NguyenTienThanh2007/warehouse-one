@@ -15,6 +15,7 @@ import { useView } from "@/lib/world/view-store";
 import { archetypeForSku, levelsFor, resolveFacility } from "@/world/derive";
 import { CARGO_COLOR } from "@/world/materials";
 import { CommandFeedback } from "./command-feedback";
+import { LinehaulInspector, SiteInspector } from "./network-inspectors";
 import { formatTicks } from "./format";
 
 const KIND_LABEL: Record<EquipmentConfig["kind"], string> = {
@@ -32,8 +33,8 @@ export const EQUIPMENT_STATUS_LABEL: Record<EquipmentState["status"], string> = 
 
 const PURPOSE_LABEL = { task: "to a task", park: "home to park", charge: "to charge" } as const;
 
-const input = "mt-1 w-full rounded-md bg-ink-800 px-2 py-1.5 text-xs text-fog-50";
-const button =
+export const input = "mt-1 w-full rounded-md bg-ink-800 px-2 py-1.5 text-xs text-fog-50";
+export const button =
   "rounded-md bg-signal-400 px-2.5 py-1 text-[11px] font-semibold text-ink-950 transition hover:bg-signal-300 disabled:opacity-40";
 
 function LocationPicker() {
@@ -64,7 +65,7 @@ function LocationPicker() {
   );
 }
 
-function Shell({
+export function Shell({
   title,
   subtitle,
   children,
@@ -113,7 +114,7 @@ function Shell({
   );
 }
 
-function Rows({ children }: { children: React.ReactNode }) {
+export function Rows({ children }: { children: React.ReactNode }) {
   return (
     <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs [&>dd]:min-w-0 [&>dd]:truncate [&>dd]:text-fog-200 [&>dt]:text-fog-400">
       {children}
@@ -121,7 +122,7 @@ function Rows({ children }: { children: React.ReactNode }) {
   );
 }
 
-function OccupancyBar({ used, capacity }: { used: number; capacity: number }) {
+export function OccupancyBar({ used, capacity }: { used: number; capacity: number }) {
   return (
     <div
       className="mt-1 h-1.5 overflow-hidden rounded-full bg-ink-700"
@@ -139,7 +140,7 @@ function OccupancyBar({ used, capacity }: { used: number; capacity: number }) {
   );
 }
 
-function SkuSwatch({ config, sku }: { config: SimulationConfig; sku: string }) {
+export function SkuSwatch({ config, sku }: { config: SimulationConfig; sku: string }) {
   return (
     <span
       className="size-2.5 shrink-0 rounded-sm"
@@ -521,8 +522,8 @@ export function InspectorPanel() {
       >
         <h2 className="panel-title">Inspector</h2>
         <p className="mt-2 text-xs leading-5 text-fog-400">
-          Click a rack bay, vehicle, truck or dock to inspect it. Double-click to fly to it. Drag to
-          orbit, right-drag to pan, scroll to zoom.
+          Click a site, rack bay, vehicle, truck or dock to inspect it. Double-click to fly to it.
+          Drag to orbit, right-drag to pan, scroll to zoom.
         </p>
         <LocationPicker />
       </aside>
@@ -537,5 +538,9 @@ export function InspectorPanel() {
       return <DockInspector id={selection.id} />;
     case "truck":
       return <TruckInspector id={selection.id} />;
+    case "site":
+      return <SiteInspector id={selection.id} />;
+    case "linehaul":
+      return <LinehaulInspector id={selection.id} />;
   }
 }

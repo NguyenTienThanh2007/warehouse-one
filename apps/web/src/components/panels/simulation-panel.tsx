@@ -17,6 +17,9 @@ const EVENT_LABEL: Record<DomainEvent["event_type"], string> = {
   "equipment.status_changed": "Vehicle",
   "truck.status_changed": "Truck",
   "order.status_changed": "Order",
+  "transfer.status_changed": "Transfer",
+  "linehaul.status_changed": "Line-haul",
+  "site.stock_changed": "Site stock",
 };
 
 type Position = Extract<DomainEvent, { event_type: "pallet.moved" }>["payload"]["from"];
@@ -61,6 +64,12 @@ function describe(e: DomainEvent): string {
       return `${e.payload.truck_id} ${e.payload.from ?? "new"} → ${e.payload.to}`;
     case "order.status_changed":
       return `${e.payload.order_id} ${e.payload.from ?? "new"} → ${e.payload.to}`;
+    case "transfer.status_changed":
+      return `${e.payload.transfer_id} ${e.payload.from_site_id} → ${e.payload.to_site_id}: ${e.payload.to}`;
+    case "linehaul.status_changed":
+      return `${e.payload.vehicle_id} ${e.payload.from} → ${e.payload.to}`;
+    case "site.stock_changed":
+      return `${e.payload.site_id} ${e.payload.delta > 0 ? "+" : ""}${e.payload.delta} ${e.payload.sku ?? "containers"} (${e.payload.reason})`;
   }
 }
 

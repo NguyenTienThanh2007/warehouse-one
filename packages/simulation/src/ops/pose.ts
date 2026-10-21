@@ -123,9 +123,12 @@ export function yardPose(config: SimulationConfig, slot: number): Pose {
 
 /**
  * Truck pose from its lifecycle state. Docking: shift sideways in the yard row, then reverse onto the
- * dock. Departing: drive out of the site. Returns null when the truck has left the site.
+ * dock. Departing: drive out of the site. Returns null when the truck has left the site, or while
+ * it is held as an arriving line-haul truck (drawn by `linehaulPose` then).
  */
 export function truckPose(config: SimulationConfig, t: TruckState): Pose | null {
+  // Still reversing in as a line-haul truck: the network's pose function draws it (Phase 5).
+  if (t.hold_ticks_left !== undefined) return null;
   const yard = yardPose(config, t.yard_slot);
   switch (t.status) {
     case "yard":

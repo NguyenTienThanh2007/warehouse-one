@@ -45,6 +45,9 @@ export function applyOpsCommand(o: OpsDraft, command: SimulationCommand, trace: 
       return cancelOrder(o, command.payload, trace);
     case "pallet.relocate":
       return relocate(o, command.payload, trace);
+    case "transfer.request":
+      // Routed to the network before facility commands (see handlers.ts).
+      return reject("NETWORK_DISABLED", "transfer requests are handled by the logistics network");
   }
 }
 
@@ -328,6 +331,13 @@ function cancelOrder(o: OpsDraft, p: CancelOrderCommand["payload"], trace: Trace
     return reject(
       "ORDER_NOT_CANCELLABLE",
       `order '${p.order_id}' is ${order.status}: its truck already has a dock and picking has started`,
+    );
+  }
+  const linehaul = o.draft.net?.vehicles.values().find((v) => v.dc_truck_id === order.truck_id);
+  if (linehaul) {
+    return reject(
+      "ORDER_NOT_CANCELLABLE",
+      `order '${p.order_id}' loads line-haul truck ${linehaul.id} for transfer ${linehaul.transfer_id ?? "?"}; it cannot be cancelled on its own`,
     );
   }
   for (const id of order.pallet_ids) o.updatePallet(id, { order_id: null });

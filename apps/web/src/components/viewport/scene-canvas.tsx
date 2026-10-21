@@ -13,6 +13,7 @@ import { useSimulation } from "@/lib/sim/store";
 import { isSoftwareRenderer, QUALITY_TIERS, TIER_SETTINGS, useView } from "@/lib/world/view-store";
 import { levelsFor, resolveFacility } from "@/world/derive";
 import { CAMERA_FOV } from "@/world/framing";
+import { worldBounds } from "@/world/network-view";
 import { useFrame } from "@react-three/fiber";
 
 /**
@@ -55,6 +56,7 @@ export default function SceneCanvas() {
       1.4,
     [config, facility],
   );
+  const bounds = useMemo(() => worldBounds(config), [config]);
   useEffect(exposePerfHook, []);
 
   const stepDown = () => {
@@ -69,7 +71,7 @@ export default function SceneCanvas() {
       data-testid="scene-canvas"
       shadows={settings.shadows ? "percentage" : false}
       dpr={settings.dpr}
-      camera={{ position: [60, 50, 70], fov: CAMERA_FOV, near: 0.3, far: 1500 }}
+      camera={{ position: [60, 50, 70], fov: CAMERA_FOV, near: 0.5, far: 4000 }}
       gl={{ antialias: !settings.smaa, powerPreference: "high-performance", stencil: false }}
       onPointerMissed={(e) => e.type === "click" && select(null)}
       onCreated={({ gl }) => {
@@ -83,7 +85,7 @@ export default function SceneCanvas() {
       aria-label="3D view of the warehouse. Use the inspector's location picker for keyboard access."
     >
       <PerformanceMonitor onDecline={stepDown} flipflops={2} />
-      <Lighting facility={facility} tier={tier} />
+      <Lighting bounds={bounds} tier={tier} />
       <WarehouseWorld />
       <CameraRig facility={facility} rackHeight={rackHeight} />
       <Effects tier={tier} />

@@ -40,6 +40,44 @@ export const ORDER_STATUSES = ["open", "in_progress", "shipped", "cancelled"] as
 export const OrderStatus = z.enum(ORDER_STATUSES);
 export type OrderStatus = z.infer<typeof OrderStatus>;
 
+// ---------------------------------------------------------------------------------------------
+// Phase 5 logistics network: sites connected by roads, line-haul trucks, inter-site transfers.
+
+/**
+ * A transfer moves pallets from one site to another on one line-haul truck.
+ * planned → assigned (truck chosen) → loading → in_transit → unloading → delivered, or cancelled.
+ */
+export const TRANSFER_STATUSES = [
+  "planned",
+  "assigned",
+  "loading",
+  "in_transit",
+  "unloading",
+  "delivered",
+  "cancelled",
+] as const;
+export const TransferStatus = z.enum(TRANSFER_STATUSES);
+export type TransferStatus = z.infer<typeof TransferStatus>;
+
+/**
+ * Line-haul truck activity. `at_dc` means the truck is inside the distribution centre's own yard
+ * and dock simulation; `off_network` means it is outside the modelled world (beyond the gateway).
+ */
+export const LINEHAUL_STATUSES = [
+  "parked",
+  "driving",
+  "docking",
+  "loading",
+  "unloading",
+  "waiting",
+  "undocking",
+  "at_dc",
+  "off_network",
+  "servicing",
+] as const;
+export const LinehaulStatus = z.enum(LINEHAUL_STATUSES);
+export type LinehaulStatus = z.infer<typeof LinehaulStatus>;
+
 /** A quantity of one SKU, in pallets. */
 export const CargoLine = z.object({
   sku: EntityId,

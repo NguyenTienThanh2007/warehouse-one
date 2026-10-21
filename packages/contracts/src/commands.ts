@@ -68,6 +68,19 @@ export const RelocatePalletCommand = CommandBase.extend({
   payload: z.object({ pallet_id: EntityId, to_location_id: EntityId }),
 });
 
+/**
+ * Phase 5: ask the logistics network to move pallets between two sites on a line-haul truck. The
+ * engine plans it like a scheduled transfer (stock and capacity are reserved), or rejects it.
+ */
+export const RequestTransferCommand = CommandBase.extend({
+  type: z.literal("transfer.request"),
+  payload: z
+    .object({ from_site_id: EntityId, to_site_id: EntityId, lines: CargoLines })
+    .refine((p) => p.from_site_id !== p.to_site_id, {
+      message: "from_site_id and to_site_id must differ",
+    }),
+});
+
 export const SimulationCommand = z.discriminatedUnion("type", [
   ReceiveInventoryCommand,
   MoveInventoryCommand,
@@ -76,6 +89,7 @@ export const SimulationCommand = z.discriminatedUnion("type", [
   CreateOrderCommand,
   CancelOrderCommand,
   RelocatePalletCommand,
+  RequestTransferCommand,
 ]);
 
 export type ReceiveInventoryCommand = z.infer<typeof ReceiveInventoryCommand>;
@@ -85,6 +99,7 @@ export type ScheduleInboundTruckCommand = z.infer<typeof ScheduleInboundTruckCom
 export type CreateOrderCommand = z.infer<typeof CreateOrderCommand>;
 export type CancelOrderCommand = z.infer<typeof CancelOrderCommand>;
 export type RelocatePalletCommand = z.infer<typeof RelocatePalletCommand>;
+export type RequestTransferCommand = z.infer<typeof RequestTransferCommand>;
 export type SimulationCommand = z.infer<typeof SimulationCommand>;
 export type SimulationCommandType = SimulationCommand["type"];
 

@@ -6,11 +6,15 @@ A browser-based 3D warehouse digital twin built on a deterministic simulation en
 data engineering pipeline and AI-assisted optimisation planned on top. Every number on screen comes
 from authoritative simulation state, and every state change is a typed, replayable domain event.
 
-> **Project status: Phases 0–2 are merged into `main` (Phase 2: living warehouse simulation,
-> PR #4). Phase 3 (data engineering) is in development on `feature/p3-data-engineering`.** See
+> **Project status: Phases 0–3 are merged into `main` (Phase 3: real data engineering, PR #5).
+> Phase 5, the multi-site logistics world, is in review on `feature/p5-multi-site-world`.** See
 > [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for what is verified and what is not.
 
-![WAREHOUSE ONE: rack bay selected, inspector showing live occupancy](docs/phases/evidence/phase-1/desktop-1440x900-5-inspector.jpg)
+![WAREHOUSE ONE: the logistics park, world view](docs/phases/evidence/phase-5/1-world.jpg)
+
+| Cross-dock | Container terminal | Distribution centre |
+|---|---|---|
+| ![Cross-dock facility view](docs/phases/evidence/phase-5/4-site-riverside-xd.jpg) | ![Terminal facility view](docs/phases/evidence/phase-5/3-site-harbour-terminal.jpg) | ![DC facility view](docs/phases/evidence/phase-5/2-site-northgate-dc.jpg) |
 
 | Aisle | Docks | Phone |
 |---|---|---|
@@ -37,7 +41,12 @@ from authoritative simulation state, and every state change is a typed, replayab
 - **Living operations** (Phase 2). Pallets with exact positions, routed forklifts and reach trucks,
   tasks, orders, inbound and outbound trucks at docks, all drawn live from simulation state, with an
   operator panel whose commands go through the engine's command path.
-- **Event store and data platform** (Phase 3, on its branch). Runs recorded from the browser or
+- **Multi-site logistics world** (Phase 5, on its branch). The DC inside a logistics park: a
+  container terminal (vessel calls, devanning), a cross-dock, a fleet depot with a workshop and a
+  highway gateway, joined by roads. Six line-haul trucks drive deterministic inter-site transfers
+  (seeded lanes or operator requests), reserve doors and stalls, and hand over to the DC's own
+  dock and yard simulation. World and facility views, site and truck inspectors.
+- **Event store and data platform** (Phase 3). Runs recorded from the browser or
   headless go into PostgreSQL in one transaction per batch (append-only event log + transactional
   outbox). From there:
   - an outbox relay publishes them to Kafka (KRaft);

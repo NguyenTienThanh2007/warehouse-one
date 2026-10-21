@@ -5,15 +5,19 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
 
 ## Current state
 
-- **Active phase:** 2 (Living warehouse simulation) on `feature/p2-simulation`. Phases 0–1 are merged.
-  **Do not start Phase 3 (Kafka, MinIO, dbt, Airflow, AI) until the owner approves Phase 2.**
-- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_2.md`.
+- **Active phase:** 5 (Multi-site logistics world) on `feature/p5-multi-site-world`. Phases 0–3 are
+  merged; Phase 4 analytics is not started.
+- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_5.md`.
 
 ## Architecture (one screen)
 
 - `packages/simulation`: **operational source of truth.** Pure `step(config, state, commands)`,
   fixed 100 ms tick, seeded RNG kept in state, versioned snapshots, replay. The runner is the only
   imperative shell and publishes deep-frozen state.
+- `packages/simulation/src/network`: the logistics network around the facility (optional
+  `config.network` / `state.network`, DEC-032–035). The DC is never modelled twice: line-haul
+  trucks hand over through the DC's command handlers. Default scenario `network`; single site is
+  `?scenario=showcase`.
 - `packages/contracts`: Zod schemas for commands and events → `data/schemas/*.json` (generated).
 - `apps/web`: Next.js 16 + R3F. Zustand is a *read-only projection* of the runner. Rendering never writes state.
   `src/world/derive.ts` maps config + state to instances (pure, tested); `components/world/*` draws them.
@@ -42,6 +46,8 @@ pnpm schemas:generate / pnpm fixtures:generate / pnpm bench:sim / pnpm bench:ren
 6. `step()` never mutates its input; published state is frozen.
 7. Event `sequence` is gap-free, `aggregate_version` is +1 per aggregate, and `event_id` is deterministic.
 8. Snapshots load only if version, hash and invariants check out.
+9. Network: stock never negative, allocations within stock, capacity counts incoming, a truck only
+   leaves with a reserved stand, pallets are conserved across sites, trailers and the DC.
 
 ## Conventions
 
