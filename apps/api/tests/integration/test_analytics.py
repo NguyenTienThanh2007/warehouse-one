@@ -155,7 +155,6 @@ def test_overview_calculates_kpis_from_one_published_snapshot(
         {
             "event_date": "2026-10-20",
             "events": 120,
-            "simulations": 2,
             "redelivered_copies": 1,
         }
     ]
