@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from typing import Any
 
-from sqlalchemy import Connection, Engine, func, select
+from sqlalchemy import Connection, Engine, delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from warehouse_api.ingest.canonical import canonical_json, sha256_hex
@@ -26,6 +26,7 @@ from warehouse_pipeline.lake import (
     BronzeObject,
     BronzeRow,
     kafka_name,
+    list_objects,
     rebuild_name,
     write_objects,
 )
@@ -94,9 +95,18 @@ class BronzeProcessor:
         return ProcessResult(counters={"rows": len(rows), "objects": len(objects)})
 
 
+@dataclass(frozen=True)
+class RebuildResult:
+    objects: list[BronzeObject]
+    # Manifest entries in the range whose objects no longer exist in the store (lost objects);
+    # removed so the manifest describes what is actually there. Their events are re-covered by
+    # the rebuilt objects.
+    pruned_manifest_keys: list[str]
+
+
 def rebuild_from_postgres(
     engine: Engine, settings: PipelineSettings, start: date, end: date
-) -> list[BronzeObject]:
+) -> RebuildResult:
     """Write bronze for events whose simulated date is in [start, end], from the event log."""
     with engine.connect() as conn:
         envelopes = conn.execute(
@@ -117,6 +127,15 @@ def rebuild_from_postgres(
                 )
             )
     objects = write_objects(settings, rows, rebuild_name, ingested_at=datetime.now(UTC))
+    present = set(list_objects(settings))
     with engine.begin() as conn:
         record_objects(conn, "rebuild", objects)
-    return objects
+        in_range = conn.execute(
+            select(bronze_objects.c.object_key).where(
+                bronze_objects.c.event_date.between(start.isoformat(), end.isoformat())
+            )
+        ).scalars()
+        pruned = sorted(k for k in in_range if k not in present)
+        if pruned:
+            conn.execute(delete(bronze_objects).where(bronze_objects.c.object_key.in_(pruned)))
+    return RebuildResult(objects=objects, pruned_manifest_keys=pruned)

@@ -386,8 +386,8 @@ def test_bronze_rebuild_from_postgres_is_complete_and_idempotent(
     ensure_bucket(settings)
     store_run(engine, ops_demo, settings.kafka_events_topic)
     day = date.fromisoformat(ops_demo.events[0]["occurred_at"][:10])
-    first = rebuild_from_postgres(engine, settings, day, day)
-    second = rebuild_from_postgres(engine, settings, day, day)
+    first = rebuild_from_postgres(engine, settings, day, day).objects
+    second = rebuild_from_postgres(engine, settings, day, day).objects
     assert [o.key for o in first] == [o.key for o in second]
     rows = bronze_rows(settings)
     assert [json.loads(r["envelope_json"]) for r in sorted(rows, key=lambda r: r["sequence"])] == (

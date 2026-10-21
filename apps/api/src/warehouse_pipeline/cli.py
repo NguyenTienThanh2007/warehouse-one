@@ -23,6 +23,7 @@ from warehouse_pipeline.consumer import ConsumerService
 from warehouse_pipeline.kafka import ensure_topics
 from warehouse_pipeline.lake import ensure_bucket
 from warehouse_pipeline.ledger import LedgerProcessor
+from warehouse_pipeline.reconcile import Scope, reconcile
 from warehouse_pipeline.relay import OutboxRelay
 from warehouse_pipeline.settings import PipelineSettings, get_pipeline_settings
 
@@ -66,15 +67,40 @@ def consume(args: argparse.Namespace, settings: PipelineSettings) -> int:
 
 
 def bronze_rebuild(args: argparse.Namespace, settings: PipelineSettings) -> int:
-    objects = rebuild_from_postgres(_engine(settings), settings, args.start, args.end)
+    result = rebuild_from_postgres(_engine(settings), settings, args.start, args.end)
     _print(
         {
-            "objects": len(objects),
-            "records": sum(o.record_count for o in objects),
-            "keys": [o.key for o in objects],
+            "objects": len(result.objects),
+            "records": sum(o.record_count for o in result.objects),
+            "keys": [o.key for o in result.objects],
+            "pruned_manifest_keys": result.pruned_manifest_keys,
         }
     )
     return 0
+
+
+def reconcile_cmd(args: argparse.Namespace, settings: PipelineSettings) -> int:
+    report = reconcile(
+        _engine(settings),
+        settings,
+        Scope(
+            start=args.start,
+            end=args.end,
+            settle_s=args.settle,
+            require_models=not args.skip_models,
+            triggered_by=args.triggered_by,
+        ),
+    )
+    _print(
+        {
+            "report_id": report.report_id,
+            "status": report.status,
+            "report_object_key": report.object_key,
+            "metrics": report.metrics,
+            "violations": report.violations,
+        }
+    )
+    return 1 if report.status == "failed" else 0
 
 
 def health(args: argparse.Namespace, settings: PipelineSettings) -> int:
@@ -89,6 +115,7 @@ COMMANDS: dict[str, Command] = {
     "relay": relay,
     "consume": consume,
     "bronze-rebuild": bronze_rebuild,
+    "reconcile": reconcile_cmd,
     "health": health,
 }
 
@@ -104,6 +131,12 @@ def parser() -> argparse.ArgumentParser:
     r = sub.add_parser("bronze-rebuild", help="rebuild bronze from the event log")
     r.add_argument("--start", type=date.fromisoformat, required=True)
     r.add_argument("--end", type=date.fromisoformat, required=True)
+    rc = sub.add_parser("reconcile", help="reconcile source, ledger, lake and models")
+    rc.add_argument("--start", type=date.fromisoformat, default=None)
+    rc.add_argument("--end", type=date.fromisoformat, default=None)
+    rc.add_argument("--settle", type=float, default=60.0, help="seconds since publish")
+    rc.add_argument("--skip-models", action="store_true", help="do not require silver/gold")
+    rc.add_argument("--triggered-by", default="cli")
     h = sub.add_parser("health", help="check a component's heartbeat")
     h.add_argument("component")
     h.add_argument("--max-age", type=float, default=30.0)
