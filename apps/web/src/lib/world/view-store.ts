@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import type { AppMode } from "../navigation/modes";
 
 /**
  * Camera presets. "world" frames the whole logistics network; "overview", "docks", "aisle" and
@@ -30,6 +31,8 @@ interface ViewState {
   } | null;
   /** Set by the camera rig when it moves: world view or the site being looked at. */
   scope: ViewScope;
+  /** Product mode shown in the top bar (`?mode=`); see lib/navigation/modes.ts. */
+  mode: AppMode;
   qualityMode: QualityMode;
   /** Tier currently rendered (equals the mode unless the mode is "auto"). */
   tier: QualityTier;
@@ -38,6 +41,7 @@ interface ViewState {
   /** Fly to one site of the network (the facility view of that site). */
   requestSite(siteId: string, instant?: boolean): void;
   setScope(scope: ViewScope): void;
+  setMode(mode: AppMode): void;
   setQualityMode(mode: QualityMode): void;
   setTier(tier: QualityTier): void;
   setStatus(status: WorldStatus): void;
@@ -46,6 +50,7 @@ interface ViewState {
 export const useView = create<ViewState>()((set, get) => ({
   cameraRequest: null,
   scope: { kind: "world" },
+  mode: "explore",
   qualityMode: "auto",
   tier: "high",
   status: { kind: "loading" },
@@ -61,6 +66,9 @@ export const useView = create<ViewState>()((set, get) => ({
         instant,
       },
     });
+  },
+  setMode(mode) {
+    if (get().mode !== mode) set({ mode });
   },
   setScope(scope) {
     const now = get().scope;

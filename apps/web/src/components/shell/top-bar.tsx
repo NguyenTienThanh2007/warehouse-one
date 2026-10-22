@@ -1,14 +1,34 @@
-const MODES = [
-  { id: "explore", label: "Explore", phase: 1, active: true },
-  { id: "build", label: "Build", phase: 2 },
-  { id: "operate", label: "Operate", phase: 2 },
-  { id: "analytics", label: "Analytics", phase: 4 },
-  { id: "ai", label: "AI", phase: 5 },
-] as const;
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { openMode } from "@/lib/navigation/mode-route";
+import { MODES, type ModeInfo } from "@/lib/navigation/modes";
+import { useView } from "@/lib/world/view-store";
+
+type Planned = Extract<ModeInfo, { status: "planned" }>;
 
 export function TopBar() {
+  const mode = useView((s) => s.mode);
+  const [notice, setNotice] = useState<Planned | null>(null);
+  const navRef = useRef<HTMLElement>(null);
+
+  // A notice closes on Escape or on a click anywhere outside the mode bar.
+  useEffect(() => {
+    if (!notice) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setNotice(null);
+    const onDown = (e: MouseEvent) => {
+      if (!navRef.current?.contains(e.target as Node)) setNotice(null);
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onDown);
+    };
+  }, [notice]);
+
   return (
-    <header className="pointer-events-auto flex flex-wrap items-center gap-3">
+    <header className="pointer-events-auto relative z-20 flex flex-wrap items-center gap-3">
       <div className="panel flex items-center gap-3 px-4 py-2.5">
         <Logo />
         <div className="leading-tight">
@@ -22,28 +42,91 @@ export function TopBar() {
         </span>
       </div>
 
-      <nav aria-label="Modes" className="panel hidden items-center gap-1 p-1 md:flex">
-        {MODES.map((m) =>
-          "active" in m ? (
-            <span
-              key={m.id}
-              aria-current="page"
-              className="rounded-[10px] bg-ink-700 px-3 py-1.5 text-xs font-medium text-fog-50"
-            >
-              {m.label}
-            </span>
-          ) : (
+      <nav
+        ref={navRef}
+        aria-label="Modes"
+        className="panel relative hidden items-center gap-1 p-1 md:flex"
+        data-testid="mode-nav"
+        data-mode={mode}
+      >
+        {MODES.map((m) => {
+          if (m.status === "available") {
+            const active = m.id === mode;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                aria-current={active ? "page" : undefined}
+                title={m.summary}
+                data-testid={`mode-${m.id}`}
+                onClick={() => {
+                  setNotice(null);
+                  openMode(m.id);
+                }}
+                className={`rounded-[10px] px-3 py-1.5 text-xs font-medium transition ${
+                  active
+                    ? "bg-ink-700 text-fog-50"
+                    : "text-fog-300 hover:bg-white/5 hover:text-fog-50"
+                }`}
+              >
+                {m.label}
+              </button>
+            );
+          }
+          const open = notice?.id === m.id;
+          return (
             <button
               key={m.id}
               type="button"
-              disabled
-              title={`${m.label} mode arrives in Phase ${m.phase}`}
-              className="cursor-not-allowed rounded-[10px] px-3 py-1.5 text-xs text-fog-500"
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              data-status="planned"
+              aria-controls={open ? "mode-notice" : undefined}
+              title={`${m.label}: coming soon (${m.plan})`}
+              data-testid={`mode-${m.id}`}
+              onClick={() => setNotice(open ? null : m)}
+              className={`rounded-[10px] px-3 py-1.5 text-xs transition ${
+                open ? "bg-white/5 text-fog-300" : "text-fog-500 hover:text-fog-300"
+              }`}
             >
               {m.label}
-              <span className="ml-1.5 text-[11px] text-fog-500/70">P{m.phase}</span>
+              <span className="ml-1.5 rounded-full border border-white/10 px-1.5 py-px text-[10px] text-fog-500">
+                Soon
+              </span>
             </button>
-          ),
+          );
+        })}
+        {notice && (
+          <div
+            id="mode-notice"
+            role="dialog"
+            aria-labelledby="mode-notice-title"
+            data-testid="mode-notice"
+            // Opaque: a backdrop blur does not reach through the mode bar's own blurred panel.
+            style={{ background: "var(--color-ink-900)" }}
+            className="panel absolute top-full right-0 z-10 mt-2 w-80 p-4"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="panel-title">Coming soon · {notice.plan}</p>
+                <p id="mode-notice-title" className="mt-1 text-sm font-semibold text-fog-50">
+                  {notice.label}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotice(null)}
+                aria-label="Close"
+                className="rounded-md px-1.5 text-fog-400 hover:bg-white/5"
+              >
+                ×
+              </button>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-fog-300">{notice.summary}</p>
+            <p className="mt-2 text-xs leading-5 text-fog-400" data-testid="mode-notice-detail">
+              {notice.detail}
+            </p>
+          </div>
         )}
       </nav>
     </header>

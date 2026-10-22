@@ -13,6 +13,7 @@ import { SimulationPanel } from "@/components/panels/simulation-panel";
 import { SiteNavigator } from "@/components/panels/site-navigator";
 import { SystemStatus } from "@/components/panels/system-status";
 import { scenarioFromSearch, SPEED_PRESETS, useSimulation } from "@/lib/sim/store";
+import { useModeRoute } from "@/lib/navigation/mode-route";
 import { useSimulationLoop } from "@/lib/sim/use-simulation-loop";
 import { qualityFromSearch, useView, type CameraPreset } from "@/lib/world/view-store";
 import { EmptyStockNotice, SceneErrorBoundary, SceneStatusOverlay } from "./scene-states";
@@ -68,17 +69,26 @@ function useUrlOptions() {
   }, []);
 }
 
-/** The DC's task/order panel in its facility view; the network panel everywhere else. */
+/**
+ * The DC's operations console in Operate mode and in the DC's facility view; the network panel
+ * everywhere else.
+ */
 function LeftPanel() {
   const network = useSimulation((s) => s.config.network);
   const scope = useView((s) => s.scope);
-  if (!network || (scope.kind === "site" && scope.siteId === network.primary_site))
+  const mode = useView((s) => s.mode);
+  if (
+    !network ||
+    mode === "operate" ||
+    (scope.kind === "site" && scope.siteId === network.primary_site)
+  )
     return <OperationsPanel />;
   return <NetworkPanel />;
 }
 
 export function WarehouseApp() {
   useUrlOptions();
+  useModeRoute();
   useSimulationLoop();
   useKeyboardShortcuts();
   const status = useView((s) => s.status.kind);
