@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     max_request_bytes: int = Field(default=4 * 1024 * 1024, ge=1024)
     # Kafka topic recorded on outbox rows (DEC-026).
     kafka_events_topic: str = "warehouse.domain-events.v1"
+    # Analytics read API (Phase 4): a snapshot older than this is reported as stale (the refresh
+    # DAG publishes every 30 minutes), and a pipeline heartbeat older than this is unhealthy.
+    analytics_stale_after_s: int = Field(default=2 * 3600, ge=60)
+    analytics_heartbeat_max_age_s: int = Field(default=120, ge=10)
 
     @property
     def expose_error_details(self) -> bool:

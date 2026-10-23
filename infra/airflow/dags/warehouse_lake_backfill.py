@@ -1,13 +1,21 @@
 """Backfill / reprocess a simulated date range: rebuild bronze from the PostgreSQL event log,
-rebuild silver/gold, reconcile the range. Every step is idempotent (deterministic object keys,
-full-refresh models), so the same range can be run again safely."""
+rebuild silver/gold, reconcile the range, republish analytics (Phase 4). Every step is
+idempotent (deterministic object keys, full-refresh models), so the same range can be run again
+safely."""
 
 from datetime import timedelta
 
 import pendulum
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.sdk import DAG, Param
-from warehouse_common import DEFAULT_ARGS, LAKE_POOL, PIPELINE, dbt_build, reconcile
+from warehouse_common import (
+    DEFAULT_ARGS,
+    LAKE_POOL,
+    PIPELINE,
+    dbt_build,
+    publish_analytics,
+    reconcile,
+)
 
 RANGE = "--start {{ params.start_date }} --end {{ params.end_date }}"
 
@@ -59,4 +67,5 @@ with DAG(
     )
     build = dbt_build()
     check = reconcile(RANGE)
-    validate >> rebuild >> build >> check
+    publish = publish_analytics()
+    validate >> rebuild >> build >> check >> publish

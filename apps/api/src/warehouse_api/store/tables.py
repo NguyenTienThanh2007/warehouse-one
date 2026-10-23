@@ -3,8 +3,10 @@
 Schema `operations` is the durable source of truth written by the API: simulation runs, their
 command logs, append-only domain events and the transactional outbox. Schema `pipeline` holds the
 state of downstream components (consumers, bronze manifest, dead letters, heartbeats,
-reconciliation reports). tests/integration/test_store_schema.py checks that the migrations produce
-exactly these tables.
+reconciliation reports). Schema `analytics` (Phase 4) holds published analytics snapshots:
+an immutable, derived copy of reconciled dbt gold models that the read API serves (DEC-036);
+it is never a source for anything else. tests/integration/test_store_schema.py checks that the
+migrations produce exactly these tables.
 
 Time columns: `occurred_at` and `simulation_time_ms` are deterministic simulated business time
 copied from the event. Columns ending in `_at` without that meaning (`registered_at`,
@@ -45,6 +47,7 @@ metadata = MetaData(
 
 OPS = "operations"
 PIPE = "pipeline"
+ANALYTICS = "analytics"
 
 
 def wall_clock(name: str, nullable: bool = False) -> Column[Any]:
@@ -336,8 +339,148 @@ reconciliation_reports = Table(
     schema=PIPE,
 )
 
+# --- Phase 4: published analytics snapshots (DEC-036) -------------------------------------------
+# Simulated time is stored as milliseconds since the run's simulated clock origin (`*_ms`); the run
+# row carries that origin (`run_epoch`), so business timestamps are `run_epoch + ms`.
+
+
+def _snapshot_fk() -> Column[Any]:
+    return Column(
+        "snapshot_id",
+        UUID(as_uuid=True),
+        ForeignKey(f"{ANALYTICS}.snapshots.snapshot_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+
+analytics_snapshots = Table(
+    "snapshots",
+    metadata,
+    Column("snapshot_id", UUID(as_uuid=True), primary_key=True),
+    Column("catalogue_version", Integer, nullable=False),
+    wall_clock("generated_at"),
+    Column("triggered_by", Text, nullable=False),
+    # Lineage: the gold build and the reconciliation that cleared it for publication.
+    Column("gold_built_at", DateTime(timezone=True), nullable=False),
+    Column("reconciliation_report_id", UUID(as_uuid=True), nullable=True),
+    Column("reconciliation_status", Text, nullable=False),
+    Column("reconciliation_finished_at", DateTime(timezone=True), nullable=True),
+    # Latest wall-clock ingestion time of any event included (bronze `ingested_at`).
+    Column("source_watermark", DateTime(timezone=True), nullable=True),
+    Column("source_events", BigInteger, nullable=False),
+    Column("run_count", Integer, nullable=False),
+    # Simulated business-time range covered by the included runs.
+    Column("business_from", DateTime(timezone=True), nullable=True),
+    Column("business_to", DateTime(timezone=True), nullable=True),
+    CheckConstraint(
+        "reconciliation_status IN ('passed', 'not_required')", name="reconciled_status_known"
+    ),
+    schema=ANALYTICS,
+)
+
+analytics_runs = Table(
+    "snapshot_runs",
+    metadata,
+    _snapshot_fk(),
+    Column("simulation_id", UUID(as_uuid=True), nullable=False),
+    Column("scenario_id", Text, nullable=True),
+    Column("run_epoch", DateTime(timezone=True), nullable=False),
+    Column("events", BigInteger, nullable=False),
+    Column("event_types", Integer, nullable=False),
+    Column("first_sequence", BigInteger, nullable=False),
+    Column("last_sequence", BigInteger, nullable=False),
+    Column("missing_sequences", BigInteger, nullable=False),
+    Column("redelivered_copies", BigInteger, nullable=False),
+    Column("first_simulation_time_ms", BigInteger, nullable=False),
+    Column("last_simulation_time_ms", BigInteger, nullable=False),
+    PrimaryKeyConstraint("snapshot_id", "simulation_id"),
+    schema=ANALYTICS,
+)
+
+analytics_metric_buckets = Table(
+    "metric_buckets",
+    metadata,
+    _snapshot_fk(),
+    Column("simulation_id", UUID(as_uuid=True), nullable=False),
+    Column("metric", Text, nullable=False),
+    Column("dimension", Text, nullable=False),
+    Column("bucket_ms", BigInteger, nullable=False),
+    Column("value", BigInteger, nullable=False),
+    PrimaryKeyConstraint("snapshot_id", "simulation_id", "metric", "dimension", "bucket_ms"),
+    schema=ANALYTICS,
+)
+
+analytics_task_facts = Table(
+    "task_facts",
+    metadata,
+    _snapshot_fk(),
+    Column("simulation_id", UUID(as_uuid=True), nullable=False),
+    Column("task_id", Text, nullable=False),
+    Column("task_type", Text, nullable=True),
+    Column("status", Text, nullable=False),
+    Column("created_ms", BigInteger, nullable=True),
+    Column("assigned_ms", BigInteger, nullable=True),
+    Column("completed_ms", BigInteger, nullable=True),
+    Column("cancelled_ms", BigInteger, nullable=True),
+    PrimaryKeyConstraint("snapshot_id", "simulation_id", "task_id"),
+    schema=ANALYTICS,
+)
+
+analytics_order_facts = Table(
+    "order_facts",
+    metadata,
+    _snapshot_fk(),
+    Column("simulation_id", UUID(as_uuid=True), nullable=False),
+    Column("order_id", Text, nullable=False),
+    Column("status", Text, nullable=False),
+    Column("ordered_pallets", BigInteger, nullable=True),
+    Column("opened_ms", BigInteger, nullable=True),
+    Column("started_ms", BigInteger, nullable=True),
+    Column("shipped_ms", BigInteger, nullable=True),
+    Column("cancelled_ms", BigInteger, nullable=True),
+    PrimaryKeyConstraint("snapshot_id", "simulation_id", "order_id"),
+    schema=ANALYTICS,
+)
+
+analytics_transfer_facts = Table(
+    "transfer_facts",
+    metadata,
+    _snapshot_fk(),
+    Column("simulation_id", UUID(as_uuid=True), nullable=False),
+    Column("transfer_id", Text, nullable=False),
+    Column("lane_id", Text, nullable=True),
+    Column("from_site_id", Text, nullable=True),
+    Column("to_site_id", Text, nullable=True),
+    Column("pallets", BigInteger, nullable=True),
+    Column("status", Text, nullable=False),
+    Column("planned_ms", BigInteger, nullable=True),
+    Column("dispatched_ms", BigInteger, nullable=True),
+    Column("delivered_ms", BigInteger, nullable=True),
+    Column("cancelled_ms", BigInteger, nullable=True),
+    PrimaryKeyConstraint("snapshot_id", "simulation_id", "transfer_id"),
+    schema=ANALYTICS,
+)
+
+analytics_quality_checks = Table(
+    "quality_checks",
+    metadata,
+    _snapshot_fk(),
+    Column("check_name", Text, nullable=False),
+    Column("kind", Text, nullable=False),
+    Column("value", BigInteger, nullable=False),
+    PrimaryKeyConstraint("snapshot_id", "check_name"),
+    schema=ANALYTICS,
+)
+
 __all__ = [
     "aggregate_versions",
+    "analytics_metric_buckets",
+    "analytics_order_facts",
+    "analytics_quality_checks",
+    "analytics_runs",
+    "analytics_snapshots",
+    "analytics_task_facts",
+    "analytics_transfer_facts",
     "bronze_objects",
     "command_log",
     "consumer_events",
