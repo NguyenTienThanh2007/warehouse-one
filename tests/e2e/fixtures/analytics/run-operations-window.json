@@ -1,0 +1,265 @@
+{
+  "snapshot_id": "40d23c0b-bf0d-4b77-b4cf-0cc6667bae45",
+  "generated_at": "2026-10-23T14:15:18.493524Z",
+  "simulation_id": "f34d0922-999b-8f4f-9ae6-c979f93658d5",
+  "scenario_id": "operations-demo",
+  "time_basis": "simulated",
+  "run_business_from": "2026-01-05T06:00:00.100000Z",
+  "run_business_to": "2026-01-05T06:08:06Z",
+  "window": {
+    "business_from": "2026-01-05T06:00:00Z",
+    "business_to": "2026-01-05T06:05:00Z",
+    "from_ms": 0,
+    "to_ms": 300000,
+    "resolution_ms": 60000,
+    "buckets": 5,
+    "clamped": false
+  },
+  "kpis": {
+    "events": 132,
+    "tasks_created": 13,
+    "tasks_completed": 9,
+    "tasks_cancelled": 0,
+    "task_cycle_p50_ms": 77600,
+    "task_cycle_p90_ms": 153800,
+    "task_wait_p50_ms": 37600,
+    "tasks_completed_per_hour": 108.0,
+    "orders_opened": 1,
+    "orders_shipped": 0,
+    "orders_cancelled": 0,
+    "orders_open_at_end": 1,
+    "order_lead_p50_ms": null,
+    "order_lead_p90_ms": null,
+    "pallets_created": 9,
+    "pallets_received": 9,
+    "pallets_moved": 19,
+    "pallets_shipped": 0,
+    "pallets_shipped_per_hour": 0.0,
+    "transfers_delivered": 0,
+    "transfer_pallets_delivered": 0,
+    "transfer_lead_p50_ms": null
+  },
+  "series": [
+    {
+      "bucket_start": "2026-01-05T06:00:00Z",
+      "offset_ms": 0,
+      "events": 42,
+      "tasks_created": 8,
+      "tasks_completed": 0,
+      "orders_shipped": 0,
+      "pallets_created": 9,
+      "pallets_removed": 0
+    },
+    {
+      "bucket_start": "2026-01-05T06:01:00Z",
+      "offset_ms": 60000,
+      "events": 46,
+      "tasks_created": 3,
+      "tasks_completed": 5,
+      "orders_shipped": 0,
+      "pallets_created": 0,
+      "pallets_removed": 0
+    },
+    {
+      "bucket_start": "2026-01-05T06:02:00Z",
+      "offset_ms": 120000,
+      "events": 22,
+      "tasks_created": 1,
+      "tasks_completed": 2,
+      "orders_shipped": 0,
+      "pallets_created": 0,
+      "pallets_removed": 0
+    },
+    {
+      "bucket_start": "2026-01-05T06:03:00Z",
+      "offset_ms": 180000,
+      "events": 10,
+      "tasks_created": 0,
+      "tasks_completed": 1,
+      "orders_shipped": 0,
+      "pallets_created": 0,
+      "pallets_removed": 0
+    },
+    {
+      "bucket_start": "2026-01-05T06:04:00Z",
+      "offset_ms": 240000,
+      "events": 12,
+      "tasks_created": 1,
+      "tasks_completed": 1,
+      "orders_shipped": 0,
+      "pallets_created": 0,
+      "pallets_removed": 0
+    }
+  ],
+  "events_by_type": [
+    {
+      "key": "equipment.status_changed",
+      "value": 60
+    },
+    {
+      "key": "pallet.moved",
+      "value": 19
+    },
+    {
+      "key": "task.created",
+      "value": 13
+    },
+    {
+      "key": "task.assigned",
+      "value": 10
+    },
+    {
+      "key": "pallet.created",
+      "value": 9
+    },
+    {
+      "key": "task.completed",
+      "value": 9
+    },
+    {
+      "key": "truck.status_changed",
+      "value": 8
+    },
+    {
+      "key": "inventory.received",
+      "value": 2
+    },
+    {
+      "key": "order.status_changed",
+      "value": 2
+    }
+  ],
+  "tasks_by_type": [
+    {
+      "task_type": "load",
+      "created": 2,
+      "completed": 0,
+      "cancelled": 0,
+      "cycle_p50_ms": null,
+      "cycle_p90_ms": null
+    },
+    {
+      "task_type": "pick",
+      "created": 4,
+      "completed": 2,
+      "cancelled": 0,
+      "cycle_p50_ms": 184550,
+      "cycle_p90_ms": 231950
+    },
+    {
+      "task_type": "putaway",
+      "created": 3,
+      "completed": 3,
+      "cancelled": 0,
+      "cycle_p50_ms": 77600,
+      "cycle_p90_ms": 120560
+    },
+    {
+      "task_type": "relocate",
+      "created": 1,
+      "completed": 1,
+      "cancelled": 0,
+      "cycle_p50_ms": 116700,
+      "cycle_p90_ms": 116700
+    },
+    {
+      "task_type": "unload",
+      "created": 3,
+      "completed": 3,
+      "cancelled": 0,
+      "cycle_p50_ms": 60600,
+      "cycle_p90_ms": 65880
+    }
+  ],
+  "pallet_flows": [
+    {
+      "flow": "created",
+      "detail": "inbound_truck",
+      "pallets": 3
+    },
+    {
+      "flow": "created",
+      "detail": "receive",
+      "pallets": 6
+    },
+    {
+      "flow": "moved",
+      "detail": "equipment>slot",
+      "pallets": 4
+    },
+    {
+      "flow": "moved",
+      "detail": "equipment>staging",
+      "pallets": 5
+    },
+    {
+      "flow": "moved",
+      "detail": "slot>equipment",
+      "pallets": 4
+    },
+    {
+      "flow": "moved",
+      "detail": "staging>equipment",
+      "pallets": 3
+    },
+    {
+      "flow": "moved",
+      "detail": "truck>equipment",
+      "pallets": 3
+    }
+  ],
+  "inventory_units": [
+    {
+      "key": "receipt",
+      "value": 6
+    }
+  ],
+  "transfers_by_lane": [],
+  "integrity": {
+    "events": 197,
+    "missing_sequences": 0,
+    "redelivered_copies": 0
+  },
+  "quality": [
+    {
+      "check_name": "aggregate_version_steps_not_one",
+      "kind": "error",
+      "value": 0
+    },
+    {
+      "check_name": "bronze_rows",
+      "kind": "info",
+      "value": 934
+    },
+    {
+      "check_name": "conflicting_copies",
+      "kind": "error",
+      "value": 0
+    },
+    {
+      "check_name": "distinct_events_in_bronze",
+      "kind": "info",
+      "value": 934
+    },
+    {
+      "check_name": "redelivered_copies",
+      "kind": "info",
+      "value": 0
+    },
+    {
+      "check_name": "runs_with_missing_sequences",
+      "kind": "error",
+      "value": 0
+    },
+    {
+      "check_name": "silver_events",
+      "kind": "info",
+      "value": 934
+    },
+    {
+      "check_name": "unsupported_schema_versions",
+      "kind": "error",
+      "value": 0
+    }
+  ]
+}

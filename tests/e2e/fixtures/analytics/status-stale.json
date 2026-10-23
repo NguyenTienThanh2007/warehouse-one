@@ -1,0 +1,64 @@
+{
+  "state": "stale",
+  "server_time": "2026-10-23T14:15:18.580107Z",
+  "snapshot": {
+    "snapshot_id": "40d23c0b-bf0d-4b77-b4cf-0cc6667bae45",
+    "catalogue_version": 1,
+    "generated_at": "2026-10-23T09:15:18.577966Z",
+    "gold_built_at": "2026-10-23T14:09:26Z",
+    "reconciliation_status": "passed",
+    "reconciliation_report_id": "9467b72c-83e6-4ae0-8744-51e5cba960eb",
+    "reconciliation_finished_at": "2026-10-23T14:15:18.350675Z",
+    "source_watermark": "2026-10-23T14:09:20.830000Z",
+    "source_events": 934,
+    "run_count": 2,
+    "business_from": "2026-01-05T06:00:00.100000Z",
+    "business_to": "2026-01-05T06:08:06Z",
+    "time_basis": "simulated"
+  },
+  "freshness": {
+    "age_seconds": 18000.0,
+    "stale_after_seconds": 7200,
+    "is_stale": true,
+    "events_recorded_after": 0,
+    "latest_event_recorded_at": "2026-10-23T14:09:20.739295Z"
+  },
+  "pipeline": {
+    "healthy": true,
+    "problems": [],
+    "reconciliation": {
+      "report_id": "9467b72c-83e6-4ae0-8744-51e5cba960eb",
+      "status": "passed",
+      "finished_at": "2026-10-23T14:15:18.350675Z",
+      "triggered_by": "airflow:warehouse_lake_refresh:fixture"
+    },
+    "components": [
+      {
+        "component": "consumer-bronze",
+        "instance": "consumer-bronze-1",
+        "status": "ok",
+        "last_beat_at": "2026-10-23T14:15:18.338004Z",
+        "age_seconds": 0.2,
+        "healthy": true
+      },
+      {
+        "component": "consumer-ledger",
+        "instance": "consumer-ledger-1",
+        "status": "ok",
+        "last_beat_at": "2026-10-23T14:15:18.338004Z",
+        "age_seconds": 0.2,
+        "healthy": true
+      },
+      {
+        "component": "relay",
+        "instance": "relay-1",
+        "status": "ok",
+        "last_beat_at": "2026-10-23T14:15:18.338004Z",
+        "age_seconds": 0.2,
+        "healthy": true
+      }
+    ],
+    "outbox_unpublished": 0,
+    "dead_letters": 0
+  }
+}

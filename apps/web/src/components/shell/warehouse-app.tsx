@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
+import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard";
 import { CameraToolbar } from "@/components/panels/camera-toolbar";
 import { InspectorPanel } from "@/components/panels/inspector-panel";
 import { KpiBar } from "@/components/panels/kpi-bar";
@@ -92,6 +93,7 @@ export function WarehouseApp() {
   useSimulationLoop();
   useKeyboardShortcuts();
   const status = useView((s) => s.status.kind);
+  const mode = useView((s) => s.mode);
 
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-ink-950" data-world-status={status}>
@@ -103,33 +105,45 @@ export function WarehouseApp() {
       <SiteLabelsOverlay />
       <SceneStatusOverlay />
 
-      <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-3 sm:gap-3 sm:p-4">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-col gap-2">
-            <TopBar />
-            <KpiBar />
-            <SiteNavigator />
-          </div>
-          <div className="hidden sm:block">
-            <ScenarioPicker />
-          </div>
+      {mode === "analytics" ? (
+        // Analytics covers the 3D view (which stops rendering frames meanwhile); the simulation
+        // keeps running underneath and the world is back as it was when another mode is chosen.
+        <div
+          className="absolute inset-0 flex flex-col gap-3 overflow-y-auto bg-ink-950 p-3 sm:p-4"
+          data-testid="analytics-view"
+        >
+          <TopBar />
+          <AnalyticsDashboard />
         </div>
-        <div className="flex min-h-0 flex-1 items-start justify-end gap-3">
-          <LeftPanel />
-          <InspectorPanel />
-          <CameraToolbar />
-        </div>
-        <EmptyStockNotice />
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
-          <SimulationPanel />
-          <div className="flex flex-col items-start gap-3 sm:items-end">
-            <div className="hidden sm:block">
-              <SystemStatus />
+      ) : (
+        <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-3 sm:gap-3 sm:p-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-col gap-2">
+              <TopBar />
+              <KpiBar />
+              <SiteNavigator />
             </div>
-            <RendererPanel />
+            <div className="hidden sm:block">
+              <ScenarioPicker />
+            </div>
+          </div>
+          <div className="flex min-h-0 flex-1 items-start justify-end gap-3">
+            <LeftPanel />
+            <InspectorPanel />
+            <CameraToolbar />
+          </div>
+          <EmptyStockNotice />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
+            <SimulationPanel />
+            <div className="flex flex-col items-start gap-3 sm:items-end">
+              <div className="hidden sm:block">
+                <SystemStatus />
+              </div>
+              <RendererPanel />
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </main>
   );
 }

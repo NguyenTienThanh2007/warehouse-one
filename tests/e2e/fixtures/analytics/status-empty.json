@@ -1,0 +1,17 @@
+{
+  "state": "empty",
+  "server_time": "2026-10-23T14:15:18.331444Z",
+  "snapshot": null,
+  "freshness": null,
+  "pipeline": {
+    "healthy": false,
+    "problems": [
+      "no reconciliation has run yet",
+      "no pipeline heartbeats: the relay and consumers have not reported"
+    ],
+    "reconciliation": null,
+    "components": [],
+    "outbox_unpublished": 0,
+    "dead_letters": 0
+  }
+}

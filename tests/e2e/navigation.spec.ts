@@ -55,7 +55,6 @@ test.describe("mode navigation", () => {
     const before = page.url();
     for (const [id, plan] of [
       ["build", "Not scheduled"],
-      ["analytics", "Phase 4"],
       ["ai", "Phase 6"],
     ] as const) {
       const tab = page.getByTestId(`mode-${id}`);
@@ -81,6 +80,7 @@ test.describe("mode navigation", () => {
       .locator('[data-testid="mode-nav"] [title]')
       .evaluateAll((els) => els.map((e) => e.getAttribute("title") ?? ""));
     expect(titles.length).toBe(5);
+    await expect(page.getByTestId("mode-analytics")).not.toHaveAttribute("data-status", "planned");
     for (const t of titles) expect(t).not.toMatch(/arrives in Phase/);
   });
 });
