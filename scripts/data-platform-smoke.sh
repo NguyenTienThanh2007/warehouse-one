@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# End-to-end proof of the Phase 3 data platform (docs/phases/PHASE_3.md §H).
+# End-to-end proof of the Phase 3 data platform (docs/phases/PHASE_3.md §H) and of the Phase 4
+# analytics published from it (docs/phases/PHASE_4.md).
 #
 # Needs the full stack running and healthy:
 #   docker compose --profile data up -d --build --wait
@@ -58,6 +59,13 @@ expect_counts() { # <sim> <python condition on d>
 }
 
 relay_unhealthy() { ! pipeline health relay --max-age 30 >/dev/null; }
+
+# analytics <sim>: the published analytics of a run (Phase 4 read API), as JSON.
+analytics() { curl -fsS "$API_URL/api/v1/analytics/runs/$1"; }
+
+# Known outcomes of the operations-demo script (data/fixtures/operations-demo/summary.json).
+OPS_SUMMARY=data/fixtures/operations-demo/summary.json
+known() { python3 -c "import json,sys; d=json.load(open('$OPS_SUMMARY')); print(eval(sys.argv[1]))" "$1"; }
 
 # run_dag <dag> <expected state> [conf]: trigger, wait for a terminal state, compare.
 run_dag() {
@@ -146,6 +154,25 @@ S=$(status "$SIM_A")
 [[ $(echo "$S" | field "d['gold_events']") == "$EVENTS_A" ]] || die "gold events != source: $S"
 [[ $(run_report | field "d['status']") == passed ]] || die "reconciliation did not pass: $(run_report)"
 ok "gold has $EVENTS_A events for the run; reconciliation passed"
+# The DAG published the reconciled gold: the analytics API serves run A with the outcomes the
+# operations-demo script is known to produce.
+STATUS=$(curl -fsS "$API_URL/api/v1/analytics/status")
+[[ $(echo "$STATUS" | field "d['snapshot'] is not None and d['snapshot']['reconciliation_status']") == passed ]] ||
+  die "no reconciled analytics snapshot published: $STATUS"
+A_AN=$(analytics "$SIM_A")
+[[ $(echo "$A_AN" | field "d['kpis']['events']") == "$EVENTS_A" ]] || die "analytics events != source"
+[[ $(echo "$A_AN" | field "d['kpis']['events']") == "$(known "d['event_count']")" ]] ||
+  die "analytics events != the operations-demo reference"
+[[ $(echo "$A_AN" | field "d['kpis']['tasks_completed']") == "$(known "sum(d['tasks_completed_by_type'].values())")" ]] ||
+  die "analytics tasks completed != reference: $(echo "$A_AN" | field "d['kpis']")"
+[[ $(echo "$A_AN" | field "sorted((t['task_type'], t['completed']) for t in d['tasks_by_type'])") == \
+  "$(known "sorted(d['tasks_completed_by_type'].items())")" ]] || die "analytics tasks by type != reference"
+[[ $(echo "$A_AN" | field "d['kpis']['orders_shipped']") == "$(known "list(d['orders'].values()).count('shipped')")" ]] ||
+  die "analytics orders shipped != reference"
+[[ $(echo "$A_AN" | field "sum(p['events'] for p in d['series'])") == "$EVENTS_A" ]] ||
+  die "analytics series does not add up to the run's events"
+A_FIGURES=$(echo "$A_AN" | field "(d['kpis']['events'], d['kpis']['tasks_completed'], d['kpis']['orders_shipped'], d['kpis']['pallets_shipped'])")
+ok "analytics published: run A has $EVENTS_A events, its known tasks and orders, series adding up"
 
 step "6. Temporary Kafka outage: events stay durable, then flow"
 "${COMPOSE[@]}" stop kafka >/dev/null
@@ -183,7 +210,12 @@ expect_counts "$SIM_A" "d['ledger_events'] == $EVENTS_A and d['bronze_distinct_e
   die "duplicates changed distinct counts"
 run_dag warehouse_lake_refresh success
 expect_counts "$SIM_A" "d['gold_events'] == $EVENTS_A" || die "gold double-counted the replay"
-ok "every event delivered twice: ledger and gold still count $EVENTS_A; bronze kept both copies"
+A_AN=$(analytics "$SIM_A")
+[[ $(echo "$A_AN" | field "(d['kpis']['events'], d['kpis']['tasks_completed'], d['kpis']['orders_shipped'], d['kpis']['pallets_shipped'])") == "$A_FIGURES" ]] ||
+  die "duplicates inflated the published analytics: $(echo "$A_AN" | field "d['kpis']")"
+[[ $(echo "$A_AN" | field "d['integrity']['redelivered_copies']") == "$EVENTS_A" ]] ||
+  die "redelivered copies not reported: $(echo "$A_AN" | field "d['integrity']")"
+ok "every event delivered twice: ledger, gold and published analytics still count $EVENTS_A; bronze kept both copies"
 
 step "9. Restart the relay and consumers: processing resumes"
 "${COMPOSE[@]}" restart relay consumer-ledger consumer-bronze >/dev/null
