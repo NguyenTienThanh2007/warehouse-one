@@ -256,3 +256,31 @@ view can cut them away like the DC's. The sun's shadow frustum follows the camer
 with distance, snapped to texels. Site labels are DOM elements projected every frame (beneath the
 HUD), not WebGL text or per-label React roots. The default scenario is the network; the single-site
 DC is `?scenario=showcase`.
+
+### DEC-036 — Analytics are served from published snapshots in PostgreSQL (Phase 4)
+The dbt gold models (Parquet in the lake) stay the analytical source of truth. After a refresh,
+`warehouse-pipeline publish-analytics` copies one reconciled gold build into `analytics.*` in
+PostgreSQL as an immutable snapshot (one transaction; the last 20 kept), and the read API serves
+only those snapshots plus pipeline state. Alternatives: the API reading Parquet through DuckDB on
+every request (puts the lake, S3 credentials and DuckDB in the API; no stable unit of "what was
+published"; unavailable whenever MinIO is), or materialising gold into PostgreSQL by dbt (a second
+build of the models). Facts are copied at row level (tasks, orders, transfers) and events per
+simulated minute, so the API can answer any time window with exact counts and percentiles instead
+of pre-aggregating a fixed set. The snapshot is derived data: dropping it loses nothing.
+
+### DEC-037 — Two clocks in analytics, never mixed; windows in simulated time (Phase 4)
+Business time is the simulated clock: each run's origin (`run_epoch`, from `occurred_at −
+simulation_time_ms`, checked constant by a dbt test) plus simulated milliseconds. Buckets are
+offsets on that clock, so nothing depends on a time zone or on when events were ingested.
+Publication, freshness, heartbeats and reconciliation are wall clock and labelled as such in the
+API (`generated_at`, `server_time`, `*_recorded_at`) and the UI. Windows are half-open, snapped
+outwards to the series resolution (1 to 1,440 simulated minutes, at most 240 points), at most 31
+simulated days, and rejected with a code when invalid.
+
+### DEC-038 — A snapshot is published only when its own reconciliation passed (Phase 4)
+The publisher refuses unless a reconciliation report that passed, with the models checked,
+finished after the gold build. DAG runs pass `--cleared-by airflow:<dag>:<run_id>`, so the report
+of the same run decides even when another DAG's reconciliation finishes in between; manual runs use
+the latest report. When publication is refused the previous snapshot stays current, and the status
+endpoint reports the pipeline's problems (`degraded`) next to it rather than hiding the data or
+presenting it as current.

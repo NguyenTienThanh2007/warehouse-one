@@ -1,8 +1,8 @@
 # Phase 5 — Multi-site logistics world (first vertical slice)
 
 **Branch:** `feature/p5-multi-site-world` · **Base:** `main` @ `0b25fa4` (Phase 3 merged, PR #5)
-**Status:** IN REVIEW (pull request to `main`; not merged). Results below were measured on this
-branch; CI results are recorded in §7 once the pull request has run.
+**Status:** MERGED into `main` as `5e9d0ef` (PR #7, 2026-10-21). Results below were measured on the
+branch before the merge.
 
 ## 1. Starting point (verified 2026-10-21)
 
@@ -178,7 +178,10 @@ Keys: `W` world, `O` DC overview, `D` docks, `A` aisle, `T` plan, `F` focus, `Sp
 
 ## 7. CI
 
-To be recorded from the pull request's run.
+- PR #7, head `9e56a4f`: run 39577488901, all jobs green.
+- `main` after the merge (`5e9d0ef`): run 39579726922, 5/5 jobs green (TypeScript, Python, Docker
+  Compose, data platform, browser end-to-end).
+- Follow-up PR #8 (top-bar modes, smoke-test fixes; `9459fd5`): `main` run 39717397640, 5/5 green.
 
 ## 8. Next increments
 

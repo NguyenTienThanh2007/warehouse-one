@@ -5,9 +5,9 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
 
 ## Current state
 
-- **Active phase:** 5 (Multi-site logistics world) on `feature/p5-multi-site-world`. Phases 0–3 are
-  merged; Phase 4 analytics is not started.
-- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_5.md`.
+- **Active phase:** 4 (Operations analytics) on `feature/p4-analytics-refresh`. Phases 0–3 and 5 are
+  merged (PR #7), plus the top-bar modes fix (PR #8).
+- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_4.md`.
 
 ## Architecture (one screen)
 
@@ -18,6 +18,9 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
   `config.network` / `state.network`, DEC-032–035). The DC is never modelled twice: line-haul
   trucks hand over through the DC's command handlers. Default scenario `network`; single site is
   `?scenario=showcase`.
+- Analytics (Phase 4, DEC-036–038): gold → `warehouse-pipeline publish-analytics` (only after a
+  passed reconciliation) → `analytics.*` snapshots → `GET /api/v1/analytics/*` → Analytics mode.
+  Business time is simulated; publication and health times are wall clock. Never mix them.
 - `packages/contracts`: Zod schemas for commands and events → `data/schemas/*.json` (generated).
 - `apps/web`: Next.js 16 + R3F. Zustand is a *read-only projection* of the runner. Rendering never writes state.
   `src/world/derive.ts` maps config + state to instances (pure, tested); `components/world/*` draws them.
