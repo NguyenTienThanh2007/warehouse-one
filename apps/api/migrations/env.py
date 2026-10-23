@@ -35,7 +35,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             include_schemas=True,
             include_name=lambda name, type_, _parent: (
-                type_ != "schema" or name in {"operations", "pipeline"}
+                type_ != "schema" or name in {"operations", "pipeline", "analytics"}
             ),
         )
         with context.begin_transaction():

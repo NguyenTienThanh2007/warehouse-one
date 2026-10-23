@@ -8,7 +8,8 @@ import { modeFromSearch, searchWithMode, type AppMode } from "./modes";
 /**
  * Open a mode: record it (view store and `?mode=` in the URL) and move the camera to the view
  * that mode works in. Operate runs the distribution centre, so it frames the DC; Explore opens on
- * the whole world (or the facility in a single-site scenario).
+ * the whole world (or the facility in a single-site scenario); Analytics covers the 3D view with
+ * the dashboard and leaves the camera alone.
  */
 export function openMode(mode: AppMode, history: "push" | "none" = "push"): void {
   useView.getState().setMode(mode);
@@ -21,6 +22,8 @@ export function openMode(mode: AppMode, history: "push" | "none" = "push"): void
         `${window.location.pathname}${search}${window.location.hash}`,
       );
   }
+  // Analytics is a 2D view of published data: the camera stays where it was.
+  if (mode === "analytics") return;
   const network = !!useSimulation.getState().config.network;
   useView.getState().requestCamera(mode === "explore" && network ? "world" : "overview");
 }

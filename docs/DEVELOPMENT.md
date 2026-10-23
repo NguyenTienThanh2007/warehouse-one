@@ -60,6 +60,9 @@ Override ports with `API_PORT`, `KAFKA_PORT`, `MINIO_PORT`, `MINIO_CONSOLE_PORT`
 | Query the lake | DuckDB with `httpfs`: `SELECT * FROM read_parquet('s3://warehouse-lake/gold/simulation_activity.parquet')` (set `s3_endpoint`, `s3_url_style='path'`, `s3_use_ssl=false` and the keys); readers outside dbt must skip all-NULL placeholder rows of empty models |
 | Trigger DAGs | UI on :8080, or `docker compose exec airflow airflow dags trigger warehouse_lake_refresh --conf '{"settle_s": 0}'` (DAGs are paused at creation; a paused DAG's run stays queued) |
 | Backfill a date range | `airflow dags trigger warehouse_lake_backfill --conf '{"start_date": "2026-01-05", "end_date": "2026-01-05"}'` |
+| Publish analytics by hand | `docker compose exec relay warehouse-pipeline publish-analytics` (refuses unless the latest reconciliation passed after the gold build; the refresh DAG does this every 30 min) |
+| Analytics API | `curl localhost:8000/api/v1/analytics/status`, `/runs`, `/runs/<id>?from=…&to=…` (simulated time, ISO 8601 with Z) |
+| Analytics in the browser | `/?mode=analytics` (needs the API with a published snapshot; otherwise the page explains the state) |
 | Validate DAGs | `docker compose --profile data run --rm --no-deps --entrypoint python airflow /opt/airflow/dag_tests/check_dags.py` |
 | Python tests with Kafka/S3 | start `postgres kafka minio` only, then in `apps/api`: `uv sync --all-extras && WAREHOUSE_KAFKA_BOOTSTRAP_SERVERS=localhost:9094 WAREHOUSE_S3_ENDPOINT=localhost:9000 WAREHOUSE_S3_ACCESS_KEY=warehouse WAREHOUSE_S3_SECRET_KEY=warehouse_dev_minio uv run pytest -m kafka` (these tests **truncate** the operations and pipeline tables: never point them at data you want to keep) |
 | Stop | `docker compose --profile data down` (keeps volumes) |

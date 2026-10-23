@@ -9,8 +9,8 @@ Each phase is developed on `feature/p<N>-…`, reviewed through a pull request, 
 | 1 | `feature/p1-3d-world` | Premium 3D world | **Accepted**, merged (`d80a7f2`, follow-up `0463395`) |
 | 2 | `feature/p2-simulation` | Living warehouse simulation | **Merged** (PR #4, `d2dc4d9`, 2026-10-21; `main` CI 4/4 green) |
 | 3 | `feature/p3-data-engineering` | Real data engineering | **Merged** (PR #5, `0b25fa4`) |
-| 4 | `feature/p4-analytics` | Advanced operations analytics | Not started (scope proposed in closed PR #6) |
-| 5 | `feature/p5-multi-site-world` | Multi-site logistics world (first vertical slice) | **In review** (see `docs/phases/PHASE_5.md`) |
+| 4 | `feature/p4-analytics-refresh` | Operations analytics (published, reconciled) | **In review** (see `docs/phases/PHASE_4.md`) |
+| 5 | `feature/p5-multi-site-world` | Multi-site logistics world (first vertical slice) | **Merged** (PR #7, `5e9d0ef`; follow-up PR #8, `9459fd5`) |
 | 6 | `feature/p6-ai-digital-twin` | AI logistics brain and advanced digital twin | Not started |
 | 7 | `feature/p7-production` | Production & portfolio release | Not started |
 
@@ -32,7 +32,14 @@ Equipment became stateful (tasks, routing, battery), pallets got exact positions
 truck arrivals and departures, and the renderer draws all of it from simulation state. Workers were
 deferred. Record and limitations: `docs/phases/PHASE_2.md`.
 
-## Phase 5 — Multi-site logistics world (in review)
+## Phase 4 — Operations analytics (in review)
+
+The refresh DAG publishes each reconciled gold build as an immutable snapshot; a read-only API
+serves it with freshness and pipeline health; the Analytics mode shows run KPIs, simulated-time
+series, task, order, pallet and transfer breakdowns and data quality, and labels stale, degraded and
+missing data. Metrics catalogue, evidence and limitations: `docs/phases/PHASE_4.md`.
+
+## Phase 5 — Multi-site logistics world (merged)
 
 The DC inside a connected logistics park: container terminal, cross-dock, fleet depot and highway
 gateway on a road network, with line-haul trucks carrying deterministic inter-site transfers that
@@ -56,8 +63,8 @@ Summarised from the master brief. Detailed plans are written at the start of eac
 - **3:** event log and outbox in PostgreSQL, Kafka (KRaft), idempotent consumers with DLQ, MinIO
   Parquet bronze, dbt silver and gold with tests, Airflow for backfill and reconciliation,
   recovery and duplicate tests.
-- **4:** dashboards reconciled with dbt marts, live vs. historical labelling, freshness and
-  pipeline health, alerts.
+- **4 (as delivered):** see above. Next there: utilisation and dock occupancy, cross-run
+  comparison, alerts on stale or degraded analytics.
 - **5 (as delivered):** multi-site world, see above. Next increments there: cross-site orders,
   a second detailed facility, traffic rules, network analytics.
 - **6 (formerly 5 and 6):** provider-agnostic AI service, structured proposals, validation,

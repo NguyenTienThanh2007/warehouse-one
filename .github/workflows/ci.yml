@@ -151,12 +151,14 @@ jobs:
         run: GIT_SHA=${GITHUB_SHA::7} docker compose --profile data up -d --wait --wait-timeout 600
       - name: End-to-end smoke test
         run: scripts/data-platform-smoke.sh
-      # 4. The browser records a run to the API and the stored run replays identically.
-      - name: Browser recording to the API
+      # 4. The browser records a run to the API and the stored run replays identically; then the
+      #    Analytics mode shows exactly what the real API published (Phase 4).
+      - name: Browser recording and analytics against the API
         run: |
           NEXT_PUBLIC_API_URL=http://localhost:8000 pnpm --filter @warehouse-one/web build
           pnpm exec playwright install --with-deps chromium
-          RECORDING_API_URL=http://localhost:8000 pnpm test:e2e recording
+          RECORDING_API_URL=http://localhost:8000 ANALYTICS_API_URL=http://localhost:8000 \
+            pnpm test:e2e recording analytics-live
       - if: failure()
         run: docker compose --profile data ps -a && docker compose --profile data logs --no-color --tail 300
       - if: always()

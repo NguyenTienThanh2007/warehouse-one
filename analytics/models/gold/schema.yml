@@ -64,3 +64,24 @@ models:
     columns:
       - name: check_name
         data_tests: [unique, not_null]
+
+  - name: gold_activity_1m
+    description: Distinct events per run, event type and minute of simulated time.
+    columns:
+      - name: simulation_id
+        data_tests: [not_null]
+      - name: bucket_ms
+        data_tests: [not_null]
+      - name: events
+        data_tests: [not_null]
+
+  - name: gold_transfers
+    description: One row per inter-site transfer (Phase 5 logistics network).
+    columns:
+      - name: transfer_id
+        data_tests: [not_null]
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [open, in_transit, delivered, cancelled]

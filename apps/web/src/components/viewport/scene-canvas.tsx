@@ -46,6 +46,8 @@ export default function SceneCanvas() {
   const config = useSimulation((s) => s.config);
   const tier = useView((s) => s.tier);
   const mode = useView((s) => s.qualityMode);
+  // Analytics covers the canvas: render nothing until another mode is back.
+  const covered = useView((s) => s.mode === "analytics");
   const setTier = useView((s) => s.setTier);
   const settings = TIER_SETTINGS[tier];
   const facility = useMemo(() => resolveFacility(config), [config]);
@@ -70,6 +72,7 @@ export default function SceneCanvas() {
     <Canvas
       data-testid="scene-canvas"
       shadows={settings.shadows ? "percentage" : false}
+      frameloop={covered ? "never" : "always"}
       dpr={settings.dpr}
       camera={{ position: [60, 50, 70], fov: CAMERA_FOV, near: 0.5, far: 4000 }}
       gl={{ antialias: !settings.smaa, powerPreference: "high-performance", stencil: false }}

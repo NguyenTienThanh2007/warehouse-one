@@ -177,6 +177,19 @@ through pydantic-settings.
    pipeline and dbt CLIs in isolated virtualenvs, and the reconciliation fails on any violated
    invariant.
 
+## 7a. Analytics (Phase 4)
+
+- **Publication:** the refresh and backfill DAGs end with `publish_analytics`, which runs
+  `warehouse-pipeline publish-analytics --cleared-by <this run>`: it reads the gold models with
+  DuckDB and writes one snapshot into `analytics.*` (migration `0003`) in a single transaction,
+  only if this run's reconciliation passed after the build (DEC-036, DEC-038).
+- **Read API:** `GET /api/v1/analytics/status` (state, freshness, pipeline health),
+  `/runs`, `/runs/{simulation_id}?from&to&snapshot_id` (KPIs, series, breakdowns). SELECT only.
+- **Web:** Analytics mode (`apps/web/src/components/analytics`, `lib/analytics`), responses
+  validated with zod; the 3D canvas stops rendering while it is open.
+- **Time:** simulated business time for everything measured, wall clock for publication and
+  health (DEC-037).
+
 ## 8. Cross-cutting
 
 - **Config:** environment variables only. `.env.example` documents them. No secrets in the repo.

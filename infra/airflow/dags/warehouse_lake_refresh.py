@@ -1,4 +1,5 @@
-"""Routine processing: check the streaming pipeline, build silver/gold, reconcile."""
+"""Routine processing: check the streaming pipeline, build silver/gold, reconcile, then publish
+the reconciled gold as an analytics snapshot (Phase 4)."""
 
 from datetime import timedelta
 
@@ -12,12 +13,13 @@ from warehouse_common import (
     DEFAULT_ARGS,
     dbt_build,
     pipeline_health,
+    publish_analytics,
     reconcile,
 )
 
 with DAG(
     dag_id="warehouse_lake_refresh",
-    description="Bronze → silver/gold with dbt, then reconcile against PostgreSQL.",
+    description="Bronze → silver/gold with dbt, reconcile against PostgreSQL, publish analytics.",
     schedule="*/30 * * * *",
     start_date=pendulum.datetime(2026, 10, 1, tz="UTC"),
     catchup=False,
@@ -46,4 +48,6 @@ with DAG(
         execution_timeout=timedelta(minutes=5),
     )
     check = reconcile()
+    publish = publish_analytics()
     health >> build >> [freshness, check]
+    check >> publish

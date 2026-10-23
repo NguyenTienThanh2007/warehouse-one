@@ -12,6 +12,11 @@ select
     min(occurred_at) as first_occurred_at,
     max(occurred_at) as last_occurred_at,
     max(simulation_time_ms) - min(simulation_time_ms) as simulated_span_ms,
+    -- The run's simulated clock origin (UTC epoch ms): occurred_at = run_epoch_ms + simulation_time_ms.
+    min(epoch_ms(occurred_at) - simulation_time_ms) as run_epoch_ms,
+    max(epoch_ms(occurred_at) - simulation_time_ms) - min(epoch_ms(occurred_at) - simulation_time_ms)
+        as run_epoch_spread_ms,
+    max(simulation_time_ms) as last_simulation_time_ms,
     count(*) filter (where event_type = 'task.completed') as tasks_completed,
     count(*) filter (where event_type = 'order.status_changed'
         and json_extract_string(payload_json, '$.to') = 'shipped') as orders_shipped,

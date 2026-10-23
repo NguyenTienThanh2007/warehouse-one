@@ -7,7 +7,7 @@
 export type ModeId = "explore" | "operate" | "build" | "analytics" | "ai";
 
 /** Modes with a working view; `?mode=` accepts only these. */
-export const AVAILABLE_MODES = ["explore", "operate"] as const;
+export const AVAILABLE_MODES = ["explore", "operate", "analytics"] as const;
 export type AppMode = (typeof AVAILABLE_MODES)[number];
 
 export type ModeInfo =
@@ -55,11 +55,9 @@ export const MODES: readonly ModeInfo[] = [
   {
     id: "analytics",
     label: "Analytics",
-    status: "planned",
-    plan: "Phase 4",
-    summary: "Dashboards for orders, cycle time, utilisation, throughput and bottlenecks.",
-    detail:
-      "In-app dashboards are not built yet (Phase 4 has not started). Recorded runs already flow through the data platform (event store, Kafka, Parquet lake, dbt models and reconciliation), which runs outside this app.",
+    status: "available",
+    summary:
+      "Published analytics of recorded runs: throughput, task and order flow, pallet flows, transfers and data quality, with freshness and pipeline health.",
   },
   {
     id: "ai",

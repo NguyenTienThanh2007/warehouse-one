@@ -72,3 +72,22 @@ def reconcile(extra_args: str = "") -> BashOperator:
         retries=0,
         execution_timeout=timedelta(minutes=10),
     )
+
+
+def publish_analytics() -> BashOperator:
+    """Publish the reconciled gold build as an analytics snapshot (Phase 4, DEC-036). Runs only
+    after the reconciliation task succeeded; the publisher re-checks that this run's report
+    passed after this gold build and refuses otherwise."""
+    return BashOperator(
+        task_id="publish_analytics",
+        # Cleared by this run's own reconciliation, not whichever report is newest: a scheduled
+        # reconciliation of another DAG can finish in between.
+        bash_command=(
+            f"{PIPELINE} publish-analytics "
+            "--triggered-by 'airflow:{{ dag.dag_id }}:{{ run_id }}' "
+            "--cleared-by 'airflow:{{ dag.dag_id }}:{{ run_id }}'"
+        ),
+        pool=LAKE_POOL,
+        retries=1,
+        execution_timeout=timedelta(minutes=10),
+    )

@@ -1,0 +1,31 @@
+{
+  "snapshot_id": "40d23c0b-bf0d-4b77-b4cf-0cc6667bae45",
+  "generated_at": "2026-10-23T14:15:18.493524Z",
+  "time_basis": "simulated",
+  "runs": [
+    {
+      "simulation_id": "1f54e195-a02e-815c-9e93-4266b6c0f97f",
+      "scenario_id": "network",
+      "run_epoch": "2026-01-05T06:00:00Z",
+      "business_from": "2026-01-05T06:00:00.100000Z",
+      "business_to": "2026-01-05T06:04:58.700000Z",
+      "simulated_span_ms": 298600,
+      "events": 737,
+      "event_types": 12,
+      "missing_sequences": 0,
+      "redelivered_copies": 0
+    },
+    {
+      "simulation_id": "f34d0922-999b-8f4f-9ae6-c979f93658d5",
+      "scenario_id": "operations-demo",
+      "run_epoch": "2026-01-05T06:00:00Z",
+      "business_from": "2026-01-05T06:00:00.100000Z",
+      "business_to": "2026-01-05T06:08:06Z",
+      "simulated_span_ms": 485900,
+      "events": 197,
+      "event_types": 10,
+      "missing_sequences": 0,
+      "redelivered_copies": 0
+    }
+  ]
+}

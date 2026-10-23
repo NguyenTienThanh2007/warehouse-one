@@ -47,7 +47,11 @@ def engine(migrated: str) -> Iterator[Engine]:
 
 
 def truncate(eng: Engine) -> None:
-    tables = [f"operations.{t}" for t in OPS_TABLES] + [f"pipeline.{t}" for t in PIPE_TABLES]
+    tables = (
+        [f"operations.{t}" for t in OPS_TABLES]
+        + [f"pipeline.{t}" for t in PIPE_TABLES]
+        + ["analytics.snapshots"]  # its rows cascade to every other analytics table
+    )
     with eng.begin() as conn:
         conn.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
 

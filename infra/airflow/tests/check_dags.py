@@ -24,6 +24,7 @@ EXPECTED = {
             ("pipeline_health", "dbt_build"),
             ("dbt_build", "bronze_freshness"),
             ("dbt_build", "reconcile"),
+            ("reconcile", "publish_analytics"),
         },
         "schedule": "*/30 * * * *",
     },
@@ -32,6 +33,7 @@ EXPECTED = {
             ("validate_range", "rebuild_bronze"),
             ("rebuild_bronze", "dbt_build"),
             ("dbt_build", "reconcile"),
+            ("reconcile", "publish_analytics"),
         },
         "schedule": None,
     },
@@ -70,7 +72,13 @@ def main() -> None:
             for tool in re.findall(r"/opt/venvs/\w+/bin/[\w-]+", command):
                 if not os.access(tool, os.X_OK):
                     fail(f"{dag_id}.{task.task_id}: {tool} is not executable in this image")
-            writes_lake = task.task_id in {"dbt_build", "rebuild_bronze", "reconcile"}
+            # publish_analytics reads gold, so it must not run while a rebuild rewrites it.
+            writes_lake = task.task_id in {
+                "dbt_build",
+                "rebuild_bronze",
+                "reconcile",
+                "publish_analytics",
+            }
             if writes_lake and task.pool != "lake":
                 fail(f"{dag_id}.{task.task_id}: lake writers must use the 'lake' pool")
         if dag.get_task("reconcile").retries != 0:

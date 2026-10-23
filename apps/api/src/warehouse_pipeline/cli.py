@@ -6,6 +6,7 @@ warehouse-pipeline relay                   run the outbox relay until SIGTERM
 warehouse-pipeline consume ledger|bronze   run a consumer until SIGTERM
 warehouse-pipeline bronze-rebuild --start D --end D   rebuild bronze from PostgreSQL
 warehouse-pipeline health <component>      exit 0 if a fresh `ok` heartbeat exists
+warehouse-pipeline publish-analytics       publish reconciled gold as an analytics snapshot
 """
 
 import argparse
@@ -19,6 +20,7 @@ from sqlalchemy import Engine, create_engine
 
 from warehouse_api.logging import configure_logging
 from warehouse_pipeline import heartbeat, ops
+from warehouse_pipeline.analytics import PublishRefusedError, lake_gold, publish
 from warehouse_pipeline.bronze import BronzeProcessor, rebuild_from_postgres
 from warehouse_pipeline.consumer import ConsumerService
 from warehouse_pipeline.kafka import ensure_topics
@@ -120,6 +122,17 @@ def health(args: argparse.Namespace, settings: PipelineSettings) -> int:
     return 0 if ok else 1
 
 
+def publish_analytics(args: argparse.Namespace, settings: PipelineSettings) -> int:
+    """Exit 1 (and publish nothing) unless the latest reconciliation cleared this gold build."""
+    try:
+        result = publish(_engine(settings), lake_gold(settings), triggered_by=args.triggered_by)
+    except PublishRefusedError as exc:
+        _print({"published": False, "reason": str(exc)})
+        return 1
+    _print({"published": True, **result.__dict__})
+    return 0
+
+
 COMMANDS: dict[str, Command] = {
     "init-topics": init_topics,
     "init-lake": init_lake,
@@ -130,6 +143,7 @@ COMMANDS: dict[str, Command] = {
     "status": status,
     "replay": replay,
     "health": health,
+    "publish-analytics": publish_analytics,
 }
 
 
@@ -158,6 +172,13 @@ def parser() -> argparse.ArgumentParser:
     h = sub.add_parser("health", help="check a component's heartbeat")
     h.add_argument("component")
     h.add_argument("--max-age", type=float, default=30.0)
+    pa = sub.add_parser("publish-analytics", help="publish reconciled gold as a snapshot")
+    pa.add_argument("--triggered-by", default="cli")
+    pa.add_argument(
+        "--cleared-by",
+        default=None,
+        help="require the reconciliation report with this triggered_by (default: the latest)",
+    )
     return p
 
 

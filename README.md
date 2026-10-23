@@ -6,8 +6,9 @@ A browser-based 3D warehouse digital twin built on a deterministic simulation en
 data engineering pipeline and AI-assisted optimisation planned on top. Every number on screen comes
 from authoritative simulation state, and every state change is a typed, replayable domain event.
 
-> **Project status: Phases 0–3 are merged into `main` (Phase 3: real data engineering, PR #5).
-> Phase 5, the multi-site logistics world, is in review on `feature/p5-multi-site-world`.** See
+> **Project status: Phases 0–3 and Phase 5 (multi-site logistics world, PR #7) are merged into
+> `main`, with the top-bar modes fix (PR #8). Phase 4, operations analytics, is in review on
+> `feature/p4-analytics-refresh`.** See
 > [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for what is verified and what is not.
 
 ![WAREHOUSE ONE: the logistics park, world view](docs/phases/evidence/phase-5/1-world.jpg)
@@ -41,11 +42,15 @@ from authoritative simulation state, and every state change is a typed, replayab
 - **Living operations** (Phase 2). Pallets with exact positions, routed forklifts and reach trucks,
   tasks, orders, inbound and outbound trucks at docks, all drawn live from simulation state, with an
   operator panel whose commands go through the engine's command path.
-- **Multi-site logistics world** (Phase 5, on its branch). The DC inside a logistics park: a
+- **Multi-site logistics world** (Phase 5). The DC inside a logistics park: a
   container terminal (vessel calls, devanning), a cross-dock, a fleet depot with a workshop and a
   highway gateway, joined by roads. Six line-haul trucks drive deterministic inter-site transfers
   (seeded lanes or operator requests), reserve doors and stalls, and hand over to the DC's own
   dock and yard simulation. World and facility views, site and truck inspectors.
+- **Operations analytics** (Phase 4, on its branch). Each reconciled gold build is published as
+  an immutable snapshot and served read-only (`/api/v1/analytics`); the Analytics mode shows run
+  KPIs, task, order, pallet and transfer flows over simulated time, data quality, freshness and
+  pipeline health, and says so when data is stale, degraded or missing.
 - **Event store and data platform** (Phase 3). Runs recorded from the browser or
   headless go into PostgreSQL in one transaction per batch (append-only event log + transactional
   outbox). From there:
