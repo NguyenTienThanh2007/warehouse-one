@@ -51,12 +51,13 @@ export interface Banner {
 /** What the dashboard says about the published data before showing any of it. */
 export function banners(s: AnalyticsStatus): Banner[] {
   const out: Banner[] = [];
-  if (s.state === "degraded") {
+  // Also when nothing is published yet ("empty"): a failing pipeline is why nothing appears.
+  if (s.state === "degraded" || !s.pipeline.healthy) {
     out.push({
       tone: "critical",
       title: s.snapshot
         ? "Pipeline problem: these figures are the last published snapshot"
-        : "Pipeline problem",
+        : "Pipeline problem: nothing can be published until it is fixed",
       lines: s.pipeline.problems,
     });
   }

@@ -5,10 +5,16 @@ export type ApiStatus =
   | { kind: "degraded"; version: string; latencyMs: number; database: "unavailable" }
   | { kind: "offline"; reason: string };
 
+/** Resolved by next.config.ts (see base-url.ts); the fallback only applies outside Next.js. */
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+/** Where API_URL came from, shown next to connection errors. */
+export const API_URL_SOURCE = process.env.NEXT_PUBLIC_API_URL_SOURCE ?? "default";
+/** What WAREHOUSE ONE's API reports as `service` on GET /health. */
+export const API_SERVICE = "warehouse-api";
 
 interface Liveness {
   status: "ok";
+  service: typeof API_SERVICE;
   version: string;
 }
 interface Readiness {
@@ -21,6 +27,7 @@ function isLiveness(v: unknown): v is Liveness {
     typeof v === "object" &&
     v !== null &&
     (v as Liveness).status === "ok" &&
+    (v as Liveness).service === API_SERVICE &&
     typeof (v as Liveness).version === "string"
   );
 }
@@ -30,7 +37,8 @@ function isReadiness(v: unknown): v is Readiness {
 
 /** Combine liveness + readiness responses into one UI state. Pure; unit-tested. */
 export function interpretHealth(live: unknown, ready: unknown, latencyMs: number): ApiStatus {
-  if (!isLiveness(live)) return { kind: "offline", reason: "Unexpected health response" };
+  if (!isLiveness(live))
+    return { kind: "offline", reason: "Not the WAREHOUSE ONE API (unexpected /health)" };
   const latency = Math.round(latencyMs);
   if (isReadiness(ready) && ready.status === "ready" && ready.checks.database?.status === "ok") {
     return { kind: "online", version: live.version, latencyMs: latency, database: "ok" };
@@ -48,7 +56,8 @@ export async function fetchApiStatus(baseUrl = API_URL, timeoutMs = 4000): Promi
       cache: "no-store",
     });
     const latency = performance.now() - started;
-    if (!liveRes.ok) return { kind: "offline", reason: `HTTP ${liveRes.status}` };
+    if (!liveRes.ok)
+      return { kind: "offline", reason: `HTTP ${liveRes.status} from ${baseUrl}/health` };
     const live: unknown = await liveRes.json();
     // /health/ready answers 503 with a JSON body when a dependency is down: still parse it.
     const readyRes = await fetch(`${baseUrl}/health/ready`, {

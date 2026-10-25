@@ -89,6 +89,9 @@ docker compose up -d --build --wait    # PostgreSQL + migrations + API on :8000
 pnpm dev                               # http://localhost:3000
 ```
 
+Ports taken? Set `API_PORT` / `POSTGRES_PORT` in `.env` (see [Development](docs/DEVELOPMENT.md#ports-and-the-api-url));
+`pnpm dev` follows `API_PORT` and prints the API URL it uses.
+
 The Phase 3 data platform is an opt-in Compose profile (Kafka, MinIO, relay, consumers, Airflow;
 about 2 GB of memory):
 

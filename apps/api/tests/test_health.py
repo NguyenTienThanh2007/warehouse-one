@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 from tests.conftest import UNREACHABLE_DB, make_client
 from warehouse_api.config import Environment, Settings
 from warehouse_api.logging import JsonFormatter
+from warehouse_api.main import create_app
 
 
 def test_liveness_is_ok_without_database(offline_client: TestClient) -> None:
@@ -62,6 +63,51 @@ def test_cors_allows_configured_web_origin(offline_client: TestClient) -> None:
     assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
     blocked = offline_client.get("/health", headers={"Origin": "https://evil.example"})
     assert "access-control-allow-origin" not in blocked.headers
+
+
+LOOPBACK = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3200",
+    "http://[::1]:3000",
+]
+NOT_LOOPBACK = [
+    "https://evil.example",
+    "http://localhost.evil.example",
+    "http://localhost:3000.evil.example",
+    "http://192.168.1.20:3000",
+]
+
+
+@pytest.mark.parametrize(
+    ("env", "loopback", "allowed"),
+    [
+        (Environment.DEVELOPMENT, True, True),
+        (Environment.DEVELOPMENT, False, False),
+        (Environment.TEST, True, False),
+        (Environment.PRODUCTION, True, False),
+    ],
+)
+def test_cors_accepts_any_loopback_web_origin_only_in_development(
+    env: Environment, loopback: bool, allowed: bool
+) -> None:
+    # Regression: a local .env listing only the browser-test origin (http://localhost:3100) blocked
+    # the web dev server on :3000, which the browser can only report as "cannot be reached".
+    settings = Settings(
+        env=env,
+        database_url=UNREACHABLE_DB,
+        cors_origins=["http://localhost:3100"],
+        cors_allow_loopback=loopback,
+    )
+    with TestClient(create_app(settings)) as client:
+        listed = client.get("/health", headers={"Origin": "http://localhost:3100"})
+        assert listed.headers["access-control-allow-origin"] == "http://localhost:3100"
+        for origin in LOOPBACK:
+            got = client.get("/health", headers={"Origin": origin})
+            assert (got.headers.get("access-control-allow-origin") == origin) is allowed, origin
+        for origin in NOT_LOOPBACK:
+            got = client.get("/health", headers={"Origin": origin})
+            assert "access-control-allow-origin" not in got.headers, origin
 
 
 def test_json_log_formatter_emits_structured_fields() -> None:

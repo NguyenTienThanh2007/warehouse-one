@@ -31,4 +31,13 @@ describe("interpretHealth", () => {
   it("is offline on an unexpected liveness payload", () => {
     expect(interpretHealth({ hello: "world" }, null, 5).kind).toBe("offline");
   });
+
+  it("is offline when another service answers /health", () => {
+    // Another application on the configured port must never count as this API.
+    const other = { status: "ok", service: "f01-api", version: "2.0.0" };
+    expect(
+      interpretHealth(other, { status: "ready", checks: { database: { status: "ok" } } }, 5),
+    ).toEqual({ kind: "offline", reason: "Not the WAREHOUSE ONE API (unexpected /health)" });
+    expect(interpretHealth({ status: "ok", version: "1" }, null, 5).kind).toBe("offline");
+  });
 });

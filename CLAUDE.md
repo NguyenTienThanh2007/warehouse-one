@@ -63,7 +63,7 @@ pnpm schemas:generate / pnpm fixtures:generate / pnpm bench:sim / pnpm bench:ren
 
 ## Known blockers / gotchas
 
-- Local ports 3000/8000/5432 may be taken on the dev machine; use `WEB_PORT`, `API_PORT`, `POSTGRES_PORT`.
+- Local ports 3000/8000/5432 may be taken on the dev machine (another app answers on 8000); use `WEB_PORT`, `API_PORT`, `POSTGRES_PORT`. The web app reads `NEXT_PUBLIC_API_URL`/`API_PORT` from the root `.env` (src/lib/api/base-url.ts).
 - Hidden browser panes throttle rAF, so FPS from them is meaningless. Use `pnpm bench:render`.
 - TypeScript is pinned to 6.0 and ESLint to 9 (DEC-008).
 - Playwright uses the real GPU on macOS and SwiftShader in CI; the app starts on Low quality under software WebGL (DEC-017).

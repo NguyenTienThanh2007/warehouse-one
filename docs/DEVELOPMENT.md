@@ -20,10 +20,34 @@ docker compose up -d --build --wait   # postgres + migrate + api on :5432 / :800
 pnpm dev                              # web on http://localhost:3000
 ```
 
-If ports are taken, override them: `POSTGRES_PORT=5442 API_PORT=8010 docker compose up -d --wait`,
-then `NEXT_PUBLIC_API_URL=http://localhost:8010 pnpm --filter @warehouse-one/web dev -p 3100`. When the web app runs on a
-port other than 3000, also allow it in the API's CORS list, for example:
-`WAREHOUSE_CORS_ORIGINS='["http://localhost:3100"]'`.
+### Ports and the API URL
+
+If ports are taken (another app on 3000, 8000 or 5432), set them once in `.env`, which both Docker
+Compose and the web app read:
+
+```bash
+POSTGRES_PORT=5442                              # host port of PostgreSQL (container port stays 5432)
+API_PORT=8010                                   # host port of the API (container port stays 8000)
+NEXT_PUBLIC_API_URL=http://localhost:8010       # optional: defaults to http://localhost:$API_PORT
+WAREHOUSE_DATABASE_URL=postgresql+psycopg://warehouse:warehouse_dev@localhost:5442/warehouse_one  # host-run API/tests only
+```
+
+then `docker compose up -d --wait` and `pnpm dev` (or `pnpm --filter @warehouse-one/web dev -p 3001` for another web port).
+`next dev`, `next build` and `next start` print the API URL they use (`- API: … (from …)`) and warn
+when it does not match `API_PORT`. The URL is resolved in this order: `NEXT_PUBLIC_API_URL` in the
+environment (or `apps/web/.env*`), `NEXT_PUBLIC_API_URL` in the repository `.env`,
+`http://localhost:$API_PORT`, `http://localhost:8000`. A production build keeps the URL it was
+built with: rebuild the web app after changing it.
+
+Inside Compose, services talk to `postgres:5432` and `api:8000`; only the host side of each port
+mapping changes. Never point the web app at a port just because something answers there: the
+Analytics page checks `GET /health` and says so when another application answers.
+
+CORS: in development (`WAREHOUSE_ENV=development`, the Compose default) the API accepts any
+`localhost`, `127.0.0.1` or `[::1]` origin on any port, plus `WAREHOUSE_CORS_ORIGINS`. Elsewhere only
+`WAREHOUSE_CORS_ORIGINS` is allowed. That setting **replaces** the default list, so keep every
+origin you use in it, e.g. `WAREHOUSE_CORS_ORIGINS=["http://localhost:3000","http://localhost:3100"]`;
+recreate the API after changing it (`docker compose up -d api`).
 
 ## Data platform (Phase 3)
 
@@ -58,11 +82,11 @@ Override ports with `API_PORT`, `KAFKA_PORT`, `MINIO_PORT`, `MINIO_CONSOLE_PORT`
 | Component health | `docker compose exec relay warehouse-pipeline health relay` (or `consumer-ledger`, `consumer-bronze`) |
 | dbt by hand | `cd analytics && uv sync && WAREHOUSE_S3_ENDPOINT=localhost:9000 WAREHOUSE_S3_ACCESS_KEY=warehouse WAREHOUSE_S3_SECRET_KEY=warehouse_dev_minio uv run dbt build --profiles-dir .` |
 | Query the lake | DuckDB with `httpfs`: `SELECT * FROM read_parquet('s3://warehouse-lake/gold/simulation_activity.parquet')` (set `s3_endpoint`, `s3_url_style='path'`, `s3_use_ssl=false` and the keys); readers outside dbt must skip all-NULL placeholder rows of empty models |
-| Trigger DAGs | UI on :8080, or `docker compose exec airflow airflow dags trigger warehouse_lake_refresh --conf '{"settle_s": 0}'` (DAGs are paused at creation; a paused DAG's run stays queued) |
+| Trigger DAGs | UI on :8080, or `docker compose exec airflow airflow dags unpause warehouse_lake_refresh` then `docker compose exec airflow airflow dags trigger warehouse_lake_refresh` (DAGs are created **paused**: nothing refreshes or publishes until a DAG is unpaused, and a paused DAG's run stays queued; `airflow dags pause …` stops the schedule again) |
 | Backfill a date range | `airflow dags trigger warehouse_lake_backfill --conf '{"start_date": "2026-01-05", "end_date": "2026-01-05"}'` |
-| Publish analytics by hand | `docker compose exec relay warehouse-pipeline publish-analytics` (refuses unless the latest reconciliation passed after the gold build; the refresh DAG does this every 30 min) |
-| Analytics API | `curl localhost:8000/api/v1/analytics/status`, `/runs`, `/runs/<id>?from=…&to=…` (simulated time, ISO 8601 with Z) |
-| Analytics in the browser | `/?mode=analytics` (needs the API with a published snapshot; otherwise the page explains the state) |
+| Publish analytics by hand | `docker compose exec relay warehouse-pipeline publish-analytics` (refuses unless the latest reconciliation passed after the gold build; the refresh DAG does this every 30 min while it is unpaused) |
+| Analytics API | `curl localhost:8000/api/v1/analytics/status`, `/runs`, `/runs/<id>?from=…&to=…` (simulated time, ISO 8601 with Z; use your `API_PORT`) |
+| Analytics in the browser | `/?mode=analytics` (needs the API with a published snapshot; otherwise the page says which: API unreachable, refused by CORS, wrong API or version, nothing published, stale or degraded) |
 | Validate DAGs | `docker compose --profile data run --rm --no-deps --entrypoint python airflow /opt/airflow/dag_tests/check_dags.py` |
 | Python tests with Kafka/S3 | start `postgres kafka minio` only, then in `apps/api`: `uv sync --all-extras && WAREHOUSE_KAFKA_BOOTSTRAP_SERVERS=localhost:9094 WAREHOUSE_S3_ENDPOINT=localhost:9000 WAREHOUSE_S3_ACCESS_KEY=warehouse WAREHOUSE_S3_SECRET_KEY=warehouse_dev_minio uv run pytest -m kafka` (these tests **truncate** the operations and pipeline tables: never point them at data you want to keep) |
 | Stop | `docker compose --profile data down` (keeps volumes) |

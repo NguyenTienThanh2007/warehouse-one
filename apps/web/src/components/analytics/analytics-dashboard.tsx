@@ -22,7 +22,7 @@ import {
   type Banner,
   type WindowPreset,
 } from "@/lib/analytics/view";
-import { API_URL } from "@/lib/api/health";
+import { API_URL, API_URL_SOURCE } from "@/lib/api/health";
 import { useSimulation } from "@/lib/sim/store";
 import { BarList, TimeChart } from "./charts";
 
@@ -39,19 +39,20 @@ function failureOf(e: unknown): AnalyticsFailure {
 
 /**
  * Load something for `key` (null: nothing to load yet). While a different key loads the result is
- * `loading`; a reload of the same key (refresh, polling) keeps showing the previous result.
+ * `loading`; a reload of the same key (retry, refresh, polling) keeps showing the previous result
+ * and reports `pending` until it settles.
  */
 function useLoad<T>(key: string | null, fetcher: (signal: AbortSignal) => Promise<T>) {
-  const [result, setResult] = useState<{ key: string; load: Load<T> } | null>(null);
+  const [result, setResult] = useState<{ key: string; nonce: number; load: Load<T> } | null>(null);
   const [nonce, setNonce] = useState(0);
   useEffect(() => {
     if (key === null) return;
     const ctl = new AbortController();
     fetcher(ctl.signal).then(
-      (data) => setResult({ key, load: { kind: "ready", data } }),
+      (data) => setResult({ key, nonce, load: { kind: "ready", data } }),
       (e: unknown) => {
         if (!ctl.signal.aborted)
-          setResult({ key, load: { kind: "failed", failure: failureOf(e) } });
+          setResult({ key, nonce, load: { kind: "failed", failure: failureOf(e) } });
       },
     );
     return () => ctl.abort();
@@ -59,7 +60,8 @@ function useLoad<T>(key: string | null, fetcher: (signal: AbortSignal) => Promis
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, nonce]);
   const load: Load<T> = result && result.key === key ? result.load : { kind: "loading" };
-  return [load, useCallback(() => setNonce((n) => n + 1), [])] as const;
+  const pending = key !== null && (result?.key !== key || result.nonce !== nonce);
+  return [load, useCallback(() => setNonce((n) => n + 1), []), pending] as const;
 }
 
 /**
@@ -67,13 +69,20 @@ function useLoad<T>(key: string | null, fetcher: (signal: AbortSignal) => Promis
  * pipeline — recorded runs, in simulated business time. Never the live simulation.
  */
 export function AnalyticsDashboard() {
-  const [status, reloadStatus] = useLoad<AnalyticsStatus>("status", (s) => analyticsApi.status(s));
+  const [status, reloadStatus, statusPending] = useLoad<AnalyticsStatus>("status", (s) =>
+    analyticsApi.status(s),
+  );
+  // Keep a loaded status fresh. After a failure, only Retry asks again: no endless retries.
+  const polling = status.kind === "ready";
   useEffect(() => {
+    if (!polling) return;
     const t = setInterval(reloadStatus, STATUS_POLL_MS);
     return () => clearInterval(t);
-  }, [reloadStatus]);
+  }, [polling, reloadStatus]);
   const snapshotId = status.kind === "ready" ? (status.data.snapshot?.snapshot_id ?? null) : null;
-  const [runs] = useLoad<RunList>(snapshotId, (s) => analyticsApi.runs(snapshotId ?? "", s));
+  const [runs, reloadRuns, runsPending] = useLoad<RunList>(snapshotId, (s) =>
+    analyticsApi.runs(snapshotId ?? "", s),
+  );
 
   return (
     <section
@@ -101,7 +110,9 @@ export function AnalyticsDashboard() {
         </span>
       </header>
       {status.kind === "loading" && <Skeleton />}
-      {status.kind === "failed" && <FailurePanel failure={status.failure} retry={reloadStatus} />}
+      {status.kind === "failed" && (
+        <FailurePanel failure={status.failure} retry={reloadStatus} pending={statusPending} />
+      )}
       {status.kind === "ready" && (
         <>
           <SourceStrip status={status.data} refresh={reloadStatus} />
@@ -113,7 +124,7 @@ export function AnalyticsDashboard() {
           ) : runs.kind === "loading" ? (
             <Skeleton />
           ) : runs.kind === "failed" ? (
-            <FailurePanel failure={runs.failure} retry={reloadStatus} />
+            <FailurePanel failure={runs.failure} retry={reloadRuns} pending={runsPending} />
           ) : runs.data.runs.length === 0 ? (
             <Notice testid="analytics-no-runs" title="The snapshot contains no runs">
               The pipeline published a snapshot, but no recorded run was in the lake when it was
@@ -161,42 +172,86 @@ function Notice({
   );
 }
 
-const retryButton = (retry: () => void) => (
+/** Retries exactly the request that failed; disabled while that retry is in flight. */
+const retryButton = (retry: () => void, pending: boolean) => (
   <button
     type="button"
     onClick={retry}
-    className="rounded-md bg-signal-400 px-2.5 py-1 text-[11px] font-semibold text-ink-950 hover:bg-signal-300"
+    disabled={pending}
+    className="rounded-md bg-signal-400 px-2.5 py-1 text-[11px] font-semibold text-ink-950 hover:bg-signal-300 disabled:cursor-wait disabled:opacity-60"
     data-testid="analytics-retry"
   >
-    Retry
+    {pending ? "Retrying…" : "Retry"}
   </button>
 );
 
-function FailurePanel({ failure, retry }: { failure: AnalyticsFailure; retry: () => void }) {
-  if (failure.kind === "offline")
-    return (
-      <Notice
-        testid="analytics-offline"
-        title="Analytics API unavailable"
-        action={retryButton(retry)}
-      >
-        {failure.message} Start it with <code className="text-fog-200">docker compose up -d</code>{" "}
-        (and the data platform with <code className="text-fog-200">--profile data</code>). The
-        simulation keeps running; nothing is shown here until published data can be read.
-      </Notice>
-    );
+const Code = ({ children }: { children: React.ReactNode }) => (
+  <code className="text-fog-200">{children}</code>
+);
+
+/** Where the web app looks for the API, so a wrong port or origin is visible at a glance. */
+function Endpoint() {
   return (
-    <Notice
-      testid="analytics-error"
-      title="Analytics could not be loaded"
-      action={retryButton(retry)}
-    >
-      <span className="metric text-critical-400">
-        {failure.kind === "http" ? `${failure.status} ${failure.code}` : "CONTRACT"}
-      </span>{" "}
-      {failure.message}
-    </Notice>
+    <span className="mt-2 block text-[11px] text-fog-500" data-testid="analytics-endpoint">
+      API URL <span className="metric text-fog-300">{API_URL}</span> (from {API_URL_SOURCE};
+      override with <Code>NEXT_PUBLIC_API_URL</Code>)
+    </span>
   );
+}
+
+function FailurePanel({
+  failure,
+  retry,
+  pending,
+}: {
+  failure: AnalyticsFailure;
+  retry: () => void;
+  pending: boolean;
+}) {
+  const action = retryButton(retry, pending);
+  switch (failure.kind) {
+    case "offline":
+      return (
+        <Notice testid="analytics-offline" title="Analytics API unreachable" action={action}>
+          {failure.message} Start the API with <Code>docker compose up -d --wait</Code> (the data
+          platform with <Code>docker compose --profile data up -d --wait</Code>), and check that the
+          URL uses the API&apos;s host port (<Code>API_PORT</Code> in <Code>.env</Code>). The
+          simulation keeps running; nothing is shown here until published data can be read.
+          <Endpoint />
+        </Notice>
+      );
+    case "blocked":
+      return (
+        <Notice
+          testid="analytics-blocked"
+          title="Analytics API refused this page (CORS)"
+          action={action}
+        >
+          {failure.message} Add <Code>{failure.origin}</Code> to <Code>WAREHOUSE_CORS_ORIGINS</Code>{" "}
+          in <Code>.env</Code> and recreate the API with <Code>docker compose up -d api</Code>. A
+          current API image in development accepts any localhost origin; an older one needs{" "}
+          <Code>docker compose up -d --build api</Code>.
+          <Endpoint />
+        </Notice>
+      );
+    case "mismatch":
+      return (
+        <Notice testid="analytics-mismatch" title="Wrong API or API version" action={action}>
+          {failure.message}
+          <Endpoint />
+        </Notice>
+      );
+    case "http":
+    case "contract":
+      return (
+        <Notice testid="analytics-error" title="Analytics could not be loaded" action={action}>
+          <span className="metric text-critical-400">
+            {failure.kind === "http" ? `${failure.status} ${failure.code}` : "CONTRACT"}
+          </span>{" "}
+          {failure.message}
+        </Notice>
+      );
+  }
 }
 
 function EmptyPanel() {
@@ -205,7 +260,13 @@ function EmptyPanel() {
       Analytics are built from recorded runs. Record one (<em>Record run</em> in Explore, or{" "}
       <code className="text-fog-200">pnpm sim:record</code>), then let the data platform refresh
       (Airflow <code className="text-fog-200">warehouse_lake_refresh</code>): it builds the models,
-      reconciles them with the event log and publishes a snapshot only when that passes.
+      reconciles them with the event log and publishes a snapshot only when that passes. The local
+      Compose stack creates its DAGs paused: unpause or trigger it in Airflow (
+      <code className="text-fog-200">http://localhost:8080</code>, or{" "}
+      <code className="text-fog-200">
+        docker compose exec airflow airflow dags unpause warehouse_lake_refresh
+      </code>
+      ).
     </Notice>
   );
 }
@@ -336,7 +397,7 @@ function RunView({ runs }: { runs: RunList }) {
   const key = run
     ? `${runs.snapshot_id}/${run.simulation_id}/${win.from ?? ""}/${win.to ?? ""}`
     : null;
-  const [analytics, reload] = useLoad<RunAnalytics>(key, (s) =>
+  const [analytics, reload, analyticsPending] = useLoad<RunAnalytics>(key, (s) =>
     analyticsApi.run(runs.snapshot_id, run?.simulation_id ?? "", win, s),
   );
   if (!run) return null;
@@ -417,7 +478,9 @@ function RunView({ runs }: { runs: RunList }) {
         </p>
       )}
       {analytics.kind === "loading" && <Skeleton />}
-      {analytics.kind === "failed" && <FailurePanel failure={analytics.failure} retry={reload} />}
+      {analytics.kind === "failed" && (
+        <FailurePanel failure={analytics.failure} retry={reload} pending={analyticsPending} />
+      )}
       {analytics.kind === "ready" && <RunFigures a={analytics.data} />}
     </>
   );
