@@ -66,6 +66,23 @@ describe("presentation helpers", () => {
     expect(degraded[0]?.lines.join(" ")).toMatch(/latest reconciliation failed/);
   });
 
+  it("explains a failing pipeline even before anything was published", () => {
+    // Captured before any reconciliation or heartbeat: the API reports "empty", not "degraded".
+    const empty = AnalyticsStatus.parse(fixture("status-empty.json"));
+    expect(empty.state).toBe("empty");
+    expect(banners(empty)).toEqual([
+      {
+        tone: "critical",
+        title: "Pipeline problem: nothing can be published until it is fixed",
+        lines: empty.pipeline.problems,
+      },
+    ]);
+    // A healthy pipeline with nothing published yet is a plain empty state.
+    expect(
+      banners({ ...empty, pipeline: { ...empty.pipeline, healthy: true, problems: [] } }),
+    ).toEqual([]);
+  });
+
   it("turns window presets into simulated-time bounds", () => {
     const run = {
       business_from: "2026-01-05T06:00:00.000Z",

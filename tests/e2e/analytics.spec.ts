@@ -16,13 +16,24 @@ const load = (name: string) => JSON.parse(readFileSync(resolve(FIXTURES, `${name
 const OPS = "f34d0922-999b-8f4f-9ae6-c979f93658d5";
 const NET = "1f54e195-a02e-815c-9e93-4266b6c0f97f";
 
+type Handler = (route: Route) => Promise<void>;
 interface Mock {
-  status?: string | ((route: Route) => Promise<void>);
+  status?: string | Handler;
+  runs?: Handler;
+  /** GET /health, which the client asks to tell this API from another server. */
+  health: Handler;
   requests: string[];
 }
 
+const OUR_HEALTH = { status: "ok", service: "warehouse-api", version: "0.1.0" };
+
 async function mockAnalytics(page: Page, status = "status-fresh"): Promise<Mock> {
-  const mock: Mock = { status, requests: [] };
+  const mock: Mock = {
+    status,
+    health: (route) => route.fulfill({ json: OUR_HEALTH }),
+    requests: [],
+  };
+  await page.route("**/health", (route) => mock.health(route));
   await page.route("**/api/v1/analytics/**", async (route) => {
     const url = new URL(route.request().url());
     mock.requests.push(url.pathname + url.search);
@@ -30,7 +41,8 @@ async function mockAnalytics(page: Page, status = "status-fresh"): Promise<Mock>
       if (typeof mock.status === "function") return mock.status(route);
       return route.fulfill({ json: load(mock.status ?? "status-fresh") });
     }
-    if (url.pathname.endsWith("/runs")) return route.fulfill({ json: load("runs") });
+    if (url.pathname.endsWith("/runs"))
+      return mock.runs ? mock.runs(route) : route.fulfill({ json: load("runs") });
     const run = url.pathname.split("/").at(-1);
     if (run === OPS)
       return route.fulfill({
@@ -179,7 +191,9 @@ test.describe("analytics mode", () => {
     const mock = await mockAnalytics(page);
     mock.status = (route) => route.abort("connectionrefused");
     await deepLink(page);
-    await expect(page.getByTestId("analytics-offline")).toContainText("Analytics API unavailable");
+    await expect(page.getByTestId("analytics-offline")).toContainText("Analytics API unreachable");
+    await expect(page.getByTestId("analytics-offline")).toContainText("Nothing answers at");
+    await expect(page.getByTestId("analytics-endpoint")).toContainText("API URL http");
 
     mock.status = (route) =>
       route.fulfill({
@@ -198,6 +212,72 @@ test.describe("analytics mode", () => {
     await page.getByTestId("analytics-retry").click();
     await expect(page.getByTestId("analytics-dashboard")).toHaveAttribute("data-state", "fresh");
     await expect(tile(page, "events")).toBeVisible();
+  });
+
+  test("a CORS refusal names the blocked origin instead of calling the API unreachable", async ({
+    page,
+  }) => {
+    // Regression: the API was up, but WAREHOUSE_CORS_ORIGINS did not list the dev server's
+    // origin; the browser only sees a failed request. The client's no-cors probe gets an answer.
+    const mock = await mockAnalytics(page);
+    // Each attempt is the request (refused, as CORS looks to a page) then the client's no-cors
+    // probe (answered: the server is up).
+    let attempt = 0;
+    mock.status = (route) =>
+      attempt++ % 2 === 0 ? route.abort("failed") : route.fulfill({ status: 200, body: "" });
+    await deepLink(page);
+    const panel = page.getByTestId("analytics-blocked");
+    await expect(panel).toContainText("Analytics API refused this page (CORS)");
+    await expect(panel).toContainText(new URL(page.url()).origin);
+    await expect(panel).toContainText("WAREHOUSE_CORS_ORIGINS");
+    await expect(page.getByTestId("analytics-offline")).toHaveCount(0);
+
+    mock.status = "status-fresh";
+    await page.getByTestId("analytics-retry").click();
+    await expect(page.getByTestId("analytics-dashboard")).toHaveAttribute("data-state", "fresh");
+  });
+
+  test("another application on the API port, or an API without analytics routes, is a mismatch", async ({
+    page,
+  }) => {
+    const mock = await mockAnalytics(page);
+    const notFound: Handler = (route) =>
+      route.fulfill({ status: 404, json: { detail: "Not Found" } });
+    mock.status = notFound;
+    mock.health = notFound; // e.g. another FastAPI app on :8000
+    await deepLink(page);
+    const panel = page.getByTestId("analytics-mismatch");
+    await expect(panel).toContainText("Wrong API or API version");
+    await expect(panel).toContainText("is not the WAREHOUSE ONE API");
+
+    mock.health = (route) => route.fulfill({ json: OUR_HEALTH }); // ours, but built before Phase 4
+    await page.getByTestId("analytics-retry").click();
+    await expect(panel).toContainText("has no route GET /api/v1/analytics/status");
+    await expect(panel).toContainText("docker compose up -d --build api");
+  });
+
+  test("retry repeats the request that failed: the run list, not only the status", async ({
+    page,
+  }) => {
+    const mock = await mockAnalytics(page);
+    let failRuns = true;
+    mock.runs = (route) =>
+      failRuns
+        ? route.fulfill({
+            status: 503,
+            json: { error: { code: "DATABASE_UNAVAILABLE", message: "db down", details: {} } },
+          })
+        : route.fulfill({ json: load("runs") });
+    await deepLink(page);
+    await expect(page.getByTestId("analytics-error")).toContainText("503 DATABASE_UNAVAILABLE");
+    const listed = () =>
+      mock.requests.filter((r) => r.startsWith("/api/v1/analytics/runs?")).length;
+    expect(listed()).toBe(1);
+
+    failRuns = false;
+    await page.getByTestId("analytics-retry").click();
+    await expect(tile(page, "events")).toBeVisible();
+    expect(listed()).toBe(2);
   });
 
   test("leaving Analytics brings the running 3D world back", async ({ page }) => {
