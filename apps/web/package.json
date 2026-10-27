@@ -17,6 +17,7 @@
     "@warehouse-one/contracts": "workspace:*",
     "@warehouse-one/recorder": "workspace:*",
     "@warehouse-one/simulation": "workspace:*",
+    "@warehouse-one/twin": "workspace:*",
     "geist": "1.7.2",
     "next": "16.3.8",
     "postprocessing": "6.39.5",

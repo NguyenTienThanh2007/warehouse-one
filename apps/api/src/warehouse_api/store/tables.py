@@ -5,7 +5,9 @@ command logs, append-only domain events and the transactional outbox. Schema `pi
 state of downstream components (consumers, bronze manifest, dead letters, heartbeats,
 reconciliation reports). Schema `analytics` (Phase 4) holds published analytics snapshots:
 an immutable, derived copy of reconciled dbt gold models that the read API serves (DEC-036);
-it is never a source for anything else. tests/integration/test_store_schema.py checks that the
+it is never a source for anything else. Schema `twin` (Phase 6) holds decision-support proposals:
+what the optimiser evaluated (with its input snapshot), the human decision and an append-only
+audit trail, plus AI explanations. tests/integration/test_store_schema.py checks that the
 migrations produce exactly these tables.
 
 Time columns: `occurred_at` and `simulation_time_ms` are deterministic simulated business time
@@ -48,6 +50,7 @@ metadata = MetaData(
 OPS = "operations"
 PIPE = "pipeline"
 ANALYTICS = "analytics"
+TWIN = "twin"
 
 
 def wall_clock(name: str, nullable: bool = False) -> Column[Any]:
@@ -472,6 +475,120 @@ analytics_quality_checks = Table(
     schema=ANALYTICS,
 )
 
+# ---------------------------------------------------------------------------------------------
+# Digital twin proposals (Phase 6, DEC-039..041)
+
+PROPOSAL_STATUSES = (
+    "generated",
+    "validated",
+    "not_actionable",
+    "invalid",
+    "approved",
+    "rejected",
+    "executing",
+    "applied",
+    "failed",
+    "expired",
+    "superseded",
+)
+
+twin_proposals = Table(
+    "proposals",
+    metadata,
+    Column("proposal_id", UUID(as_uuid=True), nullable=False),
+    # Deterministic id of the evaluation (same inputs, same id): creating it twice is idempotent.
+    Column("evaluation_id", UUID(as_uuid=True), nullable=False),
+    Column("kind", Text, nullable=False),
+    Column("strategy_id", Text, nullable=False),
+    Column("strategy_version", Text, nullable=False),
+    Column("status", Text, nullable=False),
+    # Optimistic concurrency: +1 on every status change.
+    Column("version", Integer, nullable=False, server_default=text("1")),
+    Column("simulation_id", UUID(as_uuid=True), nullable=False),
+    Column("source_tick", BigInteger, nullable=False),
+    # Simulated business time of the source state (not wall clock).
+    Column("source_business_time", DateTime(timezone=True), nullable=False),
+    Column("source_state_hash", Text, nullable=False),
+    Column("config_hash", Text, nullable=False),
+    Column("fleet_fingerprint", Text, nullable=False),
+    Column("objective_metric", Text, nullable=False),
+    Column("recommended_candidate_id", Text, nullable=True),
+    # The evaluation as stored: baseline, candidates with server-computed deltas, explanation.
+    Column("evaluation", JSONB, nullable=False),
+    # Server-side validation results and the engine commands an execution submits.
+    Column("validation", JSONB, nullable=False),
+    Column("commands", JSONB, nullable=False),
+    # The frozen input snapshot {config, state, state_hash}: lets anyone re-run the evaluation.
+    Column("input_snapshot", JSONB, nullable=False),
+    Column("created_by", Text, nullable=False),
+    wall_clock("created_at"),
+    wall_clock("updated_at"),
+    Column("decided_by", Text, nullable=True),
+    wall_clock("decided_at", nullable=True),
+    Column("decision_note", Text, nullable=True),
+    Column("executed_tick", BigInteger, nullable=True),
+    PrimaryKeyConstraint("proposal_id"),
+    UniqueConstraint("evaluation_id"),
+    CheckConstraint(
+        "status IN (" + ", ".join(f"'{x}'" for x in PROPOSAL_STATUSES) + ")",
+        name="status_known",
+    ),
+    CheckConstraint("kind IN ('optimization', 'what_if')", name="kind_known"),
+    CheckConstraint("version >= 1", name="version_positive"),
+    Index(None, "simulation_id", "created_at"),
+    Index(None, "created_at", "proposal_id"),
+    schema=TWIN,
+)
+
+twin_proposal_events = Table(
+    "proposal_events",
+    metadata,
+    Column("event_id", BigInteger, Identity(always=True), nullable=False),
+    Column(
+        "proposal_id",
+        UUID(as_uuid=True),
+        ForeignKey(f"{TWIN}.proposals.proposal_id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("action", Text, nullable=False),
+    Column("from_status", Text, nullable=True),
+    Column("to_status", Text, nullable=False),
+    Column("actor", Text, nullable=False),
+    Column("note", Text, nullable=True),
+    Column("details", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
+    wall_clock("recorded_at"),
+    PrimaryKeyConstraint("event_id"),
+    Index(None, "proposal_id", "event_id"),
+    schema=TWIN,
+)
+
+twin_explanations = Table(
+    "explanations",
+    metadata,
+    Column("explanation_id", UUID(as_uuid=True), nullable=False),
+    Column(
+        "proposal_id",
+        UUID(as_uuid=True),
+        ForeignKey(f"{TWIN}.proposals.proposal_id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("status", Text, nullable=False),
+    Column("provider", Text, nullable=False),
+    Column("model", Text, nullable=False),
+    Column("prompt_version", Text, nullable=False),
+    Column("content", JSONB, nullable=True),
+    Column("error_code", Text, nullable=True),
+    Column("error_message", Text, nullable=True),
+    Column("latency_ms", Integer, nullable=False),
+    Column("input_tokens", Integer, nullable=True),
+    Column("output_tokens", Integer, nullable=True),
+    wall_clock("created_at"),
+    PrimaryKeyConstraint("explanation_id"),
+    CheckConstraint("status IN ('ok', 'failed')", name="status_known"),
+    Index(None, "proposal_id", "created_at"),
+    schema=TWIN,
+)
+
 __all__ = [
     "aggregate_versions",
     "analytics_metric_buckets",
@@ -493,4 +610,7 @@ __all__ = [
     "outbox",
     "reconciliation_reports",
     "simulation_runs",
+    "twin_explanations",
+    "twin_proposal_events",
+    "twin_proposals",
 ]

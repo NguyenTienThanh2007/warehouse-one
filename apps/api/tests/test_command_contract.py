@@ -58,8 +58,27 @@ def test_fixture_command_logs_parse(repo_root: Path, fixture: str) -> None:
         {"command_id": "", "type": "order.cancel", "payload": {"order_id": "ord-1"}},
         {"command_id": "c", "type": "inventory.teleport", "payload": {}},
         {"command_id": "c", "type": "order.cancel", "payload": {"order_id": "ord-1", "x": 1}},
+        # site_id is nullable but required: an omitted site is not "back to the depot".
+        {"command_id": "c", "type": "linehaul.set_standby", "payload": {"vehicle_id": "lh-01"}},
+        {
+            "command_id": "c",
+            "type": "linehaul.set_standby",
+            "payload": {"vehicle_id": "lh-01", "site_id": "Not A Slug"},
+        },
     ],
 )
 def test_invalid_commands_are_rejected(command: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):
         COMMAND_ADAPTER.validate_python(command)
+
+
+@pytest.mark.parametrize("site_id", ["harbour-terminal", None])
+def test_standby_command_parses(site_id: str | None) -> None:
+    command = COMMAND_ADAPTER.validate_python(
+        {
+            "command_id": "c",
+            "type": "linehaul.set_standby",
+            "payload": {"vehicle_id": "lh-01", "site_id": site_id},
+        }
+    )
+    assert command.type == "linehaul.set_standby"

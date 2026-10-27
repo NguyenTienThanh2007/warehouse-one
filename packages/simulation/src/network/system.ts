@@ -27,6 +27,7 @@ import {
   type TransferState,
 } from "./model";
 import { edgeKey, edgeLength } from "./roads";
+import { standbyCapacity, standbyProblem } from "./standby";
 
 /**
  * The logistics-network system, run every tick after the facility's operations systems:
@@ -395,15 +396,20 @@ function freeDoor(n: NetworkDraft, siteId: string, role: "inbound" | "outbound")
   return (doors.find((d) => d.role === role) ?? doors[0])?.id ?? null;
 }
 
-/** Lowest-id free stand of a kind at a site (or null). */
-function freeStand(n: NetworkDraft, siteId: string, kind: StandKind): string | null {
+/** Free stands of a kind at a site, lowest id first. */
+function freeStands(n: NetworkDraft, siteId: string, kind: StandKind): string[] {
   const site = n.index.sites.get(siteId) as SiteConfig;
   const state = n.site(siteId);
-  const ids = site.stands
+  return site.stands
     .filter((s) => s.kind === kind)
     .map((s) => s.id)
-    .sort();
-  return ids.find((id) => !state.stands[id]) ?? null;
+    .sort()
+    .filter((id) => !state.stands[id]);
+}
+
+/** Lowest-id free stand of a kind at a site (or null). */
+function freeStand(n: NetworkDraft, siteId: string, kind: StandKind): string | null {
+  return freeStands(n, siteId, kind)[0] ?? null;
 }
 
 function holdStand(n: NetworkDraft, standId: string, vehicleId: string | null) {
@@ -613,6 +619,11 @@ function docked(n: NetworkDraft, v: LinehaulState): void {
     return;
   }
   if (kind === "staging") {
+    // Only a truck on standby parks on a staging stall (idleSystem); others wait there to retry.
+    if (v.intent === "park") {
+      put(n, v, { status: "parked", intent: null });
+      return;
+    }
     put(n, v, { status: "waiting", timer_ticks: RETRY_TICKS });
     return;
   }
@@ -937,22 +948,32 @@ function startTrip(n: NetworkDraft, v: LinehaulState, t: TransferState, here: bo
     startHandling(n, put(n, v, { transfer_id: t.id, intent: "load" }));
     return;
   }
+  // A truck standing by on a stall at the origin keeps that stall instead of taking another one.
+  const onStandby =
+    v.standby_site === origin.id && !!v.stand_id && standKind(n, v.stand_id) === "staging";
   let target: string | null;
   let node: string;
   let intent: Intent;
   if (isPrimary(n, origin.id)) {
-    target = freeStand(n, origin.id, "staging");
+    target = onStandby ? v.stand_id : freeStand(n, origin.id, "staging");
     node = origin.gate_node;
     intent = "enter_dc";
   } else {
-    target = freeDoor(n, origin.id, "outbound") ?? freeStand(n, origin.id, "staging");
+    target = freeDoor(n, origin.id, "outbound");
+    if (!target && onStandby) {
+      // No door yet: wait on the standby stall and retry, like a truck that came to load.
+      setTransfer(n, t, "assigned", v.id);
+      waitHere(n, put(n, v, { transfer_id: t.id }), "load");
+      return;
+    }
+    target ??= freeStand(n, origin.id, "staging");
     node = target ? approachOf(n, target) : "";
     intent = "load";
   }
   if (!target) return; // no room at the origin yet; the transfer stays planned
   holdStand(n, target, v.id);
   setTransfer(n, t, "assigned", v.id);
-  if (v.stand_id) holdStand(n, v.stand_id, null);
+  if (v.stand_id && v.stand_id !== target) holdStand(n, v.stand_id, null);
   travel(n, put(n, v, { transfer_id: t.id }), node, intent, target);
 }
 
@@ -970,6 +991,25 @@ function idleSystem(n: NetworkDraft): void {
         continue;
       }
     }
+    const standby = v.standby_site;
+    if (standby) {
+      if (
+        v.stand_id &&
+        standSite(n, v.stand_id) === standby &&
+        standKind(n, v.stand_id) === "staging"
+      )
+        continue;
+      // Take a stall only while another one stays free for trucks arriving with work;
+      // otherwise wait at home until one frees up.
+      const free = freeStands(n, standby, "staging");
+      if (free.length >= 2) {
+        const stall = free[0] as string;
+        holdStand(n, stall, v.id);
+        if (v.stand_id) holdStand(n, v.stand_id, null);
+        travel(n, v, approachOf(n, stall), "park", stall);
+        continue;
+      }
+    }
     const home = (n.config.vehicles.find((c) => c.id === v.id) as { home_stand: string })
       .home_stand;
     if (v.stand_id === home) continue;
@@ -977,4 +1017,48 @@ function idleSystem(n: NetworkDraft): void {
     if (v.stand_id) holdStand(n, v.stand_id, null);
     travel(n, v, approachOf(n, home), "park", home);
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Fleet standby (Phase 6)
+
+/**
+ * `linehaul.set_standby`: where a truck waits while idle. Validated before anything is written;
+ * the idle system moves the truck when it next has no work. A truck busy with a transfer keeps
+ * working and goes to its standby site afterwards.
+ */
+export function setStandby(
+  n: NetworkDraft,
+  p: { readonly vehicle_id: string; readonly site_id: string | null },
+): { ok: true } | { ok: false; code: RejectionCode; message: string } {
+  const v = n.vehicles.get(p.vehicle_id);
+  if (!v) return { ok: false, code: "UNKNOWN_VEHICLE", message: `unknown truck '${p.vehicle_id}'` };
+  if (p.site_id === null) {
+    if (v.standby_site !== undefined) {
+      // Drop the key (not undefined): a truck without standby has the original state shape.
+      const rest: LinehaulState = { ...v };
+      delete (rest as { standby_site?: string }).standby_site;
+      n.vehicles.set(v.id, rest);
+    }
+    return { ok: true };
+  }
+  if (!n.index.sites.has(p.site_id))
+    return { ok: false, code: "UNKNOWN_SITE", message: `unknown site '${p.site_id}'` };
+  const problem = standbyProblem(n.config, p.site_id);
+  if (problem) return { ok: false, code: "INVALID_STANDBY", message: problem };
+  if (v.standby_site === p.site_id) return { ok: true };
+  const others = n.vehicles
+    .values()
+    .filter((u) => u.id !== v.id && u.standby_site === p.site_id).length;
+  const capacity = standbyCapacity(n.config, p.site_id);
+  if (others + 1 > capacity) {
+    const site = n.index.sites.get(p.site_id) as SiteConfig;
+    return {
+      ok: false,
+      code: "INVALID_STANDBY",
+      message: `at most ${capacity} trucks can stand by at '${site.name}' (one staging stall stays free for arriving trucks)`,
+    };
+  }
+  n.vehicles.set(v.id, { ...v, standby_site: p.site_id });
+  return { ok: true };
 }

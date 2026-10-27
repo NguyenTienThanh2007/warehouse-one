@@ -63,6 +63,10 @@ services:
       WAREHOUSE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-warehouse}:${POSTGRES_PASSWORD:-warehouse_dev}@postgres:5432/${POSTGRES_DB:-warehouse_one}
       WAREHOUSE_CORS_ORIGINS: ${WAREHOUSE_CORS_ORIGINS:-["http://localhost:3000","http://localhost:3100"]}
       WAREHOUSE_GIT_SHA: ${GIT_SHA:-unknown}
+      # Optional AI explanations (Phase 6); "none" and an empty key mean not configured.
+      WAREHOUSE_AI_PROVIDER: ${WAREHOUSE_AI_PROVIDER:-none}
+      WAREHOUSE_AI_API_KEY: ${WAREHOUSE_AI_API_KEY:-}
+      WAREHOUSE_AI_MODEL: ${WAREHOUSE_AI_MODEL:-claude-opus-5-5}
     depends_on:
       postgres:
         condition: service_healthy

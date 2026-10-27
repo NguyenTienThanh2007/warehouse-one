@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
     "@warehouse-one/contracts",
     "@warehouse-one/simulation",
     "@warehouse-one/recorder",
+    "@warehouse-one/twin",
   ],
   poweredByHeader: false,
   env: { NEXT_PUBLIC_API_URL: api.url, NEXT_PUBLIC_API_URL_SOURCE: api.source },

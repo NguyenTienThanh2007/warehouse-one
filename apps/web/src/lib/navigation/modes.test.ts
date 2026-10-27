@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { AVAILABLE_MODES, isAppMode, modeFromSearch, MODES, searchWithMode } from "./modes";
 
 describe("product modes", () => {
-  it("offers Explore, Operate and Analytics, in PRD order, and marks the rest as planned", () => {
+  it("offers Explore, Operate, Analytics and AI, in PRD order, and marks Build as planned", () => {
     expect(MODES.map((m) => m.id)).toEqual(["explore", "operate", "build", "analytics", "ai"]);
     expect(MODES.filter((m) => m.status === "available").map((m) => m.id)).toEqual([
       ...AVAILABLE_MODES,
     ]);
+    expect(AVAILABLE_MODES).toEqual(["explore", "operate", "analytics", "ai"]);
   });
 
   it("describes planned modes accurately, without stale phase promises", () => {
@@ -19,7 +20,7 @@ describe("product modes", () => {
     const plan = Object.fromEntries(
       MODES.flatMap((m) => (m.status === "planned" ? [[m.id, m.plan]] : [])),
     );
-    expect(plan).toEqual({ build: "Not scheduled", ai: "Phase 6" });
+    expect(plan).toEqual({ build: "Not scheduled" });
   });
 
   it("reads the mode from the URL, defaulting to Explore for anything unavailable", () => {
@@ -29,7 +30,9 @@ describe("product modes", () => {
     expect(modeFromSearch("?mode=build")).toBe("explore");
     expect(modeFromSearch("?mode=analytics")).toBe("analytics");
     expect(modeFromSearch("?mode=nonsense")).toBe("explore");
-    expect(isAppMode("ai")).toBe(false);
+    expect(modeFromSearch("?mode=ai")).toBe("ai");
+    expect(isAppMode("ai")).toBe(true);
+    expect(isAppMode("build")).toBe(false);
   });
 
   it("writes the mode into the URL and keeps the other parameters", () => {

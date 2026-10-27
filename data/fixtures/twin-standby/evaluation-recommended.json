@@ -1,0 +1,1334 @@
+{
+  "evaluation_id": "ca2d20bc-7c37-8a2e-b2c3-44058f0ecab2",
+  "kind": "optimization",
+  "strategy": {
+    "id": "fleet-standby",
+    "version": "1.0.0"
+  },
+  "source": {
+    "simulation_id": "599f01c8-ea2c-84b5-b6a3-523f86495f39",
+    "tick": 6000,
+    "sim_time_ms": 600000,
+    "simulated_at": "2026-01-05T06:10:00.000Z",
+    "state_hash": "1ab6d30651537dd3649067c3aea3a85c",
+    "config_hash": "1a384a112efbf9d38ccf09cad7bf0033",
+    "fleet_fingerprint": "0c006744a1f4031c86e20c29d8c339c0",
+    "engine_version": "0.1.0"
+  },
+  "options": {
+    "horizon_ticks": 9000,
+    "max_evaluations": 6,
+    "min_improvement_pct": 5,
+    "min_improvement_s": 2,
+    "service_floor_pct": 95
+  },
+  "objective": {
+    "metric": "pickup_wait_s",
+    "direction": "minimize"
+  },
+  "demand": [
+    {
+      "site_id": "northgate-dc",
+      "site_name": "Northgate distribution centre",
+      "transfers_per_hour": 10,
+      "backlog": 0,
+      "standby_capacity": 5
+    },
+    {
+      "site_id": "harbour-terminal",
+      "site_name": "Harbour container terminal",
+      "transfers_per_hour": 45,
+      "backlog": 0,
+      "standby_capacity": 3
+    },
+    {
+      "site_id": "riverside-xd",
+      "site_name": "Riverside cross-dock",
+      "transfers_per_hour": 40,
+      "backlog": 0,
+      "standby_capacity": 3
+    },
+    {
+      "site_id": "fleet-depot",
+      "site_name": "Fleet depot & workshop",
+      "transfers_per_hour": 0,
+      "backlog": 0,
+      "standby_capacity": 0
+    },
+    {
+      "site_id": "east-gateway",
+      "site_name": "East highway gateway",
+      "transfers_per_hour": 0,
+      "backlog": 0,
+      "standby_capacity": 0
+    }
+  ],
+  "baseline": {
+    "plan": {
+      "assignments": [
+        {
+          "vehicle_id": "lh-01",
+          "site_id": null
+        },
+        {
+          "vehicle_id": "lh-02",
+          "site_id": null
+        },
+        {
+          "vehicle_id": "lh-03",
+          "site_id": null
+        },
+        {
+          "vehicle_id": "lh-04",
+          "site_id": null
+        },
+        {
+          "vehicle_id": "lh-05",
+          "site_id": null
+        },
+        {
+          "vehicle_id": "lh-06",
+          "site_id": null
+        }
+      ]
+    },
+    "metrics": {
+      "pickup_wait_s": 67.6,
+      "pickup_wait_p90_s": 100.4,
+      "empty_km": 8.656,
+      "loaded_km": 6.113,
+      "transfers_planned": 21,
+      "pallets_planned": 192,
+      "transfers_delivered": 20,
+      "pallets_delivered": 174,
+      "transfers_cancelled": 0,
+      "transfers_waiting_end": 3,
+      "lead_time_s": 194.8
+    },
+    "constraints": [
+      {
+        "id": "engine_invariants",
+        "label": "Engine invariants hold for the whole horizon",
+        "stage": "simulation",
+        "satisfied": true,
+        "detail": "no violation"
+      }
+    ],
+    "end_state_hash": "0123d963f0afd7136ea4ecc44af5f9cd"
+  },
+  "candidates": [
+    {
+      "candidate_id": "c1",
+      "label": "1 at Harbour container terminal (lh-01), 1 at Riverside cross-dock (lh-02), 4 at the depot",
+      "origin": "proportional",
+      "plan": {
+        "assignments": [
+          {
+            "vehicle_id": "lh-01",
+            "site_id": "harbour-terminal"
+          },
+          {
+            "vehicle_id": "lh-02",
+            "site_id": "riverside-xd"
+          },
+          {
+            "vehicle_id": "lh-03",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-04",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-05",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-06",
+            "site_id": null
+          }
+        ]
+      },
+      "changes": [
+        {
+          "vehicle_id": "lh-01",
+          "from": null,
+          "to": "harbour-terminal"
+        },
+        {
+          "vehicle_id": "lh-02",
+          "from": null,
+          "to": "riverside-xd"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "fleet_coverage",
+          "label": "Every truck of the fleet exactly once",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "6 trucks"
+        },
+        {
+          "id": "site_eligibility",
+          "label": "Standby only at sites with staging stalls",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "terminal, cross-dock and DC only"
+        },
+        {
+          "id": "stall_capacity",
+          "label": "Standby trucks fit, with one staging stall left free per site",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "within capacity"
+        },
+        {
+          "id": "commands_accepted",
+          "label": "The engine accepts every standby command",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "all accepted"
+        },
+        {
+          "id": "engine_invariants",
+          "label": "Engine invariants hold for the whole horizon",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "no violation"
+        },
+        {
+          "id": "service_level",
+          "label": "Delivers at least 95 % of the baseline's pallets",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "182 pallets delivered, floor 166"
+        },
+        {
+          "id": "no_extra_cancellations",
+          "label": "No more cancelled transfers than the baseline",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "0 cancelled, baseline 0"
+        }
+      ],
+      "feasible": true,
+      "metrics": {
+        "pickup_wait_s": 59.4,
+        "pickup_wait_p90_s": 105.3,
+        "empty_km": 8.231,
+        "loaded_km": 6.256,
+        "transfers_planned": 21,
+        "pallets_planned": 197,
+        "transfers_delivered": 20,
+        "pallets_delivered": 182,
+        "transfers_cancelled": 0,
+        "transfers_waiting_end": 3,
+        "lead_time_s": 186.2
+      },
+      "deltas": [
+        {
+          "key": "pickup_wait_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 67.6,
+          "candidate": 59.4,
+          "abs": -8.2,
+          "pct": -12.1,
+          "improved": true
+        },
+        {
+          "key": "pickup_wait_p90_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 100.4,
+          "candidate": 105.3,
+          "abs": 4.9,
+          "pct": 4.9,
+          "improved": false
+        },
+        {
+          "key": "empty_km",
+          "unit": "km",
+          "better": "lower",
+          "baseline": 8.656,
+          "candidate": 8.231,
+          "abs": -0.425,
+          "pct": -4.9,
+          "improved": true
+        },
+        {
+          "key": "loaded_km",
+          "unit": "km",
+          "better": "info",
+          "baseline": 6.113,
+          "candidate": 6.256,
+          "abs": 0.143,
+          "pct": 2.3,
+          "improved": null
+        },
+        {
+          "key": "transfers_planned",
+          "unit": "transfers",
+          "better": "info",
+          "baseline": 21,
+          "candidate": 21,
+          "abs": 0,
+          "pct": 0,
+          "improved": null
+        },
+        {
+          "key": "pallets_planned",
+          "unit": "pallets",
+          "better": "info",
+          "baseline": 192,
+          "candidate": 197,
+          "abs": 5,
+          "pct": 2.6,
+          "improved": null
+        },
+        {
+          "key": "transfers_delivered",
+          "unit": "transfers",
+          "better": "higher",
+          "baseline": 20,
+          "candidate": 20,
+          "abs": 0,
+          "pct": 0,
+          "improved": false
+        },
+        {
+          "key": "pallets_delivered",
+          "unit": "pallets",
+          "better": "higher",
+          "baseline": 174,
+          "candidate": 182,
+          "abs": 8,
+          "pct": 4.6,
+          "improved": true
+        },
+        {
+          "key": "transfers_cancelled",
+          "unit": "transfers",
+          "better": "lower",
+          "baseline": 0,
+          "candidate": 0,
+          "abs": 0,
+          "pct": null,
+          "improved": false
+        },
+        {
+          "key": "transfers_waiting_end",
+          "unit": "transfers",
+          "better": "lower",
+          "baseline": 3,
+          "candidate": 3,
+          "abs": 0,
+          "pct": 0,
+          "improved": false
+        },
+        {
+          "key": "lead_time_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 194.8,
+          "candidate": 186.2,
+          "abs": -8.6,
+          "pct": -4.4,
+          "improved": true
+        }
+      ],
+      "verdict": "improves",
+      "rank": 5,
+      "reasons": [
+        "Mean pickup wait falls by 8.2 s (12.1 %)."
+      ],
+      "end_state_hash": "d5b53e3b6af7416cc4759ebc36929873"
+    },
+    {
+      "candidate_id": "c2",
+      "label": "2 at Harbour container terminal (lh-01, lh-02), 1 at Riverside cross-dock (lh-03), 3 at the depot",
+      "origin": "proportional",
+      "plan": {
+        "assignments": [
+          {
+            "vehicle_id": "lh-01",
+            "site_id": "harbour-terminal"
+          },
+          {
+            "vehicle_id": "lh-02",
+            "site_id": "harbour-terminal"
+          },
+          {
+            "vehicle_id": "lh-03",
+            "site_id": "riverside-xd"
+          },
+          {
+            "vehicle_id": "lh-04",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-05",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-06",
+            "site_id": null
+          }
+        ]
+      },
+      "changes": [
+        {
+          "vehicle_id": "lh-01",
+          "from": null,
+          "to": "harbour-terminal"
+        },
+        {
+          "vehicle_id": "lh-02",
+          "from": null,
+          "to": "harbour-terminal"
+        },
+        {
+          "vehicle_id": "lh-03",
+          "from": null,
+          "to": "riverside-xd"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "fleet_coverage",
+          "label": "Every truck of the fleet exactly once",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "6 trucks"
+        },
+        {
+          "id": "site_eligibility",
+          "label": "Standby only at sites with staging stalls",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "terminal, cross-dock and DC only"
+        },
+        {
+          "id": "stall_capacity",
+          "label": "Standby trucks fit, with one staging stall left free per site",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "within capacity"
+        },
+        {
+          "id": "commands_accepted",
+          "label": "The engine accepts every standby command",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "all accepted"
+        },
+        {
+          "id": "engine_invariants",
+          "label": "Engine invariants hold for the whole horizon",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "no violation"
+        },
+        {
+          "id": "service_level",
+          "label": "Delivers at least 95 % of the baseline's pallets",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "188 pallets delivered, floor 166"
+        },
+        {
+          "id": "no_extra_cancellations",
+          "label": "No more cancelled transfers than the baseline",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "0 cancelled, baseline 0"
+        }
+      ],
+      "feasible": true,
+      "metrics": {
+        "pickup_wait_s": 54.4,
+        "pickup_wait_p90_s": 101.4,
+        "empty_km": 8.106,
+        "loaded_km": 6.276,
+        "transfers_planned": 21,
+        "pallets_planned": 192,
+        "transfers_delivered": 21,
+        "pallets_delivered": 188,
+        "transfers_cancelled": 0,
+        "transfers_waiting_end": 2,
+        "lead_time_s": 182.2
+      },
+      "deltas": [
+        {
+          "key": "pickup_wait_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 67.6,
+          "candidate": 54.4,
+          "abs": -13.2,
+          "pct": -19.5,
+          "improved": true
+        },
+        {
+          "key": "pickup_wait_p90_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 100.4,
+          "candidate": 101.4,
+          "abs": 1,
+          "pct": 1,
+          "improved": false
+        },
+        {
+          "key": "empty_km",
+          "unit": "km",
+          "better": "lower",
+          "baseline": 8.656,
+          "candidate": 8.106,
+          "abs": -0.55,
+          "pct": -6.4,
+          "improved": true
+        },
+        {
+          "key": "loaded_km",
+          "unit": "km",
+          "better": "info",
+          "baseline": 6.113,
+          "candidate": 6.276,
+          "abs": 0.163,
+          "pct": 2.7,
+          "improved": null
+        },
+        {
+          "key": "transfers_planned",
+          "unit": "transfers",
+          "better": "info",
+          "baseline": 21,
+          "candidate": 21,
+          "abs": 0,
+          "pct": 0,
+          "improved": null
+        },
+        {
+          "key": "pallets_planned",
+          "unit": "pallets",
+          "better": "info",
+          "baseline": 192,
+          "candidate": 192,
+          "abs": 0,
+          "pct": 0,
+          "improved": null
+        },
+        {
+          "key": "transfers_delivered",
+          "unit": "transfers",
+          "better": "higher",
+          "baseline": 20,
+          "candidate": 21,
+          "abs": 1,
+          "pct": 5,
+          "improved": true
+        },
+        {
+          "key": "pallets_delivered",
+          "unit": "pallets",
+          "better": "higher",
+          "baseline": 174,
+          "candidate": 188,
+          "abs": 14,
+          "pct": 8,
+          "improved": true
+        },
+        {
+          "key": "transfers_cancelled",
+          "unit": "transfers",
+          "better": "lower",
+          "baseline": 0,
+          "candidate": 0,
+          "abs": 0,
+          "pct": null,
+          "improved": false
+        },
+        {
+          "key": "transfers_waiting_end",
+          "unit": "transfers",
+          "better": "lower",
+          "baseline": 3,
+          "candidate": 2,
+          "abs": -1,
+          "pct": -33.3,
+          "improved": true
+        },
+        {
+          "key": "lead_time_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 194.8,
+          "candidate": 182.2,
+          "abs": -12.6,
+          "pct": -6.5,
+          "improved": true
+        }
+      ],
+      "verdict": "improves",
+      "rank": 3,
+      "reasons": [
+        "Mean pickup wait falls by 13.2 s (19.5 %)."
+      ],
+      "end_state_hash": "7cdad45c2d4e917d8255b60df7421d8b"
+    },
+    {
+      "candidate_id": "c3",
+      "label": "2 at Harbour container terminal (lh-01, lh-02), 2 at Riverside cross-dock (lh-03, lh-04), 2 at the depot",
+      "origin": "proportional",
+      "plan": {
+        "assignments": [
+          {
+            "vehicle_id": "lh-01",
+            "site_id": "harbour-terminal"
+          },
+          {
+            "vehicle_id": "lh-02",
+            "site_id": "harbour-terminal"
+          },
+          {
+            "vehicle_id": "lh-03",
+            "site_id": "riverside-xd"
+          },
+          {
+            "vehicle_id": "lh-04",
+            "site_id": "riverside-xd"
+          },
+          {
+            "vehicle_id": "lh-05",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-06",
+            "site_id": null
+          }
+        ]
+      },
+      "changes": [
+        {
+          "vehicle_id": "lh-01",
+          "from": null,
+          "to": "harbour-terminal"
+        },
+        {
+          "vehicle_id": "lh-02",
+          "from": null,
+          "to": "harbour-terminal"
+        },
+        {
+          "vehicle_id": "lh-03",
+          "from": null,
+          "to": "riverside-xd"
+        },
+        {
+          "vehicle_id": "lh-04",
+          "from": null,
+          "to": "riverside-xd"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "fleet_coverage",
+          "label": "Every truck of the fleet exactly once",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "6 trucks"
+        },
+        {
+          "id": "site_eligibility",
+          "label": "Standby only at sites with staging stalls",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "terminal, cross-dock and DC only"
+        },
+        {
+          "id": "stall_capacity",
+          "label": "Standby trucks fit, with one staging stall left free per site",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "within capacity"
+        },
+        {
+          "id": "commands_accepted",
+          "label": "The engine accepts every standby command",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "all accepted"
+        },
+        {
+          "id": "engine_invariants",
+          "label": "Engine invariants hold for the whole horizon",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "no violation"
+        },
+        {
+          "id": "service_level",
+          "label": "Delivers at least 95 % of the baseline's pallets",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "188 pallets delivered, floor 166"
+        },
+        {
+          "id": "no_extra_cancellations",
+          "label": "No more cancelled transfers than the baseline",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "0 cancelled, baseline 0"
+        }
+      ],
+      "feasible": true,
+      "metrics": {
+        "pickup_wait_s": 52.5,
+        "pickup_wait_p90_s": 101.4,
+        "empty_km": 8.119,
+        "loaded_km": 6.276,
+        "transfers_planned": 21,
+        "pallets_planned": 192,
+        "transfers_delivered": 21,
+        "pallets_delivered": 188,
+        "transfers_cancelled": 0,
+        "transfers_waiting_end": 2,
+        "lead_time_s": 179.7
+      },
+      "deltas": [
+        {
+          "key": "pickup_wait_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 67.6,
+          "candidate": 52.5,
+          "abs": -15.1,
+          "pct": -22.3,
+          "improved": true
+        },
+        {
+          "key": "pickup_wait_p90_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 100.4,
+          "candidate": 101.4,
+          "abs": 1,
+          "pct": 1,
+          "improved": false
+        },
+        {
+          "key": "empty_km",
+          "unit": "km",
+          "better": "lower",
+          "baseline": 8.656,
+          "candidate": 8.119,
+          "abs": -0.537,
+          "pct": -6.2,
+          "improved": true
+        },
+        {
+          "key": "loaded_km",
+          "unit": "km",
+          "better": "info",
+          "baseline": 6.113,
+          "candidate": 6.276,
+          "abs": 0.163,
+          "pct": 2.7,
+          "improved": null
+        },
+        {
+          "key": "transfers_planned",
+          "unit": "transfers",
+          "better": "info",
+          "baseline": 21,
+          "candidate": 21,
+          "abs": 0,
+          "pct": 0,
+          "improved": null
+        },
+        {
+          "key": "pallets_planned",
+          "unit": "pallets",
+          "better": "info",
+          "baseline": 192,
+          "candidate": 192,
+          "abs": 0,
+          "pct": 0,
+          "improved": null
+        },
+        {
+          "key": "transfers_delivered",
+          "unit": "transfers",
+          "better": "higher",
+          "baseline": 20,
+          "candidate": 21,
+          "abs": 1,
+          "pct": 5,
+          "improved": true
+        },
+        {
+          "key": "pallets_delivered",
+          "unit": "pallets",
+          "better": "higher",
+          "baseline": 174,
+          "candidate": 188,
+          "abs": 14,
+          "pct": 8,
+          "improved": true
+        },
+        {
+          "key": "transfers_cancelled",
+          "unit": "transfers",
+          "better": "lower",
+          "baseline": 0,
+          "candidate": 0,
+          "abs": 0,
+          "pct": null,
+          "improved": false
+        },
+        {
+          "key": "transfers_waiting_end",
+          "unit": "transfers",
+          "better": "lower",
+          "baseline": 3,
+          "candidate": 2,
+          "abs": -1,
+          "pct": -33.3,
+          "improved": true
+        },
+        {
+          "key": "lead_time_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 194.8,
+          "candidate": 179.7,
+          "abs": -15.1,
+          "pct": -7.8,
+          "improved": true
+        }
+      ],
+      "verdict": "improves",
+      "rank": 2,
+      "reasons": [
+        "Mean pickup wait falls by 15.1 s (22.3 %)."
+      ],
+      "end_state_hash": "f885788bb17fd99b5808a824e2422402"
+    },
+    {
+      "candidate_id": "c4",
+      "label": "3 at Harbour container terminal (lh-01, lh-02, lh-03), 3 at Riverside cross-dock (lh-04, lh-05, lh-06)",
+      "origin": "proportional",
+      "plan": {
+        "assignments": [
+          {
+            "vehicle_id": "lh-01",
+            "site_id": "harbour-terminal"
+          },
+          {
+            "vehicle_id": "lh-02",
+            "site_id": "harbour-terminal"
+          },
+          {
+            "vehicle_id": "lh-03",
+            "site_id": "harbour-terminal"
+          },
+          {
+            "vehicle_id": "lh-04",
+            "site_id": "riverside-xd"
+          },
+          {
+            "vehicle_id": "lh-05",
+            "site_id": "riverside-xd"
+          },
+          {
+            "vehicle_id": "lh-06",
+            "site_id": "riverside-xd"
+          }
+        ]
+      },
+      "changes": [
+        {
+          "vehicle_id": "lh-01",
+          "from": null,
+          "to": "harbour-terminal"
+        },
+        {
+          "vehicle_id": "lh-02",
+          "from": null,
+          "to": "harbour-terminal"
+        },
+        {
+          "vehicle_id": "lh-03",
+          "from": null,
+          "to": "harbour-terminal"
+        },
+        {
+          "vehicle_id": "lh-04",
+          "from": null,
+          "to": "riverside-xd"
+        },
+        {
+          "vehicle_id": "lh-05",
+          "from": null,
+          "to": "riverside-xd"
+        },
+        {
+          "vehicle_id": "lh-06",
+          "from": null,
+          "to": "riverside-xd"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "fleet_coverage",
+          "label": "Every truck of the fleet exactly once",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "6 trucks"
+        },
+        {
+          "id": "site_eligibility",
+          "label": "Standby only at sites with staging stalls",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "terminal, cross-dock and DC only"
+        },
+        {
+          "id": "stall_capacity",
+          "label": "Standby trucks fit, with one staging stall left free per site",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "within capacity"
+        },
+        {
+          "id": "commands_accepted",
+          "label": "The engine accepts every standby command",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "all accepted"
+        },
+        {
+          "id": "engine_invariants",
+          "label": "Engine invariants hold for the whole horizon",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "no violation"
+        },
+        {
+          "id": "service_level",
+          "label": "Delivers at least 95 % of the baseline's pallets",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "188 pallets delivered, floor 166"
+        },
+        {
+          "id": "no_extra_cancellations",
+          "label": "No more cancelled transfers than the baseline",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "0 cancelled, baseline 0"
+        }
+      ],
+      "feasible": true,
+      "metrics": {
+        "pickup_wait_s": 50,
+        "pickup_wait_p90_s": 92.8,
+        "empty_km": 7.996,
+        "loaded_km": 6.064,
+        "transfers_planned": 21,
+        "pallets_planned": 192,
+        "transfers_delivered": 21,
+        "pallets_delivered": 188,
+        "transfers_cancelled": 0,
+        "transfers_waiting_end": 2,
+        "lead_time_s": 176.3
+      },
+      "deltas": [
+        {
+          "key": "pickup_wait_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 67.6,
+          "candidate": 50,
+          "abs": -17.6,
+          "pct": -26,
+          "improved": true
+        },
+        {
+          "key": "pickup_wait_p90_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 100.4,
+          "candidate": 92.8,
+          "abs": -7.6,
+          "pct": -7.6,
+          "improved": true
+        },
+        {
+          "key": "empty_km",
+          "unit": "km",
+          "better": "lower",
+          "baseline": 8.656,
+          "candidate": 7.996,
+          "abs": -0.66,
+          "pct": -7.6,
+          "improved": true
+        },
+        {
+          "key": "loaded_km",
+          "unit": "km",
+          "better": "info",
+          "baseline": 6.113,
+          "candidate": 6.064,
+          "abs": -0.049,
+          "pct": -0.8,
+          "improved": null
+        },
+        {
+          "key": "transfers_planned",
+          "unit": "transfers",
+          "better": "info",
+          "baseline": 21,
+          "candidate": 21,
+          "abs": 0,
+          "pct": 0,
+          "improved": null
+        },
+        {
+          "key": "pallets_planned",
+          "unit": "pallets",
+          "better": "info",
+          "baseline": 192,
+          "candidate": 192,
+          "abs": 0,
+          "pct": 0,
+          "improved": null
+        },
+        {
+          "key": "transfers_delivered",
+          "unit": "transfers",
+          "better": "higher",
+          "baseline": 20,
+          "candidate": 21,
+          "abs": 1,
+          "pct": 5,
+          "improved": true
+        },
+        {
+          "key": "pallets_delivered",
+          "unit": "pallets",
+          "better": "higher",
+          "baseline": 174,
+          "candidate": 188,
+          "abs": 14,
+          "pct": 8,
+          "improved": true
+        },
+        {
+          "key": "transfers_cancelled",
+          "unit": "transfers",
+          "better": "lower",
+          "baseline": 0,
+          "candidate": 0,
+          "abs": 0,
+          "pct": null,
+          "improved": false
+        },
+        {
+          "key": "transfers_waiting_end",
+          "unit": "transfers",
+          "better": "lower",
+          "baseline": 3,
+          "candidate": 2,
+          "abs": -1,
+          "pct": -33.3,
+          "improved": true
+        },
+        {
+          "key": "lead_time_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 194.8,
+          "candidate": 176.3,
+          "abs": -18.5,
+          "pct": -9.5,
+          "improved": true
+        }
+      ],
+      "verdict": "recommended",
+      "rank": 1,
+      "reasons": [
+        "Mean pickup wait falls by 17.6 s (26 %)."
+      ],
+      "end_state_hash": "6de6e600a8298709a65f268c663a7069"
+    },
+    {
+      "candidate_id": "c5",
+      "label": "3 at Harbour container terminal (lh-01, lh-02, lh-03), 3 at the depot",
+      "origin": "busiest_origin",
+      "plan": {
+        "assignments": [
+          {
+            "vehicle_id": "lh-01",
+            "site_id": "harbour-terminal"
+          },
+          {
+            "vehicle_id": "lh-02",
+            "site_id": "harbour-terminal"
+          },
+          {
+            "vehicle_id": "lh-03",
+            "site_id": "harbour-terminal"
+          },
+          {
+            "vehicle_id": "lh-04",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-05",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-06",
+            "site_id": null
+          }
+        ]
+      },
+      "changes": [
+        {
+          "vehicle_id": "lh-01",
+          "from": null,
+          "to": "harbour-terminal"
+        },
+        {
+          "vehicle_id": "lh-02",
+          "from": null,
+          "to": "harbour-terminal"
+        },
+        {
+          "vehicle_id": "lh-03",
+          "from": null,
+          "to": "harbour-terminal"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "fleet_coverage",
+          "label": "Every truck of the fleet exactly once",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "6 trucks"
+        },
+        {
+          "id": "site_eligibility",
+          "label": "Standby only at sites with staging stalls",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "terminal, cross-dock and DC only"
+        },
+        {
+          "id": "stall_capacity",
+          "label": "Standby trucks fit, with one staging stall left free per site",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "within capacity"
+        },
+        {
+          "id": "commands_accepted",
+          "label": "The engine accepts every standby command",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "all accepted"
+        },
+        {
+          "id": "engine_invariants",
+          "label": "Engine invariants hold for the whole horizon",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "no violation"
+        },
+        {
+          "id": "service_level",
+          "label": "Delivers at least 95 % of the baseline's pallets",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "188 pallets delivered, floor 166"
+        },
+        {
+          "id": "no_extra_cancellations",
+          "label": "No more cancelled transfers than the baseline",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "0 cancelled, baseline 0"
+        }
+      ],
+      "feasible": true,
+      "metrics": {
+        "pickup_wait_s": 57.4,
+        "pickup_wait_p90_s": 108.5,
+        "empty_km": 8.898,
+        "loaded_km": 6.276,
+        "transfers_planned": 21,
+        "pallets_planned": 192,
+        "transfers_delivered": 21,
+        "pallets_delivered": 188,
+        "transfers_cancelled": 0,
+        "transfers_waiting_end": 3,
+        "lead_time_s": 183.7
+      },
+      "deltas": [
+        {
+          "key": "pickup_wait_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 67.6,
+          "candidate": 57.4,
+          "abs": -10.2,
+          "pct": -15.1,
+          "improved": true
+        },
+        {
+          "key": "pickup_wait_p90_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 100.4,
+          "candidate": 108.5,
+          "abs": 8.1,
+          "pct": 8.1,
+          "improved": false
+        },
+        {
+          "key": "empty_km",
+          "unit": "km",
+          "better": "lower",
+          "baseline": 8.656,
+          "candidate": 8.898,
+          "abs": 0.242,
+          "pct": 2.8,
+          "improved": false
+        },
+        {
+          "key": "loaded_km",
+          "unit": "km",
+          "better": "info",
+          "baseline": 6.113,
+          "candidate": 6.276,
+          "abs": 0.163,
+          "pct": 2.7,
+          "improved": null
+        },
+        {
+          "key": "transfers_planned",
+          "unit": "transfers",
+          "better": "info",
+          "baseline": 21,
+          "candidate": 21,
+          "abs": 0,
+          "pct": 0,
+          "improved": null
+        },
+        {
+          "key": "pallets_planned",
+          "unit": "pallets",
+          "better": "info",
+          "baseline": 192,
+          "candidate": 192,
+          "abs": 0,
+          "pct": 0,
+          "improved": null
+        },
+        {
+          "key": "transfers_delivered",
+          "unit": "transfers",
+          "better": "higher",
+          "baseline": 20,
+          "candidate": 21,
+          "abs": 1,
+          "pct": 5,
+          "improved": true
+        },
+        {
+          "key": "pallets_delivered",
+          "unit": "pallets",
+          "better": "higher",
+          "baseline": 174,
+          "candidate": 188,
+          "abs": 14,
+          "pct": 8,
+          "improved": true
+        },
+        {
+          "key": "transfers_cancelled",
+          "unit": "transfers",
+          "better": "lower",
+          "baseline": 0,
+          "candidate": 0,
+          "abs": 0,
+          "pct": null,
+          "improved": false
+        },
+        {
+          "key": "transfers_waiting_end",
+          "unit": "transfers",
+          "better": "lower",
+          "baseline": 3,
+          "candidate": 3,
+          "abs": 0,
+          "pct": 0,
+          "improved": false
+        },
+        {
+          "key": "lead_time_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 194.8,
+          "candidate": 183.7,
+          "abs": -11.1,
+          "pct": -5.7,
+          "improved": true
+        }
+      ],
+      "verdict": "improves",
+      "rank": 4,
+      "reasons": [
+        "Mean pickup wait falls by 10.2 s (15.1 %)."
+      ],
+      "end_state_hash": "4e0f623eb3154687e97a7319d45691a9"
+    }
+  ],
+  "recommendation": {
+    "candidate_id": "c4",
+    "summary": "Stand by 3 at Harbour container terminal (lh-01, lh-02, lh-03), 3 at Riverside cross-dock (lh-04, lh-05, lh-06) (6 trucks change): mean pickup wait -26 % over the next 15 simulated minutes.",
+    "reasons": [
+      "3 trucks wait at Harbour container terminal, which sends 45 transfers per hour; a waiting truck starts loading there without first driving from the depot.",
+      "3 trucks wait at Riverside cross-dock, which sends 40 transfers per hour; a waiting truck starts loading there without first driving from the depot.",
+      "Simulated over the next 15 minutes from the same state: mean pickup wait 67.6 s → 50 s (-26 %).",
+      "Empty driving 8.656 km → 7.996 km (-7.6 %); pallets delivered 174 → 188.",
+      "Best of 5 feasible plans simulated; next best: 2 at Harbour container terminal (lh-01, lh-02), 2 at Riverside cross-dock (lh-03, lh-04), 2 at the depot."
+    ]
+  },
+  "no_recommendation_reason": null,
+  "assumptions": [
+    "The network runs as configured for the next 15 simulated minutes: lanes keep their schedules, and no operator transfers or other commands are added.",
+    "Baseline and candidates start from the same frozen snapshot and are run by the simulation engine itself; the plan is applied with the same linehaul.set_standby commands that approval would submit.",
+    "Each plan is one deterministic trajectory. A plan is recommended only if it beats the baseline by at least 5 % and 2 s, to stay clear of run-to-run noise.",
+    "Standby trucks occupy staging stalls; the engine always keeps one stall per site free for arriving trucks.",
+    "The search is heuristic (demand-proportional plans and single-truck moves within a fixed budget): the recommendation is the best plan evaluated, not a proven optimum."
+  ],
+  "risks": [
+    "Predictions, not measurements: the figures are simulated forward from the snapshot and will differ from what happens if conditions change.",
+    "Waits still open at the end of the horizon are counted until the end, so long waits are under-stated equally for every plan."
+  ],
+  "search": {
+    "simulations": 6,
+    "budget": 6,
+    "plans_considered": 6,
+    "exhausted_budget": true
+  },
+  "runtime": {
+    "elapsed_ms": 0,
+    "ticks_simulated": 54000
+  }
+}

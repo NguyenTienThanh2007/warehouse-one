@@ -284,3 +284,54 @@ of the same run decides even when another DAG's reconciliation finishes in betwe
 the latest report. When publication is refused the previous snapshot stays current, and the status
 endpoint reports the pipeline's problems (`degraded`) next to it rather than hiding the data or
 presenting it as current.
+
+### DEC-039 — Phase 6 decision domain: fleet standby, evaluated by the engine itself (Phase 6)
+The first optimisation is **where idle line-haul trucks wait between jobs** (standby), chosen
+after measuring the network scenario: transfers waited 21–56 s for a truck to arrive, and trucks
+drove as many empty kilometres to their next pickup as loaded, because the engine assigns a
+transfer to the nearest idle truck the moment it is planned and sends idle trucks home to the
+depot. Assignment itself leaves nothing to optimise at a single instant (it happens instantly);
+where trucks wait does, and it is a lever the operator can actually pull.
+The lever is a new operator command, `linehaul.set_standby {vehicle_id, site_id|null}`, validated
+by the engine like every other command (unknown truck or site, depot or gateway, more than
+"staging stalls − 1" trucks per site are rejected with a code) and replayed from the command log.
+It emits no new event type (truck movements already emit `linehaul.status_changed`), so the event
+contract, dbt and reconciliation are unchanged; a truck without standby keeps the original state
+shape, so every golden fixture is byte-identical.
+What-if evaluation runs the **same engine** (`step()`) forward from a frozen snapshot for the
+baseline and each candidate, applying the plan through the same commands an approval submits. The
+Python API never simulates (DEC-024's ownership rule): candidates are computed in TypeScript
+(`packages/twin`, in the browser or with `pnpm twin:verify` / `pnpm bench:twin`) and stored with
+their input snapshot so anyone can re-run them. Alternatives rejected: a second simulator in
+Python (two engines to keep identical), optimising in the API through a Node subprocess (an
+operational dependency for a first slice), analytic formulas without simulation (the measured
+effects depend on the state: the same plan helped by 28 % at one start and hurt at another).
+
+### DEC-040 — Proposals: server-validated, human-approved, executed once, fully audited (Phase 6)
+Proposals live in PostgreSQL (`twin.*`, migration 0004) with the evaluation, the input snapshot,
+the server's validation, the engine commands and an append-only audit trail (`proposal_events`,
+UPDATE/DELETE refused by a trigger). The server does not trust the browser's verdict: it checks the
+snapshot against the evaluation's source, re-checks the plan's hard rules from the snapshot's own
+network configuration, recomputes every delta from the metrics (same rounding as TypeScript), and
+re-derives the commands. Lifecycle: `generated → validated | not_actionable | invalid`;
+`validated → approved | rejected | expired | superseded`; `approved → executing | rejected |
+expired`; `executing → applied | failed`. Every change locks the row (`FOR UPDATE`) and bumps a
+`version`: a repeated decision is idempotent, a contradicting one is 409, a client may pass
+`expected_version` for optimistic concurrency, and an execution can be claimed exactly once.
+Approval and execution check **freshness** against the live run the browser reports (same run and
+config, not reset, fleet standby unchanged, at most 30 simulated minutes old); a stale proposal is
+expired, never approved. Execution goes through the live runner's operator command path with the
+server-issued command ids, and the result (`applied` only if the engine accepted every command) is
+reported back. Actors are named, not authenticated, like every endpoint until Phase 7.
+
+### DEC-041 — AI explains computed facts; it never decides (Phase 6)
+The optimiser and the server's checks are deterministic and complete without AI. An optional
+provider (`WAREHOUSE_AI_PROVIDER=anthropic`, official `anthropic` SDK, server-side key
+`WAREHOUSE_AI_API_KEY`, default model `claude-opus-5-5`) writes an explanation of a stored proposal
+on request. It receives a fact sheet built from the stored, validated proposal (no snapshot, no
+secrets; untrusted strings sanitised and fenced as data), must answer in a strict JSON schema
+(structured outputs), and its answer is validated again and policy-checked: every cited figure must
+equal a stored figure, and it may not support approving a proposal the server did not validate.
+Violations are discarded and recorded as failures (`AI_POLICY_VIOLATION`). Outages, timeouts, rate
+limits, refusals and invalid output map to stable codes; attempts per proposal are capped. The
+answer is shown labelled "AI-generated · not a measurement" and changes no status.

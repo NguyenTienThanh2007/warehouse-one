@@ -1,6 +1,7 @@
 import { TRUCK_CAPACITY } from "@warehouse-one/contracts";
 import type { SimulationConfig, SimulationState } from "../types";
 import { cargoTotal } from "./model";
+import { standbyCapacity, standbyProblem } from "./standby";
 
 const AT_STAND = new Set(["parked", "docking", "loading", "unloading", "servicing"]);
 
@@ -65,6 +66,16 @@ export function checkNetworkInvariants(config: SimulationConfig, state: Simulati
       v.push(`truck ${t.id} serves transfer ${t.transfer_id}, which is not assigned to it`);
     if (t.odometer_mm < t.service_odometer_mm) v.push(`truck ${t.id} odometer went backwards`);
   }
+  const standby = new Map<string, number>();
+  for (const t of Object.values(s.vehicles)) {
+    if (t.standby_site === undefined) continue;
+    const problem = standbyProblem(net, t.standby_site);
+    if (problem) v.push(`truck ${t.id} stands by at ${t.standby_site}: ${problem}`);
+    standby.set(t.standby_site, (standby.get(t.standby_site) ?? 0) + 1);
+  }
+  for (const [site, count] of standby)
+    if (count > standbyCapacity(net, site))
+      v.push(`${count} trucks stand by at ${site}, more than its ${standbyCapacity(net, site)}`);
   for (const [stand, holder] of held) {
     const t = s.vehicles[holder];
     if (t && t.stand_id !== stand && t.target_stand !== stand)

@@ -3,7 +3,8 @@ import { cameraRest, openWorld, rests } from "./helpers";
 
 /**
  * Top-bar modes: Explore and Operate open real views and the active tab follows the URL
- * (`?mode=`), including back/forward; planned modes explain their status instead of navigating.
+ * (`?mode=`), including back/forward; Analytics and AI open their workspaces; the planned mode
+ * (Build) explains its status instead of navigating.
  */
 
 const active = (page: Page) => page.locator('[data-testid="mode-nav"] [aria-current="page"]');
@@ -53,10 +54,7 @@ test.describe("mode navigation", () => {
   test("planned modes say what exists today instead of navigating", async ({ page }) => {
     await openWorld(page, "?scenario=showcase");
     const before = page.url();
-    for (const [id, plan] of [
-      ["build", "Not scheduled"],
-      ["ai", "Phase 6"],
-    ] as const) {
+    for (const [id, plan] of [["build", "Not scheduled"]] as const) {
       const tab = page.getByTestId(`mode-${id}`);
       // Clickable (not a dead button), marked as planned, opening a notice rather than a view.
       await expect(tab).toBeEnabled();
@@ -82,5 +80,21 @@ test.describe("mode navigation", () => {
     expect(titles.length).toBe(5);
     await expect(page.getByTestId("mode-analytics")).not.toHaveAttribute("data-status", "planned");
     for (const t of titles) expect(t).not.toMatch(/arrives in Phase/);
+  });
+
+  test("AI is a working mode: it opens the decision-support workspace and the URL follows", async ({
+    page,
+  }) => {
+    await openWorld(page);
+    const tab = page.getByTestId("mode-ai");
+    await expect(tab).not.toHaveAttribute("data-status", "planned");
+    await expect(tab).not.toContainText("Soon");
+    await tab.click();
+    await expect(active(page)).toHaveText("AI");
+    await expect(page).toHaveURL(/\?mode=ai$/);
+    await expect(page.getByTestId("ai-workspace")).toBeVisible();
+    await page.goBack();
+    await expect(active(page)).toHaveText("Explore");
+    await expect(page.getByTestId("ai-workspace")).toHaveCount(0);
   });
 });

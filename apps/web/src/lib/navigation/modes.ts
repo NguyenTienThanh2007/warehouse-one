@@ -7,7 +7,7 @@
 export type ModeId = "explore" | "operate" | "build" | "analytics" | "ai";
 
 /** Modes with a working view; `?mode=` accepts only these. */
-export const AVAILABLE_MODES = ["explore", "operate", "analytics"] as const;
+export const AVAILABLE_MODES = ["explore", "operate", "analytics", "ai"] as const;
 export type AppMode = (typeof AVAILABLE_MODES)[number];
 
 export type ModeInfo =
@@ -62,10 +62,9 @@ export const MODES: readonly ModeInfo[] = [
   {
     id: "ai",
     label: "AI",
-    status: "planned",
-    plan: "Phase 6",
-    summary: "Questions in natural language answered with validated, approvable proposals.",
-    detail: "Not started. There is no AI service in the project yet.",
+    status: "available",
+    summary:
+      "Fleet decision support: a deterministic optimiser and what-if simulations propose where idle line-haul trucks wait; you review, approve and apply, with optional AI explanations.",
   },
 ];
 

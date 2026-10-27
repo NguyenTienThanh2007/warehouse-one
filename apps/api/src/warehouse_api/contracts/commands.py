@@ -71,6 +71,12 @@ class RequestTransferPayload(_Strict):
     lines: CargoLines
 
 
+class SetStandbyPayload(_Strict):
+    vehicle_id: EntityId
+    # Required but nullable: null sends the truck back to its home stall at the depot.
+    site_id: EntityId | None
+
+
 class ReceiveInventoryCommand(_Strict):
     command_id: CommandId
     type: Literal["inventory.receive"]
@@ -119,6 +125,12 @@ class RequestTransferCommand(_Strict):
     payload: RequestTransferPayload
 
 
+class SetStandbyCommand(_Strict):
+    command_id: CommandId
+    type: Literal["linehaul.set_standby"]
+    payload: SetStandbyPayload
+
+
 SimulationCommand = Annotated[
     ReceiveInventoryCommand
     | MoveInventoryCommand
@@ -127,7 +139,8 @@ SimulationCommand = Annotated[
     | CreateOrderCommand
     | CancelOrderCommand
     | RelocatePalletCommand
-    | RequestTransferCommand,
+    | RequestTransferCommand
+    | SetStandbyCommand,
     Field(discriminator="type"),
 ]
 
@@ -140,6 +153,7 @@ COMMAND_MODELS: dict[str, type[BaseModel]] = {
     "order.cancel": CancelOrderCommand,
     "pallet.relocate": RelocatePalletCommand,
     "transfer.request": RequestTransferCommand,
+    "linehaul.set_standby": SetStandbyCommand,
 }
 
 COMMAND_ADAPTER: TypeAdapter[SimulationCommand] = TypeAdapter(SimulationCommand)

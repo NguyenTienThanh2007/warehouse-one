@@ -1,0 +1,26 @@
+{
+  "name": "@warehouse-one/twin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Digital twin: isolated what-if evaluation on frozen simulation snapshots and deterministic optimisation strategies (Phase 6).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "bench": "tsx scripts/bench.ts",
+    "verify": "tsx scripts/verify.ts",
+    "generate:fixtures": "tsx scripts/generate-fixtures.ts"
+  },
+  "dependencies": {
+    "@warehouse-one/contracts": "workspace:*",
+    "@warehouse-one/simulation": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15",
+    "vitest": "5.0.3"
+  }
+}

@@ -3,12 +3,12 @@
 **Intelligent Logistics. Living Data.**
 
 A browser-based 3D warehouse digital twin built on a deterministic simulation engine, with a real
-data engineering pipeline and AI-assisted optimisation planned on top. Every number on screen comes
+data engineering pipeline and a decision-support layer that optimises with the engine itself. Every number on screen comes
 from authoritative simulation state, and every state change is a typed, replayable domain event.
 
-> **Project status: Phases 0–3 and Phase 5 (multi-site logistics world, PR #7) are merged into
-> `main`, with the top-bar modes fix (PR #8). Phase 4, operations analytics, is in review on
-> `feature/p4-analytics-refresh`.** See
+> **Project status: Phases 0–5 are merged into `main` (Phase 4 operations analytics: PR #9, with
+> the connection fix PR #10). Phase 6, the AI and digital-twin layer, is in review on
+> `feature/p6-ai-digital-twin`.** See
 > [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for what is verified and what is not.
 
 ![WAREHOUSE ONE: the logistics park, world view](docs/phases/evidence/phase-5/1-world.jpg)
@@ -47,10 +47,17 @@ from authoritative simulation state, and every state change is a typed, replayab
   highway gateway, joined by roads. Six line-haul trucks drive deterministic inter-site transfers
   (seeded lanes or operator requests), reserve doors and stalls, and hand over to the DC's own
   dock and yard simulation. World and facility views, site and truck inspectors.
-- **Operations analytics** (Phase 4, on its branch). Each reconciled gold build is published as
+- **Operations analytics** (Phase 4). Each reconciled gold build is published as
   an immutable snapshot and served read-only (`/api/v1/analytics`); the Analytics mode shows run
   KPIs, task, order, pallet and transfer flows over simulated time, data quality, freshness and
   pipeline health, and says so when data is stale, degraded or missing.
+- **Fleet decision support** (Phase 6, on its branch). The AI mode proposes where idle line-haul
+  trucks should wait between jobs: a deterministic optimiser simulates candidate standby plans
+  with the engine from a frozen snapshot of the live run and compares them with the plan in
+  effect (pickup wait, empty driving, deliveries, hard constraints). Proposals are re-validated by
+  the API, approved by a person, applied once through the operator command path and audited
+  (`/api/v1/twin`). Optional AI explanations (Anthropic, server-side) are checked against the
+  computed figures and labelled as AI-generated.
 - **Event store and data platform** (Phase 3). Runs recorded from the browser or
   headless go into PostgreSQL in one transaction per batch (append-only event log + transactional
   outbox). From there:
@@ -60,7 +67,8 @@ from authoritative simulation state, and every state change is a typed, replayab
   - Airflow runs refresh, backfill and a reconciliation that fails on any mismatch.
 
   A smoke test proves the whole path, including outages, replays and an injected discrepancy.
-- **API** (`apps/api`). FastAPI: ingestion endpoints (`/api/v1/simulations`), structured JSON logs,
+- **API** (`apps/api`). FastAPI: ingestion (`/api/v1/simulations`), analytics (`/api/v1/analytics`)
+  and proposals (`/api/v1/twin`) endpoints, structured JSON logs,
   request IDs, liveness/readiness/version, SQLAlchemy and Alembic on PostgreSQL 18.
 - **Quality gates.** ESLint/Prettier/tsc, Vitest, pytest (unit and integration), ruff, mypy
   `--strict`, Playwright e2e and a GitHub Actions CI with Docker Compose verification.
@@ -104,7 +112,8 @@ scripts/data-platform-smoke.sh         # end-to-end proof; exits non-zero on any
 Controls: drag to orbit, scroll to zoom, right-drag to pan. Click a bay, vehicle or dock to inspect
 it, or double-click to fly to it. Camera: `O` overview, `D` docks, `A` aisle, `T` plan, `F` focus
 selection. Simulation: `Space` pause/resume, `.` step, `1`–`5` speed. `Esc` clears the selection.
-URL options: `?scenario=showcase|empty|bench-100|bench-300|bench-1000` and `?quality=auto|high|medium|low`.
+URL options: `?scenario=showcase|empty|bench-100|bench-300|bench-1000`, `?quality=auto|high|medium|low`
+and `?mode=operate|analytics|ai`.
 More detail, including port overrides, is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Verification
@@ -114,6 +123,7 @@ pnpm check                      # format, lint, typecheck, unit tests, productio
 pnpm test:e2e                   # browser tests against the production build
 cd apps/api && uv sync --all-extras && uv run pytest && uv run pytest -m "integration and not kafka"
 pnpm bench:sim                  # simulation throughput
+pnpm bench:twin                 # optimiser: baseline vs recommendation from fixed start points
 ```
 
 Measured Phase 0 results are recorded with their hardware context in
@@ -122,8 +132,9 @@ Measured Phase 0 results are recorded with their hardware context in
 
 ## Roadmap
 
-0 Foundation ✔ · 1 Premium 3D world ✔ · 2 Living simulation ✔ · 3 Data engineering (in development) ·
-4 Analytics · 5 AI logistics brain · 6 Digital twin scenarios · 7 Production release.
+0 Foundation ✔ · 1 Premium 3D world ✔ · 2 Living simulation ✔ · 3 Data engineering ✔ ·
+4 Operations analytics ✔ · 5 Multi-site world ✔ · 6 AI and digital twin (first slice in review) ·
+7 Production release.
 
 ## Licence
 
