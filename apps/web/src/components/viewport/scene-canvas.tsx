@@ -46,8 +46,8 @@ export default function SceneCanvas() {
   const config = useSimulation((s) => s.config);
   const tier = useView((s) => s.tier);
   const mode = useView((s) => s.qualityMode);
-  // Analytics covers the canvas: render nothing until another mode is back.
-  const covered = useView((s) => s.mode === "analytics");
+  // Analytics and AI cover the canvas: render nothing until another mode is back.
+  const covered = useView((s) => s.mode === "analytics" || s.mode === "ai");
   const setTier = useView((s) => s.setTier);
   const settings = TIER_SETTINGS[tier];
   const facility = useMemo(() => resolveFacility(config), [config]);

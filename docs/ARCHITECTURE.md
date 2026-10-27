@@ -1,6 +1,7 @@
 # Architecture
 
-**Status:** describes what exists after Phase 3 (data platform on `feature/p3-data-engineering`).
+**Status:** describes what exists after Phase 6's first slice (on `feature/p6-ai-digital-twin`);
+sections 1–7 date from Phase 3 and are extended by 5a (Phase 5), 7a (Phase 4) and 7b (Phase 6).
 Components marked *(planned)* do not exist yet.
 
 ## 1. System overview
@@ -189,6 +190,25 @@ through pydantic-settings.
   validated with zod; the 3D canvas stops rendering while it is open.
 - **Time:** simulated business time for everything measured, wall clock for publication and
   health (DEC-037).
+
+## 7b. Digital twin and decision support (Phase 6)
+
+- **Twin** (`packages/twin`, DEC-039): what-if trajectories run the engine's `step()` from a frozen
+  `Snapshot` of the live run (never the runner), applying a plan through the same operator
+  commands an approval submits; fleet metrics come from the engine's own events. The
+  `fleet-standby` optimiser generates demand-proportional standby plans, simulates them within a
+  budget, refines with local search and recommends only a plan that beats the baseline by a
+  threshold while meeting every hard constraint. Deterministic: same input, same evaluation id.
+- **Proposals** (`/api/v1/twin`, `twin.*`, migration `0004`, DEC-040): the API stores each
+  evaluation with its snapshot, re-validates it (plan rules from the snapshot's own config,
+  recomputed deltas, derived commands), and owns the lifecycle — approve (freshness check against
+  the live run) → execute once → applied/failed — with an append-only audit trail and row locks.
+  `pnpm twin:verify` re-runs a stored proposal from its snapshot.
+- **AI** (DEC-041): optional, server-side (official `anthropic` SDK, structured outputs). It
+  explains a stored proposal; its answer is schema-validated and policy-checked against the stored
+  figures and can change nothing.
+- **Web:** AI mode (`components/twin`, `lib/twin`) covers the 3D view; evaluations run in the
+  page in 400-tick slices; execution submits `linehaul.set_standby` through the live runner.
 
 ## 8. Cross-cutting
 

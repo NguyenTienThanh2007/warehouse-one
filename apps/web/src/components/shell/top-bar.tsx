@@ -38,7 +38,7 @@ export function TopBar() {
           </p>
         </div>
         <span className="ml-1 rounded-full border border-signal-400/30 bg-signal-400/10 px-2 py-0.5 text-[11px] font-medium text-signal-300">
-          Phase 4 · Analytics
+          Phase 6 · AI &amp; digital twin
         </span>
       </div>
 

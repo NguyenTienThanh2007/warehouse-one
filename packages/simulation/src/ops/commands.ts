@@ -48,6 +48,8 @@ export function applyOpsCommand(o: OpsDraft, command: SimulationCommand, trace: 
     case "transfer.request":
       // Routed to the network before facility commands (see handlers.ts).
       return reject("NETWORK_DISABLED", "transfer requests are handled by the logistics network");
+    case "linehaul.set_standby":
+      return reject("NETWORK_DISABLED", "line-haul trucks are handled by the logistics network");
   }
 }
 

@@ -157,7 +157,10 @@ export type RejectionCode =
   // Phase 5 logistics network
   | "NETWORK_DISABLED"
   | "UNKNOWN_SITE"
-  | "INVALID_TRANSFER";
+  | "INVALID_TRANSFER"
+  // Phase 6 fleet standby
+  | "UNKNOWN_VEHICLE"
+  | "INVALID_STANDBY";
 
 export interface CommandRejection {
   readonly command_id: string;

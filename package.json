@@ -17,15 +17,17 @@
     "test": "pnpm -r --if-present test",
     "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
     "bench:sim": "pnpm --filter @warehouse-one/simulation bench",
+    "bench:twin": "pnpm --filter @warehouse-one/twin bench",
     "schemas:generate": "pnpm --filter @warehouse-one/contracts generate:schemas",
-    "fixtures:generate": "pnpm --filter @warehouse-one/simulation generate:fixtures",
+    "fixtures:generate": "pnpm --filter @warehouse-one/simulation generate:fixtures && pnpm --filter @warehouse-one/twin generate:fixtures",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "bench:render": "tsx tests/performance/render-benchmark.ts",
     "capture:bookmarks": "tsx tests/performance/capture-bookmarks.ts",
     "capture:operations": "tsx tests/performance/capture-operations.ts",
     "capture:network": "tsx tests/performance/capture-network.ts",
     "sim:record": "pnpm --filter @warehouse-one/recorder record",
-    "sim:verify": "pnpm --filter @warehouse-one/recorder verify"
+    "sim:verify": "pnpm --filter @warehouse-one/recorder verify",
+    "twin:verify": "pnpm --filter @warehouse-one/twin verify"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

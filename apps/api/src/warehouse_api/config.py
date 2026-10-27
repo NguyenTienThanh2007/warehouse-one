@@ -2,8 +2,9 @@
 
 from enum import StrEnum
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import Field, PostgresDsn
+from pydantic import Field, PostgresDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Any loopback web origin, on any port: localhost, 127.0.0.1 or [::1].
@@ -40,6 +41,19 @@ class Settings(BaseSettings):
     # DAG publishes every 30 minutes), and a pipeline heartbeat older than this is unhealthy.
     analytics_stale_after_s: int = Field(default=2 * 3600, ge=60)
     analytics_heartbeat_max_age_s: int = Field(default=120, ge=10)
+    # Digital twin proposals (Phase 6): a proposal can be approved or executed only while the live
+    # run is within this many simulated ticks of the state it was computed from (100 ms ticks).
+    twin_max_age_ticks: int = Field(default=18_000, ge=600, le=360_000)
+    # AI explanations (Phase 6, server-side only). "none" keeps the deterministic optimiser fully
+    # usable and reports the AI as not configured; the key is never logged or returned.
+    ai_provider: Literal["none", "anthropic"] = "none"
+    ai_api_key: SecretStr | None = None
+    ai_model: str = "claude-opus-5-5"
+    ai_effort: Literal["low", "medium", "high"] = "medium"
+    ai_timeout_s: float = Field(default=30.0, gt=0, le=120)
+    ai_max_output_tokens: int = Field(default=4096, ge=256, le=16_000)
+    # Bounds cost: explanations requested per proposal, successful or not.
+    ai_max_explanations_per_proposal: int = Field(default=5, ge=1, le=50)
 
     @property
     def cors_origin_regex(self) -> str | None:

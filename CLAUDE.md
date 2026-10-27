@@ -5,9 +5,9 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
 
 ## Current state
 
-- **Active phase:** 4 (Operations analytics) on `feature/p4-analytics-refresh`. Phases 0–3 and 5 are
-  merged (PR #7), plus the top-bar modes fix (PR #8).
-- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_4.md`.
+- **Active phase:** 6 (AI and digital twin, first slice: fleet standby) on
+  `feature/p6-ai-digital-twin`. Phases 0–5 are merged (Phase 4: PR #9, connection fix PR #10).
+- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_6.md`.
 
 ## Architecture (one screen)
 
@@ -21,6 +21,12 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
 - Analytics (Phase 4, DEC-036–038): gold → `warehouse-pipeline publish-analytics` (only after a
   passed reconciliation) → `analytics.*` snapshots → `GET /api/v1/analytics/*` → Analytics mode.
   Business time is simulated; publication and health times are wall clock. Never mix them.
+- Digital twin (Phase 6, DEC-039–041): `packages/twin` runs what-if trajectories with the engine's
+  `step()` from a frozen `Snapshot` (never the live runner) and the `fleet-standby` optimiser. The
+  API (`/api/v1/twin`, `twin.*`) never simulates: it re-validates evaluations, owns the proposal
+  lifecycle (approve → execute once → applied/failed, append-only audit) and optional AI
+  explanations, which may only explain stored figures. Execution = `linehaul.set_standby` commands
+  through the live runner. AI mode: `apps/web/src/components/twin`, `lib/twin`.
 - `packages/contracts`: Zod schemas for commands and events → `data/schemas/*.json` (generated).
 - `apps/web`: Next.js 16 + R3F. Zustand is a *read-only projection* of the runner. Rendering never writes state.
   `src/world/derive.ts` maps config + state to instances (pure, tested); `components/world/*` draws them.
@@ -37,6 +43,7 @@ pnpm test:e2e                                # Playwright, needs `pnpm --filter 
 cd apps/api && uv run ruff check . && uv run mypy && uv run pytest [-m integration]
 docker compose up -d --build --wait          # postgres + migrate + api
 pnpm schemas:generate / pnpm fixtures:generate / pnpm bench:sim / pnpm bench:render / pnpm capture:bookmarks
+pnpm bench:twin / pnpm twin:verify --api <url> --proposal <uuid>
 ```
 
 ## Invariants (tested; never weaken a test to make it pass)
@@ -51,6 +58,8 @@ pnpm schemas:generate / pnpm fixtures:generate / pnpm bench:sim / pnpm bench:ren
 8. Snapshots load only if version, hash and invariants check out.
 9. Network: stock never negative, allocations within stock, capacity counts incoming, a truck only
    leaves with a reserved stand, pallets are conserved across sites, trailers and the DC.
+10. Twin: an evaluation never changes its input or the live run; same snapshot + options + strategy
+    version ⇒ identical evaluation; no proposal executes without approval, twice, or when stale.
 
 ## Conventions
 

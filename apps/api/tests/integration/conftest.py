@@ -51,6 +51,7 @@ def truncate(eng: Engine) -> None:
         [f"operations.{t}" for t in OPS_TABLES]
         + [f"pipeline.{t}" for t in PIPE_TABLES]
         + ["analytics.snapshots"]  # its rows cascade to every other analytics table
+        + ["twin.proposals"]  # cascades to the audit trail and explanations
     )
     with eng.begin() as conn:
         conn.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))

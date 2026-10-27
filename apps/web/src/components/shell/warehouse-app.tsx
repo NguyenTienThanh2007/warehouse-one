@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard";
+import { AiWorkspace } from "@/components/twin/ai-workspace";
 import { CameraToolbar } from "@/components/panels/camera-toolbar";
 import { InspectorPanel } from "@/components/panels/inspector-panel";
 import { KpiBar } from "@/components/panels/kpi-bar";
@@ -114,6 +115,16 @@ export function WarehouseApp() {
         >
           <TopBar />
           <AnalyticsDashboard />
+        </div>
+      ) : mode === "ai" ? (
+        // The AI workspace covers the 3D view too; the live simulation keeps running underneath
+        // (its state is the operational context and what an approved proposal is applied to).
+        <div
+          className="absolute inset-0 flex flex-col gap-3 overflow-y-auto bg-ink-950 p-3 sm:p-4"
+          data-testid="ai-view"
+        >
+          <TopBar />
+          <AiWorkspace />
         </div>
       ) : (
         <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-3 sm:gap-3 sm:p-4">

@@ -5,7 +5,7 @@ import type {
   SimulationCommand,
 } from "@warehouse-one/contracts";
 import type { TickDraft } from "./draft";
-import { planTransfer } from "./network/system";
+import { planTransfer, setStandby } from "./network/system";
 import { applyOpsCommand } from "./ops/commands";
 import type { RejectionCode } from "./types";
 
@@ -121,6 +121,11 @@ export function applyCommand(d: TickDraft, command: SimulationCommand): HandlerR
       correlation_id: command.command_id,
     });
     return r.ok ? OK : r;
+  }
+  if (command.type === "linehaul.set_standby") {
+    if (!d.net)
+      return reject("NETWORK_DISABLED", "this scenario has a single site and no line-haul fleet");
+    return setStandby(d.net, command.payload);
   }
   // Facilities with operations track every pallet; the Phase 0 path below stays unchanged.
   if (d.ops) return applyOpsCommand(d.ops, command, trace);

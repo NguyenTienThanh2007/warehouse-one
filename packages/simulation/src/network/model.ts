@@ -212,6 +212,12 @@ export interface LinehaulState {
   readonly odometer_mm: number;
   readonly service_odometer_mm: number;
   readonly status_since_tick: number;
+  /**
+   * Site where the truck waits on a staging stall while idle (`linehaul.set_standby`). Absent:
+   * it returns to its home stall at the depot. Absent unless set, so runs that never use it keep
+   * their state shape and hashes.
+   */
+  readonly standby_site?: string;
 }
 
 export interface SiteState {

@@ -65,4 +65,5 @@ export { roadGraph, edgeKey, type RoadGraph } from "./network/roads";
 export { networkIndex, type NetworkIndex } from "./network/draft";
 export { linehaulPose, LANE_OFFSET } from "./network/pose";
 export { isIdle } from "./network/system";
+export { standbyCapacity, standbyProblem, standbySites } from "./network/standby";
 export { buildLogisticsPark, PARK_SITES } from "./scenarios/network";

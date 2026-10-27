@@ -81,6 +81,16 @@ export const RequestTransferCommand = CommandBase.extend({
     }),
 });
 
+/**
+ * Phase 6: where a line-haul truck waits while it has no work. `site_id` names a site with staging
+ * stalls (the truck waits on one of them); null sends it back to its home stall at the fleet
+ * depot. The engine keeps one staging stall per site free for arriving trucks.
+ */
+export const SetStandbyCommand = CommandBase.extend({
+  type: z.literal("linehaul.set_standby"),
+  payload: z.object({ vehicle_id: EntityId, site_id: EntityId.nullable() }),
+});
+
 export const SimulationCommand = z.discriminatedUnion("type", [
   ReceiveInventoryCommand,
   MoveInventoryCommand,
@@ -90,6 +100,7 @@ export const SimulationCommand = z.discriminatedUnion("type", [
   CancelOrderCommand,
   RelocatePalletCommand,
   RequestTransferCommand,
+  SetStandbyCommand,
 ]);
 
 export type ReceiveInventoryCommand = z.infer<typeof ReceiveInventoryCommand>;
@@ -100,6 +111,7 @@ export type CreateOrderCommand = z.infer<typeof CreateOrderCommand>;
 export type CancelOrderCommand = z.infer<typeof CancelOrderCommand>;
 export type RelocatePalletCommand = z.infer<typeof RelocatePalletCommand>;
 export type RequestTransferCommand = z.infer<typeof RequestTransferCommand>;
+export type SetStandbyCommand = z.infer<typeof SetStandbyCommand>;
 export type SimulationCommand = z.infer<typeof SimulationCommand>;
 export type SimulationCommandType = SimulationCommand["type"];
 

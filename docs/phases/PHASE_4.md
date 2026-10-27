@@ -2,8 +2,8 @@
 
 **Branch:** `feature/p4-analytics-refresh` · **Base:** `main` @ `9459fd5` (Phases 0–3 and 5 merged,
 navigation fix PR #8 merged; `main` CI run 39717397640: 5/5 jobs green)
-**Status:** IN REVIEW (pull request to `main`; not merged). CI results are recorded in §8 once the
-pull request has run.
+**Status:** MERGED into `main` as `5490c54` (PR #9, 2026-10-23). Follow-up PR #10 (`b2ccfdc`,
+2026-10-25) fixed the local API connection and the dashboard's error states.
 
 PR #6 (closed, unmerged) proposed a Phase 4 scope in prose; nothing from its branch is used.
 This phase was built from what the code supports.
@@ -129,7 +129,9 @@ in use, about 2.1 of Docker's 3.8 GiB). It was not touched. Checks ran against t
 
 ## 8. CI
 
-To be recorded from the pull request's run.
+- PR #9 head `1e51b3a`: run 39970515214, 5/5 jobs green.
+- `main` after the merge (`5490c54`): run 39974491437, 5/5 jobs green.
+- Follow-up PR #10 merged as `b2ccfdc`: `main` run 40189008788, 5/5 jobs green.
 
 ## 9. Limitations
 

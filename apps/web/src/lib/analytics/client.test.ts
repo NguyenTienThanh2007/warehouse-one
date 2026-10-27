@@ -97,6 +97,7 @@ describe("analytics client failures", () => {
       status: 404,
       code: "NO_SNAPSHOT",
       message: "nothing yet",
+      details: {},
     });
     expect(calls).toHaveLength(1);
   });

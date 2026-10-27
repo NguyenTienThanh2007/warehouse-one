@@ -71,6 +71,9 @@ importers:
       '@warehouse-one/simulation':
         specifier: workspace:*
         version: link:../../packages/simulation
+      '@warehouse-one/twin':
+        specifier: workspace:*
+        version: link:../../packages/twin
       geist:
         specifier: 1.7.2
         version: 1.7.2(next@16.3.8(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.63.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
@@ -149,6 +152,25 @@ importers:
       '@warehouse-one/contracts':
         specifier: workspace:*
         version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@24.19.1)(vite@8.3.4(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+
+  packages/twin:
+    dependencies:
+      '@warehouse-one/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@warehouse-one/simulation':
+        specifier: workspace:*
+        version: link:../simulation
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       tsx:
         specifier: 4.23.15

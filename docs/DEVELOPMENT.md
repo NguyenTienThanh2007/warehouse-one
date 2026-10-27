@@ -102,14 +102,32 @@ Override ports with `API_PORT`, `KAFKA_PORT`, `MINIO_PORT`, `MINIO_CONSOLE_PORT`
 | Lint / format | `pnpm lint`, `pnpm format` |
 | Browser e2e | `pnpm --filter @warehouse-one/web build && pnpm test:e2e` (`WEB_PORT=3100` by default) |
 | API checks | `cd apps/api && uv sync --all-extras && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest` |
-| API integration (PostgreSQL) | `cd apps/api && WAREHOUSE_DATABASE_URL=postgresql+psycopg://warehouse:warehouse_dev@localhost:5432/warehouse_one uv run pytest -m "integration and not kafka"` (truncates the operations and pipeline tables) |
+| API integration (PostgreSQL) | `cd apps/api && WAREHOUSE_DATABASE_URL=postgresql+psycopg://warehouse:warehouse_dev@localhost:5432/warehouse_one uv run pytest -m "integration and not kafka"` (truncates the operations, pipeline, analytics and twin tables) |
 | Migrations | `cd apps/api && uv run alembic upgrade head` |
 | Regenerate JSON Schemas | `pnpm schemas:generate` (required after changing `packages/contracts`) |
 | Regenerate golden fixture | `pnpm fixtures:generate` (only for an *intended* engine behaviour change; explain why in the commit) |
-| Benchmarks | `pnpm bench:sim`, `pnpm bench:render` (see `docs/architecture/PERFORMANCE.md`) |
+| Benchmarks | `pnpm bench:sim`, `pnpm bench:render` (see `docs/architecture/PERFORMANCE.md`), `pnpm bench:twin` (optimiser, fixed start points; `-- --warm 6000 --horizon 18000 --budget 8`) |
+| Re-run a stored proposal | `pnpm twin:verify --api http://localhost:8010 --proposal <uuid>` (exits 1 on any differing figure) |
 | Visual bookmarks | `pnpm capture:bookmarks` (needs `next start -p 3100`) → `docs/phases/evidence/phase-1/` |
 | Multi-site captures | `pnpm capture:network` (needs `next start -p 3100`) → `docs/phases/evidence/phase-5/` |
 | Scenario / quality | open `/?scenario=bench-1000&quality=low` (scenarios: network (default), showcase, empty, bench-100/300/1000) |
+
+## Digital twin and AI (Phase 6)
+
+- **AI mode:** `/?mode=ai` (or the AI tab). It needs the logistics park (the default scenario) and
+  the API with migration `0004_twin` (`docker compose up -d --build --wait` rebuilds and migrates);
+  an older API image is reported as "has no route … built before Phase 6".
+- **Evaluations run in the browser** on a frozen snapshot of the live run, in 400-tick slices; a
+  30-minute horizon with the default budget (8 simulations) takes about 10–15 s on an Apple M2.
+  `pnpm bench:twin` runs the same optimiser headless.
+- **AI explanations (optional):** set `WAREHOUSE_AI_PROVIDER=anthropic` and
+  `WAREHOUSE_AI_API_KEY` for the API (server-side only; never a `NEXT_PUBLIC_*` variable), then
+  `docker compose up -d api`. `WAREHOUSE_AI_MODEL` defaults to `claude-opus-5-5`. Without a key the
+  optimiser, comparisons, approvals and execution all work and the workspace says AI is not
+  configured. Tests never call a provider (fakes only).
+- **Proposal lifecycle and its rules:** `docs/phases/PHASE_6.md` §2.3 and DEC-040. The
+  integration tests truncate `twin.proposals` like the other tables: point them only at a
+  throwaway database.
 
 ## Conventions
 

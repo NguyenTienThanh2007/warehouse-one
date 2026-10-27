@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from warehouse_api import __version__
-from warehouse_api.api import analytics, health, simulations
+from warehouse_api.api import analytics, health, simulations, twin
 from warehouse_api.api.errors import install_error_handlers
 from warehouse_api.config import Settings, get_settings
 from warehouse_api.logging import configure_logging, request_id_var
@@ -88,6 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(simulations.router)
     app.include_router(analytics.router)
+    app.include_router(twin.router)
     return app
 
 

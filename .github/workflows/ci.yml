@@ -152,13 +152,14 @@ jobs:
       - name: End-to-end smoke test
         run: scripts/data-platform-smoke.sh
       # 4. The browser records a run to the API and the stored run replays identically; then the
-      #    Analytics mode shows exactly what the real API published (Phase 4).
-      - name: Browser recording and analytics against the API
+      #    Analytics mode shows exactly what the real API published (Phase 4), and an AI-mode
+      #    proposal is validated, approved and applied against the real twin API (Phase 6).
+      - name: Browser recording, analytics and AI mode against the API
         run: |
           NEXT_PUBLIC_API_URL=http://localhost:8000 pnpm --filter @warehouse-one/web build
           pnpm exec playwright install --with-deps chromium
           RECORDING_API_URL=http://localhost:8000 ANALYTICS_API_URL=http://localhost:8000 \
-            pnpm test:e2e recording analytics-live
+            TWIN_API_URL=http://localhost:8000 pnpm test:e2e recording analytics-live ai-live
       - if: failure()
         run: docker compose --profile data ps -a && docker compose --profile data logs --no-color --tail 300
       - if: always()

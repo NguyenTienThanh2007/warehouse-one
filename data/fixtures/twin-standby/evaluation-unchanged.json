@@ -1,0 +1,362 @@
+{
+  "evaluation_id": "6d903dae-eaf4-84d3-8bd8-b8d07e61cd15",
+  "kind": "what_if",
+  "strategy": {
+    "id": "fleet-standby",
+    "version": "1.0.0"
+  },
+  "source": {
+    "simulation_id": "599f01c8-ea2c-84b5-b6a3-523f86495f39",
+    "tick": 6000,
+    "sim_time_ms": 600000,
+    "simulated_at": "2026-01-05T06:10:00.000Z",
+    "state_hash": "1ab6d30651537dd3649067c3aea3a85c",
+    "config_hash": "1a384a112efbf9d38ccf09cad7bf0033",
+    "fleet_fingerprint": "0c006744a1f4031c86e20c29d8c339c0",
+    "engine_version": "0.1.0"
+  },
+  "options": {
+    "horizon_ticks": 3000,
+    "max_evaluations": 2,
+    "min_improvement_pct": 5,
+    "min_improvement_s": 2,
+    "service_floor_pct": 95
+  },
+  "objective": {
+    "metric": "pickup_wait_s",
+    "direction": "minimize"
+  },
+  "demand": [
+    {
+      "site_id": "northgate-dc",
+      "site_name": "Northgate distribution centre",
+      "transfers_per_hour": 10,
+      "backlog": 0,
+      "standby_capacity": 5
+    },
+    {
+      "site_id": "harbour-terminal",
+      "site_name": "Harbour container terminal",
+      "transfers_per_hour": 45,
+      "backlog": 0,
+      "standby_capacity": 3
+    },
+    {
+      "site_id": "riverside-xd",
+      "site_name": "Riverside cross-dock",
+      "transfers_per_hour": 40,
+      "backlog": 0,
+      "standby_capacity": 3
+    },
+    {
+      "site_id": "fleet-depot",
+      "site_name": "Fleet depot & workshop",
+      "transfers_per_hour": 0,
+      "backlog": 0,
+      "standby_capacity": 0
+    },
+    {
+      "site_id": "east-gateway",
+      "site_name": "East highway gateway",
+      "transfers_per_hour": 0,
+      "backlog": 0,
+      "standby_capacity": 0
+    }
+  ],
+  "baseline": {
+    "plan": {
+      "assignments": [
+        {
+          "vehicle_id": "lh-01",
+          "site_id": null
+        },
+        {
+          "vehicle_id": "lh-02",
+          "site_id": null
+        },
+        {
+          "vehicle_id": "lh-03",
+          "site_id": null
+        },
+        {
+          "vehicle_id": "lh-04",
+          "site_id": null
+        },
+        {
+          "vehicle_id": "lh-05",
+          "site_id": null
+        },
+        {
+          "vehicle_id": "lh-06",
+          "site_id": null
+        }
+      ]
+    },
+    "metrics": {
+      "pickup_wait_s": 60.2,
+      "pickup_wait_p90_s": 88,
+      "empty_km": 3.191,
+      "loaded_km": 2.164,
+      "transfers_planned": 8,
+      "pallets_planned": 71,
+      "transfers_delivered": 6,
+      "pallets_delivered": 49,
+      "transfers_cancelled": 0,
+      "transfers_waiting_end": 3,
+      "lead_time_s": 144
+    },
+    "constraints": [
+      {
+        "id": "engine_invariants",
+        "label": "Engine invariants hold for the whole horizon",
+        "stage": "simulation",
+        "satisfied": true,
+        "detail": "no violation"
+      }
+    ],
+    "end_state_hash": "37022e5774396d4a05656f2660c083dc"
+  },
+  "candidates": [
+    {
+      "candidate_id": "c1",
+      "label": "Unchanged",
+      "origin": "user",
+      "plan": {
+        "assignments": [
+          {
+            "vehicle_id": "lh-01",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-02",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-03",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-04",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-05",
+            "site_id": null
+          },
+          {
+            "vehicle_id": "lh-06",
+            "site_id": null
+          }
+        ]
+      },
+      "changes": [],
+      "constraints": [
+        {
+          "id": "fleet_coverage",
+          "label": "Every truck of the fleet exactly once",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "6 trucks"
+        },
+        {
+          "id": "site_eligibility",
+          "label": "Standby only at sites with staging stalls",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "terminal, cross-dock and DC only"
+        },
+        {
+          "id": "stall_capacity",
+          "label": "Standby trucks fit, with one staging stall left free per site",
+          "stage": "plan",
+          "satisfied": true,
+          "detail": "within capacity"
+        },
+        {
+          "id": "commands_accepted",
+          "label": "The engine accepts every standby command",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "all accepted"
+        },
+        {
+          "id": "engine_invariants",
+          "label": "Engine invariants hold for the whole horizon",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "no violation"
+        },
+        {
+          "id": "service_level",
+          "label": "Delivers at least 95 % of the baseline's pallets",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "49 pallets delivered, floor 47"
+        },
+        {
+          "id": "no_extra_cancellations",
+          "label": "No more cancelled transfers than the baseline",
+          "stage": "simulation",
+          "satisfied": true,
+          "detail": "0 cancelled, baseline 0"
+        }
+      ],
+      "feasible": true,
+      "metrics": {
+        "pickup_wait_s": 60.2,
+        "pickup_wait_p90_s": 88,
+        "empty_km": 3.191,
+        "loaded_km": 2.164,
+        "transfers_planned": 8,
+        "pallets_planned": 71,
+        "transfers_delivered": 6,
+        "pallets_delivered": 49,
+        "transfers_cancelled": 0,
+        "transfers_waiting_end": 3,
+        "lead_time_s": 144
+      },
+      "deltas": [
+        {
+          "key": "pickup_wait_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 60.2,
+          "candidate": 60.2,
+          "abs": 0,
+          "pct": 0,
+          "improved": false
+        },
+        {
+          "key": "pickup_wait_p90_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 88,
+          "candidate": 88,
+          "abs": 0,
+          "pct": 0,
+          "improved": false
+        },
+        {
+          "key": "empty_km",
+          "unit": "km",
+          "better": "lower",
+          "baseline": 3.191,
+          "candidate": 3.191,
+          "abs": 0,
+          "pct": 0,
+          "improved": false
+        },
+        {
+          "key": "loaded_km",
+          "unit": "km",
+          "better": "info",
+          "baseline": 2.164,
+          "candidate": 2.164,
+          "abs": 0,
+          "pct": 0,
+          "improved": null
+        },
+        {
+          "key": "transfers_planned",
+          "unit": "transfers",
+          "better": "info",
+          "baseline": 8,
+          "candidate": 8,
+          "abs": 0,
+          "pct": 0,
+          "improved": null
+        },
+        {
+          "key": "pallets_planned",
+          "unit": "pallets",
+          "better": "info",
+          "baseline": 71,
+          "candidate": 71,
+          "abs": 0,
+          "pct": 0,
+          "improved": null
+        },
+        {
+          "key": "transfers_delivered",
+          "unit": "transfers",
+          "better": "higher",
+          "baseline": 6,
+          "candidate": 6,
+          "abs": 0,
+          "pct": 0,
+          "improved": false
+        },
+        {
+          "key": "pallets_delivered",
+          "unit": "pallets",
+          "better": "higher",
+          "baseline": 49,
+          "candidate": 49,
+          "abs": 0,
+          "pct": 0,
+          "improved": false
+        },
+        {
+          "key": "transfers_cancelled",
+          "unit": "transfers",
+          "better": "lower",
+          "baseline": 0,
+          "candidate": 0,
+          "abs": 0,
+          "pct": null,
+          "improved": false
+        },
+        {
+          "key": "transfers_waiting_end",
+          "unit": "transfers",
+          "better": "lower",
+          "baseline": 3,
+          "candidate": 3,
+          "abs": 0,
+          "pct": 0,
+          "improved": false
+        },
+        {
+          "key": "lead_time_s",
+          "unit": "s",
+          "better": "lower",
+          "baseline": 144,
+          "candidate": 144,
+          "abs": 0,
+          "pct": 0,
+          "improved": false
+        }
+      ],
+      "verdict": "no_better",
+      "rank": 1,
+      "reasons": [
+        "Mean pickup wait is not lower than the baseline's (0 s)."
+      ],
+      "end_state_hash": "37022e5774396d4a05656f2660c083dc"
+    }
+  ],
+  "recommendation": null,
+  "no_recommendation_reason": "No plan beat the current one by at least 5 % and 2 s of mean pickup wait. Best evaluated: Unchanged (Mean pickup wait is not lower than the baseline's (0 s).)",
+  "assumptions": [
+    "The network runs as configured for the next 5 simulated minutes: lanes keep their schedules, and no operator transfers or other commands are added.",
+    "Baseline and candidates start from the same frozen snapshot and are run by the simulation engine itself; the plan is applied with the same linehaul.set_standby commands that approval would submit.",
+    "Each plan is one deterministic trajectory. A plan is recommended only if it beats the baseline by at least 5 % and 2 s, to stay clear of run-to-run noise.",
+    "Standby trucks occupy staging stalls; the engine always keeps one stall per site free for arriving trucks.",
+    "The search is heuristic (demand-proportional plans and single-truck moves within a fixed budget): the recommendation is the best plan evaluated, not a proven optimum."
+  ],
+  "risks": [
+    "Predictions, not measurements: the figures are simulated forward from the snapshot and will differ from what happens if conditions change.",
+    "Waits still open at the end of the horizon are counted until the end, so long waits are under-stated equally for every plan.",
+    "Only 8 transfers fall in the horizon: few samples make the comparison uncertain; a longer horizon helps."
+  ],
+  "search": {
+    "simulations": 2,
+    "budget": 2,
+    "plans_considered": 2,
+    "exhausted_budget": true
+  },
+  "runtime": {
+    "elapsed_ms": 0,
+    "ticks_simulated": 6000
+  }
+}

@@ -138,8 +138,11 @@ position = slot{location_id, slot} | staging{dock_id, position} | equipment{equi
 Commands are *requests* that may be rejected. Each is validated at the trust boundary
 (`parseCommand`, never throws) and again inside `step()`. Commands: `inventory.receive`,
 `inventory.move`, `inventory.adjust`, `truck.schedule_inbound`, `order.create`, `order.cancel`,
-`pallet.relocate`, and (Phase 5) `transfer.request` `{ from_site_id, to_site_id, lines }`. Rejections are returned to the caller and are not domain events. Only facts
-become events.
+`pallet.relocate`, (Phase 5) `transfer.request` `{ from_site_id, to_site_id, lines }`, and
+(Phase 6) `linehaul.set_standby` `{ vehicle_id, site_id | null }` (where an idle line-haul truck
+waits; rejected with `UNKNOWN_VEHICLE`, `UNKNOWN_SITE`, `INVALID_STANDBY` or `NETWORK_DISABLED`; it
+changes state but emits no event, the truck's moves do). Rejections are returned to the caller and
+are not domain events. Only facts become events.
 
 A run's **command log** (`{tick, command}` in application order, including rejected commands,
 because they were inputs) is stored by the API and is the replay input. Its Python mirror

@@ -107,7 +107,7 @@ interface SimulationActions {
    * Queue an operator command for the next tick, through the same validated command path as every
    * other input. Schema errors are rejected immediately; business rules are checked by the engine.
    */
-  submitCommand(input: CommandInput): CommandRecord;
+  submitCommand(input: CommandInput, commandId?: string): CommandRecord;
   /**
    * Turn recording on or off. Turning it on restarts the current scenario as a new run with a
    * fresh simulation_id (so its event IDs are unique) and streams it to the API from tick 1.
@@ -212,6 +212,57 @@ function project(
     prevState: previous,
     stateHash: stateHash(r.config, r.state),
   };
+}
+
+/** What the engine did with one command. */
+export interface CommandOutcome {
+  readonly command_id: string;
+  readonly accepted: boolean;
+  readonly tick: number;
+  readonly code?: RejectionCode;
+  readonly message?: string;
+}
+
+/**
+ * Resolve once the engine has applied or rejected every command (on the next tick it runs), from
+ * the authoritative command log and that tick's rejections. Rejects after `timeoutMs` without
+ * ticks (paused run) or if the scenario is replaced meanwhile.
+ */
+export function commandOutcomes(
+  ids: readonly string[],
+  timeoutMs = 10_000,
+): Promise<CommandOutcome[]> {
+  const r = runner;
+  return new Promise((resolve, reject) => {
+    const left = new Set(ids);
+    const out = new Map<string, CommandOutcome>();
+    const timer = setTimeout(() => {
+      stop();
+      reject(new Error(`the simulation did not apply ${left.size} command(s) in time`));
+    }, timeoutMs);
+    const stop = r.subscribe((result) => {
+      const tick = result.state.tick;
+      const rejected = new Map(result.rejections.map((x) => [x.command_id, x]));
+      const log = r.commandLog;
+      for (let i = log.length - 1; i >= 0 && log[i]?.tick === tick; i--) {
+        const id = log[i]?.command.command_id as string;
+        if (!left.has(id)) continue;
+        const x = rejected.get(id);
+        out.set(
+          id,
+          x
+            ? { command_id: id, accepted: false, tick, code: x.code, message: x.message }
+            : { command_id: id, accepted: true, tick },
+        );
+        left.delete(id);
+      }
+      if (left.size === 0) {
+        clearTimeout(timer);
+        stop();
+        resolve(ids.map((id) => out.get(id) as CommandOutcome));
+      }
+    });
+  });
 }
 
 /** The authoritative, replayable command log of the current run (read-only). */
@@ -374,8 +425,9 @@ export const useSimulation = create<SimulationView & SimulationActions>()((set, 
         set({ recording: stopRecorder() });
       }
     },
-    submitCommand(input) {
-      const command_id = `ui-${String(++commandSeq).padStart(4, "0")}`;
+    submitCommand(input, commandId) {
+      // An approved proposal keeps the server-issued id, so the engine's log matches its audit.
+      const command_id = commandId ?? `ui-${String(++commandSeq).padStart(4, "0")}`;
       const result = runner.submit({ command_id, type: input.type, payload: input.payload });
       const base = {
         command_id,
@@ -421,6 +473,10 @@ export function summarizeCommand(c: CommandInput): string {
       return `Move ${c.payload.quantity} × ${c.payload.sku} ${c.payload.from_location_id} → ${c.payload.to_location_id}`;
     case "inventory.adjust":
       return `Adjust ${c.payload.delta} ${c.payload.sku} @ ${c.payload.location_id}`;
+    case "linehaul.set_standby":
+      return c.payload.site_id
+        ? `Stand by ${c.payload.vehicle_id} at ${c.payload.site_id}`
+        : `Send ${c.payload.vehicle_id} home when idle`;
   }
 }
 
@@ -449,6 +505,9 @@ export const REJECTION_EXPLANATION: Record<RejectionCode, string> = {
   UNKNOWN_SITE: "That site is not part of this logistics network.",
   INVALID_TRANSFER:
     "Pallets can only leave the terminal, the cross-dock or the DC, and cannot be sent to the fleet depot.",
+  UNKNOWN_VEHICLE: "That line-haul truck is not part of this fleet.",
+  INVALID_STANDBY:
+    "Trucks can only stand by on staging stalls at the terminal, the cross-dock or the DC, and one stall per site always stays free for arriving trucks.",
 };
 
 /** Format simulated time as the warehouse wall clock (epoch + elapsed), in UTC. */
