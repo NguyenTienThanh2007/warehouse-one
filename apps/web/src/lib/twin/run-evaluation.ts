@@ -1,11 +1,16 @@
+import type { Snapshot } from "@warehouse-one/simulation";
 import {
   compareStandbyPlans,
+  evaluateRobustness,
   inlineExecutor,
   optimizeStandby,
   TwinError,
   type Evaluation,
   type EvaluateHooks,
   type Progress,
+  type RobustnessEvaluation,
+  type RobustnessOptions,
+  type RobustnessProgress,
   type TwinErrorCode,
 } from "@warehouse-one/twin";
 import type { EvaluationRequest } from "./protocol";
@@ -101,6 +106,50 @@ export async function runEvaluation(
     });
     return {
       evaluation,
+      mode,
+      workers: mode === "worker" ? executor.parallelism : 0,
+      elapsedMs: Math.round(performance.now() - started),
+    };
+  } catch (e) {
+    throw toFailure(e);
+  }
+}
+
+export interface RobustnessRun {
+  readonly robustness: RobustnessEvaluation;
+  readonly mode: ExecutionMode;
+  readonly workers: number;
+  readonly elapsedMs: number;
+}
+
+/**
+ * Evaluate one candidate of `discovery` across several seeds (Phase 6.2), on the same pool of
+ * background workers as a single evaluation (one request at a time, at most 16 jobs per batch), or
+ * on the main thread when the operator chose that fallback.
+ */
+export async function runRobustness(
+  snapshot: Snapshot,
+  discovery: Evaluation,
+  candidateId: string,
+  options: Partial<RobustnessOptions>,
+  onProgress: (p: RobustnessProgress) => void,
+  signal: AbortSignal,
+  mode: ExecutionMode = "worker",
+): Promise<RobustnessRun> {
+  if (mode === "worker" && typeof Worker === "undefined")
+    throw new EvaluationFailed("WORKER_UNAVAILABLE", "This browser cannot run background workers.");
+  const executor = mode === "worker" ? workerPool() : inlineExecutor;
+  const started = performance.now();
+  try {
+    const robustness = await evaluateRobustness(snapshot, discovery, candidateId, options, {
+      onProgress,
+      signal,
+      now: () => performance.now(),
+      executor,
+      yieldEvery: mode === "worker" ? undefined : SLICE_TICKS,
+    });
+    return {
+      robustness,
       mode,
       workers: mode === "worker" ? executor.parallelism : 0,
       elapsedMs: Math.round(performance.now() - started),

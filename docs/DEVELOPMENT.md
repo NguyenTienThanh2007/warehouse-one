@@ -126,6 +126,14 @@ Override ports with `API_PORT`, `KAFKA_PORT`, `MINIO_PORT`, `MINIO_CONSOLE_PORT`
   `pnpm bench:twin-frames` attributes frame time during an evaluation (live run, CPU load,
   progress messages, main thread). Keep the machine awake and otherwise idle while they run: a
   sleep mid-run (laptop lid, battery idle sleep) produces nonsense timings.
+- **Multi-seed validation** (Phase 6.2, DEC-043): after an optimisation, *Robustness across
+  seeds* re-runs the plan in effect and the selected candidate on 5, 20 or 30 seeded futures of
+  the same snapshot and reports paired statistics and a verdict. It is advisory (computed in the
+  browser, not stored) and needs the evaluation's snapshot, so it is not offered for proposals
+  loaded from the API. `pnpm bench:twin -- --robustness` times it headless on the golden fixture;
+  `pnpm bench:twin-robustness` measures it in the browser on the same fixed workload (1–30 seeds,
+  1 or 4 workers, main thread, cancellation; start `next start -p 3100` first, and run it under
+  `caffeinate -i -s` on a laptop).
 - **Troubleshooting the worker:**
   - *"The evaluation worker could not be loaded"*: `public/workers/twin-evaluation.js` is missing
     or stale. Run `pnpm --filter @warehouse-one/web build:worker` (or restart `pnpm dev`, which

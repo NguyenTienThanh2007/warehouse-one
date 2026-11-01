@@ -372,7 +372,7 @@ function neighbours(
 // ---------------------------------------------------------------------------------------------
 // Evaluation
 
-function simulationConstraints(
+export function simulationConstraints(
   t: Trajectory,
   baseline: FleetMetrics,
   o: OptimizeOptions,

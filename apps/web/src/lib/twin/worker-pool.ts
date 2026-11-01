@@ -178,8 +178,9 @@ export class WorkerPool implements TrajectoryExecutor {
           jobId: running.jobId,
           snapshot: {
             config: request.ctx.config as unknown as Record<string, unknown>,
-            state: request.ctx.state as unknown as Record<string, unknown>,
-            state_hash: request.ctx.stateHash,
+            // A job may bring its own start state (one seeded copy per seed, Phase 6.2).
+            state: (job.start?.state ?? request.ctx.state) as unknown as Record<string, unknown>,
+            state_hash: job.start?.stateHash ?? request.ctx.stateHash,
           },
           horizon: request.ctx.horizon,
           commands: [...job.commands],

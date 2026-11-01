@@ -12,6 +12,17 @@ export interface TrajectoryJob {
   /** The `linehaul.set_standby` commands that turn the plan in effect into this plan. */
   readonly commands: readonly SetStandbyCommand[];
   readonly label: string;
+  /**
+   * Start state of this job when it differs from the batch's (Phase 6.2: one seeded copy of the
+   * snapshot per seed). Absent: the context's state.
+   */
+  readonly start?: JobStart;
+}
+
+/** A start state and its snapshot hash (`stateHash(config, state)`), for jobs that bring one. */
+export interface JobStart {
+  readonly state: SimulationState;
+  readonly stateHash: string;
 }
 
 export interface ExecutionContext {
@@ -43,7 +54,7 @@ export const inlineExecutor: TrajectoryExecutor = {
     const out: Trajectory[] = [];
     for (const [i, job] of jobs.entries())
       out.push(
-        await simulate(ctx.config, ctx.state, job.commands, ctx.horizon, {
+        await simulate(ctx.config, job.start?.state ?? ctx.state, job.commands, ctx.horizon, {
           signal: ctx.signal,
           yieldEvery: ctx.yieldEvery,
           onTicks: (n) => ctx.onTicks(i, n),

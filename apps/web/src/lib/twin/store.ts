@@ -5,8 +5,11 @@ import {
   assignCounts,
   currentPlan,
   liveContext,
+  SEED_TIERS,
   type Evaluation,
   type Progress,
+  type RobustnessEvaluation,
+  type RobustnessProgress,
 } from "@warehouse-one/twin";
 import { create } from "zustand";
 import { ApiRequestError, type ApiFailure } from "../api/request";
@@ -19,7 +22,12 @@ import {
   type ProposalSummary,
 } from "./api";
 import type { EvaluationRequest } from "./protocol";
-import { EvaluationFailed, runEvaluation, type ExecutionMode } from "./run-evaluation";
+import {
+  EvaluationFailed,
+  runEvaluation,
+  runRobustness,
+  type ExecutionMode,
+} from "./run-evaluation";
 
 /**
  * State of the AI workspace (Phase 6). Evaluations run in a worker on a frozen snapshot; proposals,
@@ -30,6 +38,40 @@ import { EvaluationFailed, runEvaluation, type ExecutionMode } from "./run-evalu
 /** Shortest interval between progress updates shown while an evaluation runs. */
 const PROGRESS_MS = 250;
 
+/**
+ * Workers report progress about 25 times a second; the page shows it at most every PROGRESS_MS
+ * (a new stage at once), because each update re-renders and lays out the progress view.
+ */
+function coalesce<P extends { readonly stage: string }>(publish: (p: P) => void) {
+  let shown: string | null = null;
+  let pending: P | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const show = (p: P) => {
+    shown = p.stage;
+    pending = null;
+    publish(p);
+  };
+  return {
+    push(p: P) {
+      if (p.stage !== shown) {
+        if (timer) clearTimeout(timer);
+        timer = null;
+        show(p);
+        return;
+      }
+      pending = p;
+      timer ??= setTimeout(() => {
+        timer = null;
+        if (pending) show(pending);
+      }, PROGRESS_MS);
+    },
+    stop() {
+      if (timer) clearTimeout(timer);
+      timer = null;
+    },
+  };
+}
+
 export type Operation =
   | "capabilities"
   | "proposals"
@@ -39,7 +81,8 @@ export type Operation =
   | "decide"
   | "execute"
   | "report"
-  | "explain";
+  | "explain"
+  | "robustness";
 
 export type WorkspaceFailure =
   | { readonly kind: "api"; readonly failure: ApiFailure }
@@ -78,11 +121,26 @@ export type EvaluationState =
   | {
       readonly kind: "done";
       readonly result: Evaluation;
-      /** The input, kept until the proposal is stored (null for a proposal loaded from the API). */
+      /** The input, kept for multi-seed validation (null for a proposal loaded from the API). */
       readonly snapshot: Snapshot | null;
       /** How it was computed here; null for a proposal loaded from the API. */
       readonly run: RunInfo | null;
     };
+
+/** Multi-seed validation of one candidate of the evaluation on screen (Phase 6.2). */
+export type RobustnessState =
+  | { readonly kind: "idle" }
+  | {
+      readonly kind: "running";
+      readonly candidateId: string;
+      readonly seeds: number;
+      readonly mode: ExecutionMode;
+      readonly startedAt: number;
+      readonly progress: RobustnessProgress | null;
+    }
+  /** Cancelled: no verdict exists for it. */
+  | { readonly kind: "cancelled"; readonly candidateId: string; readonly seeds: number }
+  | { readonly kind: "done"; readonly result: RobustnessEvaluation; readonly run: RunInfo };
 
 export type Load<T> =
   | { readonly kind: "loading" }
@@ -93,6 +151,9 @@ export interface TwinWorkspace {
   readonly operator: string;
   readonly horizonTicks: number;
   readonly evaluation: EvaluationState;
+  readonly robustness: RobustnessState;
+  /** Seeds for the next multi-seed validation. */
+  readonly seedCount: number;
   readonly proposal: ProposalDetail | null;
   readonly selected: string | null;
   readonly busy: Operation | null;
@@ -113,6 +174,10 @@ export interface TwinWorkspace {
   optimize(): Promise<void>;
   compare(counts: ReadonlyMap<string, number>): Promise<void>;
   cancel(): void;
+  setSeedCount(seeds: number): void;
+  /** Validate the selected candidate across `seedCount` seeds. Advisory: nothing is stored. */
+  validateRobustness(): Promise<void>;
+  cancelRobustness(): void;
   open(proposalId: string): Promise<void>;
   decide(decision: "approve" | "reject", note: string): Promise<void>;
   execute(): Promise<void>;
@@ -137,6 +202,7 @@ function requestedMode(): ExecutionMode {
   }
 }
 let running: AbortController | null = null;
+let validating: AbortController | null = null;
 
 function storedOperator(): string {
   try {
@@ -186,7 +252,7 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
         evaluation: {
           kind: "done",
           result,
-          snapshot: null,
+          snapshot,
           run: ev.kind === "done" ? ev.run : null,
         },
       });
@@ -204,9 +270,13 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
     mode: ExecutionMode = "worker",
   ): Promise<void> => {
     running?.abort();
+    // A validation belongs to the result on screen, which this replaces.
+    validating?.abort();
+    validating = null;
     const ctl = new AbortController();
     running = ctl;
     set({
+      robustness: { kind: "idle" },
       evaluation: {
         kind: "running",
         what: request.kind,
@@ -223,38 +293,14 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
       lastExplanation: null,
       busy: "evaluate",
     });
-    // Workers report progress about 25 times a second; the page shows it at most every
-    // PROGRESS_MS (a new stage at once). Each update re-renders and lays out the progress bar.
-    let shown: Progress | null = null;
-    let pending: Progress | null = null;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const publish = (progress: Progress) => {
+    const progress = coalesce<Progress>((p) => {
       const ev = get().evaluation;
       // Only the current request may update the workspace: a stale one is ignored.
-      if (running === ctl && ev.kind === "running") set({ evaluation: { ...ev, progress } });
-      shown = progress;
-      pending = null;
-    };
+      if (running === ctl && ev.kind === "running") set({ evaluation: { ...ev, progress: p } });
+    });
     try {
-      const run = await runEvaluation(
-        request,
-        (progress) => {
-          if (progress.stage !== shown?.stage) {
-            if (timer) clearTimeout(timer);
-            timer = null;
-            publish(progress);
-            return;
-          }
-          pending = progress;
-          timer ??= setTimeout(() => {
-            timer = null;
-            if (pending) publish(pending);
-          }, PROGRESS_MS);
-        },
-        ctl.signal,
-        mode,
-      );
-      if (timer) clearTimeout(timer);
+      const run = await runEvaluation(request, progress.push, ctl.signal, mode);
+      progress.stop();
       if (running !== ctl) return;
       running = null;
       const result = run.evaluation;
@@ -270,7 +316,7 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
       });
       await save(result, request.snapshot);
     } catch (e) {
-      if (timer) clearTimeout(timer);
+      progress.stop();
       if (running !== ctl) return;
       running = null;
       if (e instanceof EvaluationFailed && e.code === "CANCELLED") {
@@ -295,6 +341,83 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
             },
           });
       }
+    }
+  };
+
+  /** Multi-seed validation of one candidate (Phase 6.2). Advisory: never saved, never approves. */
+  const validate = async (
+    snapshot: Snapshot,
+    discovery: Evaluation,
+    candidateId: string,
+    seeds: number,
+    mode: ExecutionMode,
+  ): Promise<void> => {
+    validating?.abort();
+    const ctl = new AbortController();
+    validating = ctl;
+    set({
+      robustness: {
+        kind: "running",
+        candidateId,
+        seeds,
+        mode,
+        startedAt: performance.now(),
+        progress: null,
+      },
+      failed: null,
+    });
+    const current = () => validating === ctl;
+    const progress = coalesce<RobustnessProgress>((p) => {
+      const r = get().robustness;
+      if (current() && r.kind === "running") set({ robustness: { ...r, progress: p } });
+    });
+    try {
+      const run = await runRobustness(
+        snapshot,
+        discovery,
+        candidateId,
+        { seeds },
+        progress.push,
+        ctl.signal,
+        mode,
+      );
+      progress.stop();
+      if (!current()) return;
+      validating = null;
+      set({
+        robustness: {
+          kind: "done",
+          result: run.robustness,
+          run: { mode: run.mode, workers: run.workers, elapsedMs: run.elapsedMs },
+        },
+      });
+    } catch (e) {
+      progress.stop();
+      if (!current()) return;
+      validating = null;
+      if (e instanceof EvaluationFailed && e.code === "CANCELLED") {
+        set({ robustness: { kind: "cancelled", candidateId, seeds } });
+        return;
+      }
+      // A failure leaves no partial result and no verdict.
+      set({ robustness: { kind: "idle" } });
+      fail("robustness", "The multi-seed validation failed", e, () =>
+        validate(snapshot, discovery, candidateId, seeds, mode),
+      );
+      const workerProblem =
+        e instanceof EvaluationFailed &&
+        ["WORKER_UNAVAILABLE", "WORKER_CRASHED", "WORKER_TIMEOUT"].includes(e.code);
+      const failed = get().failed;
+      if (workerProblem && mode === "worker" && failed)
+        set({
+          failed: {
+            ...failed,
+            alternative: {
+              label: "Run on the main thread instead (slower; the page may stutter)",
+              run: () => validate(snapshot, discovery, candidateId, seeds, "main_thread"),
+            },
+          },
+        });
     }
   };
 
@@ -334,6 +457,8 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
     operator: storedOperator(),
     horizonTicks: 18_000,
     evaluation: { kind: "idle" },
+    robustness: { kind: "idle" },
+    seedCount: SEED_TIERS[1].seeds,
     proposal: null,
     selected: null,
     busy: null,
@@ -408,8 +533,24 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
       running?.abort();
     },
 
+    setSeedCount: (seeds) => set({ seedCount: seeds }),
+
+    validateRobustness() {
+      const ev = get().evaluation;
+      const candidateId = get().selected;
+      if (ev.kind !== "done" || !ev.snapshot || !candidateId) return Promise.resolve();
+      return validate(ev.snapshot, ev.result, candidateId, get().seedCount, requestedMode());
+    },
+
+    cancelRobustness() {
+      validating?.abort();
+    },
+
     async open(proposalId) {
       running?.abort();
+      validating?.abort();
+      validating = null;
+      set({ robustness: { kind: "idle" } });
       set({ busy: "load", failed: null, stale: null, conflict: null, lastExplanation: null });
       try {
         const proposal = await twinApi.get(proposalId);

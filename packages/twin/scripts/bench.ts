@@ -5,6 +5,8 @@
  * `--components` also times snapshot preparation, single trajectories per horizon and full
  * evaluations for the longer horizon and the maximum budget (all inline, one thread: the
  * reference the browser worker pool is compared with).
+ * `--robustness` times multi-seed validation (Phase 6.2) of the golden fixture's recommended plan
+ * for 1, 5, 10, 20 and 30 seeds, inline, and checks that a repeat gives the identical result.
  */
 import {
   createInitialState,
@@ -12,7 +14,15 @@ import {
   createSnapshot,
   step,
 } from "@warehouse-one/simulation";
-import { checkSnapshot, currentPlan, optimizeStandby, simulate } from "../src/index";
+import { readFileSync } from "node:fs";
+import {
+  checkSnapshot,
+  currentPlan,
+  evaluateRobustness,
+  optimizeStandby,
+  simulate,
+  type Evaluation,
+} from "../src/index";
 
 const arg = (name: string, fallback: string) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -90,6 +100,39 @@ if (process.argv.includes("--components")) {
     );
     console.log(
       `  full evaluation, horizon ${h}, budget ${b}: ${(ms / 1000).toFixed(1)} s · ${e.search.simulations} simulations · ${e.recommendation ? "recommendation" : "none"} · plan in effect ${currentPlan(s).assignments.length} trucks`,
+    );
+  }
+}
+
+if (process.argv.includes("--robustness")) {
+  const dir = new URL("../../../data/fixtures/twin-standby/", import.meta.url);
+  const snap = JSON.parse(readFileSync(new URL("snapshot.json", dir), "utf8")) as ReturnType<
+    typeof createSnapshot
+  >;
+  const discovery = JSON.parse(
+    readFileSync(new URL("evaluation-recommended.json", dir), "utf8"),
+  ) as Evaluation;
+  const id = discovery.recommendation?.candidate_id ?? "c1";
+  console.log(
+    `\nrobustness (golden fixture, candidate ${id}, horizon ${discovery.options.horizon_ticks} ticks, root seed "bench", inline)`,
+  );
+  for (const seeds of [1, 5, 10, 20, 30]) {
+    const run = () =>
+      evaluateRobustness(snap, discovery, id, { seeds, root_seed: "bench" }, { yieldEvery: 1e9 });
+    const t = performance.now();
+    const r = await run();
+    const ms = performance.now() - t;
+    const again = await run();
+    const same =
+      JSON.stringify({ ...r, runtime: null }) === JSON.stringify({ ...again, runtime: null });
+    const w = r.metrics.find((m) => m.key === "pickup_wait_s");
+    console.log(
+      `  ${String(seeds).padStart(2)} seeds: ${(ms / 1000).toFixed(1)} s (${(ms / seeds / 1000).toFixed(2)} s/seed) · ${r.verdict} · wait change ${w?.mean_diff ?? "-"} s (${w?.relative_pct ?? "-"} %), 95 % interval ${w?.ci95 ? `${w.ci95.low} … ${w.ci95.high}` : "-"} · better/worse/tied ${w ? `${w.seeds_better}/${w.seeds_worse}/${w.seeds_tied}` : "-"} · failed seeds [${r.per_seed
+        .filter((x) => !x.passed)
+        .map((x) => x.index)
+        .join(
+          ", ",
+        )}] · demand diverged on ${r.workload.diverged_seeds} · repeat identical: ${same}`,
     );
   }
 }

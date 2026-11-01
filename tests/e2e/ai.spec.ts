@@ -616,3 +616,135 @@ test.describe("AI mode: evaluation off the main thread (Phase 6.1)", () => {
     await expect(page.getByTestId("twin-retry")).toBeVisible();
   });
 });
+
+const VERDICTS = [
+  "improved",
+  "improved_below_threshold",
+  "inconclusive",
+  "regressed",
+  "constraint_failure",
+  "insufficient_data",
+];
+
+/** The recommended or first plan of a 15-minute optimisation on a paused (fixed) snapshot. */
+async function pausedResult(page: Page) {
+  await page.locator("body").press("Space");
+  await optimise(page);
+  await expect(page.getByTestId("twin-robustness")).toBeVisible();
+}
+
+test.describe("AI mode: multi-seed robustness validation (Phase 6.2)", () => {
+  test.describe.configure({ timeout: 300_000 });
+
+  test("validate a plan across seeds: progress, paired statistics, a verdict; nothing stored or approved", async ({
+    page,
+  }) => {
+    const fake = await fakeTwin(page);
+    await openAi(page);
+    await pausedResult(page);
+    await expect(page.getByTestId("twin-status")).toHaveText("Awaiting review");
+    const panel = page.getByTestId("twin-robustness");
+    await expect(panel).toContainText("Advisory");
+    await page.getByTestId("twin-seeds").selectOption("5");
+    await expect(page.getByTestId("twin-robustness-cost")).toContainText("10 simulations");
+
+    await page.getByTestId("twin-validate").click();
+    const progress = page.getByTestId("twin-robustness-progress");
+    await expect(progress).toBeVisible();
+    await expect(progress).toHaveAttribute("data-mode", "worker");
+    await expect(page.getByTestId("twin-robustness-count")).toContainText("of 5 seeds done");
+
+    const result = page.getByTestId("twin-robustness-result");
+    await expect(result).toBeVisible({ timeout: 120_000 });
+    const verdict = await result.getAttribute("data-verdict");
+    expect(VERDICTS).toContain(verdict);
+    await expect(page.getByTestId("twin-robustness-verdict")).not.toBeEmpty();
+    // The interval is a real interval of the paired mean change.
+    const ci = page.getByTestId("twin-robustness-ci");
+    const low = Number(await ci.getAttribute("data-low"));
+    const high = Number(await ci.getAttribute("data-high"));
+    expect(Number.isFinite(low) && Number.isFinite(high) && low <= high).toBe(true);
+    await expect(page.getByTestId("twin-robustness-metric")).toHaveCount(11);
+    await expect(
+      page.locator('[data-testid="twin-robustness-metric"][data-key="pickup_wait_s"]'),
+    ).toHaveAttribute("data-evidence", /better|worse|no_evidence/);
+    // Every seed is shown, with its own observations.
+    await page.getByTestId("twin-robustness-seeds").locator("summary").click();
+    await expect(page.getByTestId("twin-robustness-seed")).toHaveCount(5);
+    await page.getByTestId("twin-robustness-method").locator("summary").click();
+    await expect(page.getByTestId("twin-robustness-method")).toContainText("paired-t-95");
+    await expect(page.getByTestId("twin-robustness-seed-info")).toContainText("5 from root seed");
+    await expect(page.getByTestId("twin-robustness-advisory")).toContainText("does not approve");
+    const first = {
+      id: await result.getAttribute("data-robustness-id"),
+      seeds: (await page.getByTestId("twin-robustness-seeds").locator("tbody").textContent()) ?? "",
+    };
+
+    // Reproducible: the same snapshot, plan and seeds give the same observations and id.
+    await page.getByTestId("twin-validate").click();
+    await expect(progress).toBeVisible();
+    await expect(result).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByTestId("twin-robustness-seeds").locator("tbody")).toHaveText(
+      first.seeds,
+    );
+    await expect(result).toHaveAttribute("data-robustness-id", first.id ?? "missing");
+
+    // Advisory only: nothing was sent to the API, and the proposal still awaits a human decision.
+    expect(fake.posts).toEqual(["/proposals"]);
+    await expect(page.getByTestId("twin-status")).toHaveText("Awaiting review");
+    await expect(page.getByTestId("twin-approve")).toBeVisible();
+  });
+
+  test("cancelling a validation leaves no verdict; the live run keeps going", async ({ page }) => {
+    await fakeTwin(page);
+    await openAi(page);
+    await optimise(page);
+    await page.getByTestId("twin-seeds").selectOption("30");
+    const before = await liveTick(page);
+    await page.getByTestId("twin-validate").click();
+    await expect(page.getByTestId("twin-robustness-progress")).toBeVisible();
+    await expect(page.getByTestId("twin-robustness-count")).toContainText("running");
+    await page.waitForTimeout(2_000);
+    await page.getByTestId("twin-validate-cancel").click();
+    await expect(page.getByTestId("twin-robustness-cancelled")).toContainText("no verdict");
+    await page.waitForTimeout(3_000);
+    await expect(page.getByTestId("twin-robustness-result")).toHaveCount(0);
+    expect(await liveTick(page)).toBeGreaterThan(before + 30);
+  });
+
+  test("a worker failure during validation is explicit; the main thread is offered and labelled", async ({
+    page,
+  }) => {
+    await fakeTwin(page);
+    // The optimisation runs on the main thread, so the validation is the first to need a worker.
+    await openAi(page, "?mode=ai&twinExecution=main-thread");
+    await optimise(page);
+    await page.route("**/workers/twin-evaluation.js", (route) => route.fulfill({ status: 404 }));
+    await page.evaluate(() => history.replaceState(null, "", `${location.pathname}?mode=ai`));
+    await page.getByTestId("twin-seeds").selectOption("5");
+    await page.getByTestId("twin-validate").click();
+    const failure = page.getByTestId("twin-failure");
+    await expect(failure).toHaveAttribute("data-kind", "WORKER_UNAVAILABLE", { timeout: 30_000 });
+    await expect(failure).toHaveAttribute("data-op", "robustness");
+    await expect(page.getByTestId("twin-robustness-result")).toHaveCount(0);
+    await page.getByTestId("twin-alternative").click();
+    await expect(page.getByTestId("twin-robustness-result")).toBeVisible({ timeout: 180_000 });
+    await page.getByTestId("twin-robustness-method").locator("summary").click();
+    await expect(page.getByTestId("twin-robustness-method")).toContainText(
+      "Main thread (fallback)",
+    );
+  });
+
+  test("a proposal loaded from the API cannot be validated without its snapshot, and says so", async ({
+    page,
+  }) => {
+    await fakeTwin(page);
+    await openAi(page);
+    await optimise(page);
+    await expect(page.getByTestId("twin-proposal-row")).toHaveCount(1);
+    await page.getByTestId("twin-proposal-row").click();
+    await expect(page.getByTestId("twin-run-facts")).toHaveAttribute("data-mode", "stored");
+    await expect(page.getByTestId("twin-robustness-unavailable")).toBeVisible();
+    await expect(page.getByTestId("twin-validate")).toHaveCount(0);
+  });
+});

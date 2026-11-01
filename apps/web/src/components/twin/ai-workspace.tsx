@@ -6,6 +6,7 @@ import { formatSimClock, useSimulation } from "@/lib/sim/store";
 import { useTwin } from "@/lib/twin/store";
 import { STATUS_LABEL, STATUS_TONE } from "@/lib/twin/view";
 import { EvaluationControls, EvaluationResult } from "./evaluation";
+import { RobustnessPanel } from "./robustness";
 import { Badge, Button, FailureNotice, Panel, Provenance } from "./parts";
 import { ProposalReview } from "./review";
 
@@ -19,8 +20,12 @@ export function AiWorkspace() {
   const simulationId = useSimulation((s) => s.config.simulation_id);
   useEffect(() => {
     void useTwin.getState().loadCapabilities();
-    // Leaving AI mode stops a running evaluation: its workers stop and nothing arrives later.
-    return () => useTwin.getState().cancel();
+    // Leaving AI mode stops a running evaluation or validation: their workers stop and nothing
+    // arrives later.
+    return () => {
+      useTwin.getState().cancel();
+      useTwin.getState().cancelRobustness();
+    };
   }, []);
   useEffect(() => {
     void useTwin.getState().loadProposals();
@@ -130,6 +135,7 @@ function Workspace() {
               evaluation={result}
               run={evaluation.kind === "done" ? evaluation.run : null}
             />
+            <RobustnessPanel />
             {proposal ? (
               <ProposalReview proposal={proposal} />
             ) : busy === "save" ? (
