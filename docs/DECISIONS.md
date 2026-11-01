@@ -335,3 +335,36 @@ equal a stored figure, and it may not support approving a proposal the server di
 Violations are discarded and recorded as failures (`AI_POLICY_VIOLATION`). Outages, timeouts, rate
 limits, refusals and invalid output map to stable codes; attempts per proposal are capped. The
 answer is shown labelled "AI-generated · not a measurement" and changes no status.
+
+### DEC-042 — Twin evaluations run on a bounded pool of browser workers, bundled by esbuild (Phase 6.1)
+Phase 6 ran what-if evaluations on the page's main thread in 400-tick slices, because Turbopack
+(Next 16.3.8) does not bundle `new Worker(new URL("./x.ts", import.meta.url))`: re-checked on
+2026-10-31, the client chunk resolves such a worker to `/_next/static/media/<name>.<hash>.ts`,
+the raw TypeScript file. Options weighed:
+- **A. Browser Web Worker** — keeps the single TypeScript engine, no new service; needs a bundle
+  Turbopack will not produce.
+- **B. Node.js evaluation service** — the same engine server-side, but a new process to deploy,
+  secure, scale and monitor, and snapshots (~100 kB) over the network for every evaluation; it
+  solves a browser-responsiveness problem by adding infrastructure.
+- **C. Better cooperative scheduling** — still one thread: long tasks remain and total time cannot
+  drop.
+
+Chosen: **A**, with the worker bundled by esbuild (already in the lockfile) into
+`apps/web/public/workers/twin-evaluation.js` before `next dev` / `next build`
+(`scripts/build-twin-worker.mjs`; the output is generated, git-ignored). The optimiser keeps all
+decisions and bookkeeping on the main thread and hands trajectories to a `TrajectoryExecutor`
+(`packages/twin`); `WorkerPool` (`apps/web/src/lib/twin`) runs them on up to
+`min(4, cores − 1)` workers. Independent trajectories (baseline and initial candidates; local-search
+neighbours in windows the size of the pool) run in parallel; results are then taken in exactly the
+order a one-by-one search would take them, and speculative results after the first improvement are
+discarded unused, so the evaluation is byte-identical to the inline executor at any pool size
+(tested against the golden fixture). Messages are typed and validated with zod on both sides and
+carry request and job ids; late or duplicated messages are dropped. Limits: 2 concurrent requests,
+16 jobs per request, 36,000-tick horizon, 30 s stall watchdog, 15 s start-up, 2 s cancel grace,
+workers terminated after 60 s idle. A worker that cannot load or crashes fails the evaluation with
+a stable code; running on the main thread is offered explicitly and labelled, never taken silently.
+The worker only simulates: it has no API access, no credentials and no way to touch the live run.
+Progress reaches the page about 25 times a second but is published at most every 250 ms (a new
+stage at once) and only the progress bar subscribes to it: per-message re-rendering of the whole
+workspace, not CPU contention, was what made frames late while workers ran (measured,
+`docs/phases/PHASE_6.md` §7.3.2).

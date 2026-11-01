@@ -169,10 +169,20 @@ export function FailureNotice({
           </p>
         )}
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {failed.retry && (
           <Button testid="twin-retry" busy={busy} onClick={() => void failed.retry?.()}>
             {busy ? "Retrying…" : "Retry"}
+          </Button>
+        )}
+        {failed.alternative && (
+          <Button
+            variant="secondary"
+            testid="twin-alternative"
+            busy={busy}
+            onClick={() => void failed.alternative?.run()}
+          >
+            {failed.alternative.label}
           </Button>
         )}
         {onDismiss && (

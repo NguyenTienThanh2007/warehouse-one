@@ -2,9 +2,10 @@
 
 import { standbySites, type NetworkConfig } from "@warehouse-one/simulation";
 import { planCounts, type CandidateResult, type Evaluation } from "@warehouse-one/twin";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSimulation } from "@/lib/sim/store";
-import { useTwin } from "@/lib/twin/store";
+import type { ExecutionMode } from "@/lib/twin/run-evaluation";
+import { useTwin, type RunInfo } from "@/lib/twin/store";
 import {
   deltaTone,
   formatDelta,
@@ -21,11 +22,11 @@ import { Badge, Button, Panel, Provenance } from "./parts";
 
 /** Optimiser controls, progress and the what-if editor. */
 export function EvaluationControls() {
-  const evaluation = useTwin((s) => s.evaluation);
+  // Only the progress bar follows progress: the controls re-render when an evaluation starts or ends.
+  const running = useTwin((s) => s.evaluation.kind === "running");
   const horizon = useTwin((s) => s.horizonTicks);
   const busy = useTwin((s) => s.busy);
   const { setHorizon, optimize, cancel } = useTwin.getState();
-  const running = evaluation.kind === "running";
   return (
     <Panel
       title="Optimise fleet standby"
@@ -73,21 +74,51 @@ export function EvaluationControls() {
   );
 }
 
+const STAGE_LABEL = {
+  validating: "Validating the snapshot",
+  simulating: "Simulating the baseline and candidate plans",
+  searching: "Local search around the best plan",
+  ranking: "Checking constraints and ranking",
+  done: "Finishing",
+} as const;
+
+/** Elapsed wall-clock time of the running evaluation, ticking once a second. */
+function useElapsed(startedAt: number): number {
+  const [now, setNow] = useState(() => performance.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(performance.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return Math.max(0, now - startedAt);
+}
+
 function ProgressBar() {
   const evaluation = useTwin((s) => s.evaluation);
   if (evaluation.kind !== "running") return null;
+  return <RunningProgress evaluation={evaluation} />;
+}
+
+function RunningProgress({
+  evaluation,
+}: {
+  evaluation: Extract<ReturnType<typeof useTwin.getState>["evaluation"], { kind: "running" }>;
+}) {
+  const elapsed = useElapsed(evaluation.startedAt);
   const p = evaluation.progress;
   const pct = Math.round((p?.fraction ?? 0) * 100);
   return (
-    <div className="mt-3" data-testid="twin-progress" aria-live="polite">
-      <div className="flex justify-between text-[11px] text-fog-400">
-        <span>
-          {evaluation.what === "optimize" ? "Optimising" : "Comparing"} from tick{" "}
-          {evaluation.tick.toLocaleString("en-US")} · simulation{" "}
-          {Math.min((p?.simulations_done ?? 0) + 1, p?.simulations_budget ?? 1)} of{" "}
-          {p?.simulations_budget ?? "…"}
+    <div
+      className="mt-3"
+      data-testid="twin-progress"
+      data-stage={p?.stage ?? "starting"}
+      data-mode={evaluation.mode}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-fog-400">
+        {/* Announced when the stage changes, not on every count. */}
+        <span data-testid="twin-progress-stage" className="text-fog-200" aria-live="polite">
+          {p ? STAGE_LABEL[p.stage] : "Starting"}
         </span>
-        <span className="tabular-nums">{pct} %</span>
+        <ExecutionBadge mode={evaluation.mode} />
       </div>
       <div
         className="mt-1 h-1.5 rounded-full bg-ink-800"
@@ -97,13 +128,46 @@ function ProgressBar() {
         aria-valuenow={pct}
         aria-label="Evaluation progress"
       >
+        {/* Scaled, not resized: a transform animates without layout on every frame. */}
         <div
-          className="h-1.5 rounded-full bg-data-400 transition-[width]"
-          style={{ width: `${pct}%` }}
+          className="h-1.5 origin-left rounded-full bg-data-400 transition-transform"
+          style={{ transform: `scaleX(${pct / 100})` }}
         />
       </div>
-      {p?.label && <p className="mt-1 truncate text-[11px] text-fog-200">{p.label}</p>}
+      <div className="mt-1 flex flex-wrap justify-between gap-2 text-[11px] text-fog-400">
+        <span data-testid="twin-progress-count">
+          {evaluation.what === "optimize" ? "Optimising" : "Comparing"} from tick{" "}
+          {evaluation.tick.toLocaleString("en-US")} · {p?.simulations_done ?? 0} of{" "}
+          {p?.simulations_budget ?? "…"} simulations done
+          {p && p.simulations_running > 0 ? ` · ${p.simulations_running} running` : ""}
+        </span>
+        <span className="tabular-nums" data-testid="twin-progress-elapsed">
+          {pct} % · {(elapsed / 1000).toFixed(0)} s
+        </span>
+      </div>
+      {p?.label && <p className="mt-0.5 truncate text-[11px] text-fog-200">{p.label}</p>}
     </div>
+  );
+}
+
+/** Where the computation runs: background workers, or (explicit fallback) the page itself. */
+export function ExecutionBadge({ mode, workers }: { mode: ExecutionMode; workers?: number }) {
+  return mode === "worker" ? (
+    <Badge
+      tone="info"
+      testid="twin-execution-mode"
+      title="Simulated in background threads; the page and the live run keep their own thread."
+    >
+      Background workers{workers ? ` ×${workers}` : ""}
+    </Badge>
+  ) : (
+    <Badge
+      tone="warn"
+      testid="twin-execution-mode"
+      title="Simulated in this page in short slices; the page may stutter."
+    >
+      Main thread (fallback)
+    </Badge>
   );
 }
 
@@ -182,13 +246,20 @@ const VERDICT_TONE: Record<CandidateResult["verdict"], Tone> = {
 };
 
 /** Baseline vs candidates: recommendation, objective chart, metric table, constraints. */
-export function EvaluationResult({ evaluation }: { evaluation: Evaluation }) {
+export function EvaluationResult({
+  evaluation,
+  run,
+}: {
+  evaluation: Evaluation;
+  run: RunInfo | null;
+}) {
   const selectedId = useTwin((s) => s.selected);
   const selected =
     evaluation.candidates.find((c) => c.candidate_id === selectedId) ?? evaluation.candidates[0];
   const minutes = horizonMinutes(evaluation.options.horizon_ticks);
   return (
     <div className="flex flex-col gap-3" data-testid="twin-result" data-kind={evaluation.kind}>
+      <RunFacts run={run} />
       <Recommendation evaluation={evaluation} minutes={minutes} />
       <div className="grid gap-3 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <ObjectiveChart evaluation={evaluation} />
@@ -196,6 +267,29 @@ export function EvaluationResult({ evaluation }: { evaluation: Evaluation }) {
       </div>
       <Assumptions evaluation={evaluation} />
     </div>
+  );
+}
+
+/** How this result was computed here (or that it was loaded from the API). */
+function RunFacts({ run }: { run: RunInfo | null }) {
+  return (
+    <p
+      className="flex flex-wrap items-center gap-2 px-1 text-[11px] text-fog-400"
+      data-testid="twin-run-facts"
+      data-mode={run?.mode ?? "stored"}
+      data-elapsed-ms={run?.elapsedMs}
+    >
+      {run ? (
+        <>
+          <ExecutionBadge mode={run.mode} workers={run.workers} />
+          <span data-testid="twin-run-duration">
+            Computed in {(run.elapsedMs / 1000).toFixed(1)} s
+          </span>
+        </>
+      ) : (
+        <Badge tone="muted">Stored proposal · computed earlier</Badge>
+      )}
+    </p>
   );
 }
 

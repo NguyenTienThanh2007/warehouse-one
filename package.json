@@ -18,6 +18,8 @@
     "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
     "bench:sim": "pnpm --filter @warehouse-one/simulation bench",
     "bench:twin": "pnpm --filter @warehouse-one/twin bench",
+    "bench:twin-browser": "tsx tests/performance/twin-benchmark.ts",
+    "bench:twin-frames": "tsx tests/performance/twin-frame-diagnosis.ts",
     "schemas:generate": "pnpm --filter @warehouse-one/contracts generate:schemas",
     "fixtures:generate": "pnpm --filter @warehouse-one/simulation generate:fixtures && pnpm --filter @warehouse-one/twin generate:fixtures",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",

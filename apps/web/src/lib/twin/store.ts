@@ -19,13 +19,16 @@ import {
   type ProposalSummary,
 } from "./api";
 import type { EvaluationRequest } from "./protocol";
-import { EvaluationFailed, runEvaluation } from "./run-evaluation";
+import { EvaluationFailed, runEvaluation, type ExecutionMode } from "./run-evaluation";
 
 /**
  * State of the AI workspace (Phase 6). Evaluations run in a worker on a frozen snapshot; proposals,
  * decisions and executions go through the twin API. Every failure records the operation that
  * failed and a `retry` that repeats exactly that operation.
  */
+
+/** Shortest interval between progress updates shown while an evaluation runs. */
+const PROGRESS_MS = 250;
 
 export type Operation =
   | "capabilities"
@@ -48,6 +51,15 @@ export interface FailedOperation {
   readonly failure: WorkspaceFailure;
   /** Repeats exactly the request that failed; null when repeating it cannot help. */
   readonly retry: (() => Promise<void>) | null;
+  /** Another way to do the same thing, offered explicitly (never taken silently). */
+  readonly alternative?: { readonly label: string; readonly run: () => Promise<void> };
+}
+
+/** How an evaluation was computed, shown with its result. */
+export interface RunInfo {
+  readonly mode: ExecutionMode;
+  readonly workers: number;
+  readonly elapsedMs: number;
 }
 
 export type EvaluationState =
@@ -56,13 +68,20 @@ export type EvaluationState =
       readonly kind: "running";
       readonly what: "optimize" | "compare";
       readonly tick: number;
+      readonly mode: ExecutionMode;
+      /** performance.now() at the start, for the elapsed time. */
+      readonly startedAt: number;
       readonly progress: Progress | null;
     }
+  /** The operator cancelled: nothing was saved and the live run was not touched. */
+  | { readonly kind: "cancelled"; readonly tick: number }
   | {
       readonly kind: "done";
       readonly result: Evaluation;
       /** The input, kept until the proposal is stored (null for a proposal loaded from the API). */
       readonly snapshot: Snapshot | null;
+      /** How it was computed here; null for a proposal loaded from the API. */
+      readonly run: RunInfo | null;
     };
 
 export type Load<T> =
@@ -102,6 +121,21 @@ export interface TwinWorkspace {
 }
 
 const OPERATOR_KEY = "warehouse-one.operator";
+
+/**
+ * `?twinExecution=main-thread` runs evaluations on the main thread, labelled as such: for
+ * benchmarks and for diagnosing a browser where workers misbehave. Default: background workers.
+ */
+function requestedMode(): ExecutionMode {
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? "").get("twinExecution") ===
+      "main-thread"
+      ? "main_thread"
+      : "worker";
+  } catch {
+    return "worker";
+  }
+}
 let running: AbortController | null = null;
 
 function storedOperator(): string {
@@ -145,7 +179,17 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
     set({ busy: "save", failed: null });
     try {
       const proposal = await twinApi.create(result, snapshot, actor());
-      set({ proposal, busy: null, evaluation: { kind: "done", result, snapshot: null } });
+      const ev = get().evaluation;
+      set({
+        proposal,
+        busy: null,
+        evaluation: {
+          kind: "done",
+          result,
+          snapshot: null,
+          run: ev.kind === "done" ? ev.run : null,
+        },
+      });
       void get().loadProposals();
     } catch (e) {
       fail("save", "The evaluation could not be saved as a proposal", e, () =>
@@ -154,12 +198,23 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
     }
   };
 
-  const evaluate = async (request: EvaluationRequest, tick: number): Promise<void> => {
+  const evaluate = async (
+    request: EvaluationRequest,
+    tick: number,
+    mode: ExecutionMode = "worker",
+  ): Promise<void> => {
     running?.abort();
     const ctl = new AbortController();
     running = ctl;
     set({
-      evaluation: { kind: "running", what: request.kind, tick, progress: null },
+      evaluation: {
+        kind: "running",
+        what: request.kind,
+        tick,
+        mode,
+        startedAt: performance.now(),
+        progress: null,
+      },
       proposal: null,
       selected: null,
       failed: null,
@@ -168,32 +223,78 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
       lastExplanation: null,
       busy: "evaluate",
     });
+    // Workers report progress about 25 times a second; the page shows it at most every
+    // PROGRESS_MS (a new stage at once). Each update re-renders and lays out the progress bar.
+    let shown: Progress | null = null;
+    let pending: Progress | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const publish = (progress: Progress) => {
+      const ev = get().evaluation;
+      // Only the current request may update the workspace: a stale one is ignored.
+      if (running === ctl && ev.kind === "running") set({ evaluation: { ...ev, progress } });
+      shown = progress;
+      pending = null;
+    };
     try {
-      const result = await runEvaluation(
+      const run = await runEvaluation(
         request,
         (progress) => {
-          const ev = get().evaluation;
-          if (running === ctl && ev.kind === "running") set({ evaluation: { ...ev, progress } });
+          if (progress.stage !== shown?.stage) {
+            if (timer) clearTimeout(timer);
+            timer = null;
+            publish(progress);
+            return;
+          }
+          pending = progress;
+          timer ??= setTimeout(() => {
+            timer = null;
+            if (pending) publish(pending);
+          }, PROGRESS_MS);
         },
         ctl.signal,
+        mode,
       );
+      if (timer) clearTimeout(timer);
       if (running !== ctl) return;
       running = null;
+      const result = run.evaluation;
       set({
-        evaluation: { kind: "done", result, snapshot: request.snapshot },
+        evaluation: {
+          kind: "done",
+          result,
+          snapshot: request.snapshot,
+          run: { mode: run.mode, workers: run.workers, elapsedMs: run.elapsedMs },
+        },
         selected: result.recommendation?.candidate_id ?? result.candidates[0]?.candidate_id ?? null,
         busy: null,
       });
       await save(result, request.snapshot);
     } catch (e) {
+      if (timer) clearTimeout(timer);
       if (running !== ctl) return;
       running = null;
       if (e instanceof EvaluationFailed && e.code === "CANCELLED") {
-        set({ evaluation: { kind: "idle" }, busy: null });
+        set({ evaluation: { kind: "cancelled", tick }, busy: null });
         return;
       }
       set({ evaluation: { kind: "idle" } });
-      fail("evaluate", "The evaluation failed", e, () => evaluate(request, tick));
+      fail("evaluate", "The evaluation failed", e, () => evaluate(request, tick, mode));
+      const workerProblem =
+        e instanceof EvaluationFailed &&
+        ["WORKER_UNAVAILABLE", "WORKER_CRASHED", "WORKER_TIMEOUT"].includes(e.code);
+      if (workerProblem && mode === "worker") {
+        const failed = get().failed;
+        if (failed)
+          set({
+            failed: {
+              ...failed,
+              alternative: {
+                label: "Run on the main thread instead (slower; the page may stutter)",
+                run: () => evaluate(request, tick, "main_thread"),
+              },
+            },
+          });
+      }
     }
   };
 
@@ -284,6 +385,7 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
       return evaluate(
         { kind: "optimize", snapshot, options: { horizon_ticks: get().horizonTicks } },
         tick,
+        requestedMode(),
       );
     },
 
@@ -298,6 +400,7 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
           options: { horizon_ticks: get().horizonTicks, max_evaluations: 2 },
         },
         tick,
+        requestedMode(),
       );
     },
 
@@ -312,7 +415,7 @@ export const useTwin = create<TwinWorkspace>()((set, get) => {
         const proposal = await twinApi.get(proposalId);
         set({
           proposal,
-          evaluation: { kind: "done", result: proposal.evaluation, snapshot: null },
+          evaluation: { kind: "done", result: proposal.evaluation, snapshot: null, run: null },
           selected:
             proposal.evaluation.recommendation?.candidate_id ??
             proposal.evaluation.candidates[0]?.candidate_id ??

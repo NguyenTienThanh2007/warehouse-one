@@ -12,13 +12,12 @@ import {
 } from "@warehouse-one/simulation";
 import { siteDemand, sourceRef, type SiteDemand, type SourceRef } from "./context";
 import { compareMetrics, type MetricDelta } from "./deltas";
+import { inlineExecutor, type TrajectoryExecutor } from "./executor";
 import {
   EvaluationAborted,
   PRIMARY_METRIC,
   round,
-  simulate,
   type FleetMetrics,
-  type RunHooks,
   type Trajectory,
 } from "./metrics";
 import {
@@ -155,7 +154,12 @@ export interface Evaluation {
 }
 
 export interface Progress {
+  /** What is being computed now. */
+  readonly stage: "validating" | "simulating" | "searching" | "ranking" | "done";
+  /** Simulations whose results the evaluation used so far. */
   readonly simulations_done: number;
+  /** Simulations in progress right now (several when an executor runs them in parallel). */
+  readonly simulations_running: number;
   readonly simulations_budget: number;
   readonly label: string;
   /** 0..1 over the whole evaluation. */
@@ -168,6 +172,8 @@ export interface EvaluateHooks {
   readonly yieldEvery?: number;
   /** Wall clock for `runtime` only (performance.now in the browser and Node). */
   readonly now?: () => number;
+  /** Where trajectories run (default: inline, one after another). Results never depend on it. */
+  readonly executor?: TrajectoryExecutor;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -366,13 +372,6 @@ function neighbours(
 // ---------------------------------------------------------------------------------------------
 // Evaluation
 
-interface Scored {
-  readonly seed: Seed;
-  readonly id: string;
-  readonly constraints: ConstraintResult[];
-  readonly trajectory: Trajectory | null;
-}
-
 function simulationConstraints(
   t: Trajectory,
   baseline: FleetMetrics,
@@ -433,8 +432,17 @@ async function run(
   hooks: EvaluateHooks,
 ): Promise<Evaluation> {
   const o = checkOptions(partial);
+  hooks.onProgress?.({
+    stage: "validating",
+    simulations_done: 0,
+    simulations_running: 0,
+    simulations_budget: o.max_evaluations,
+    label: "Validating the snapshot",
+    fraction: 0,
+  });
   const { config, state } = checkSnapshot(snapshot);
   const net = config.network as NetworkConfig;
+  const executor = hooks.executor ?? inlineExecutor;
   const now = hooks.now ?? (() => 0);
   const started = now();
   const timeout = AbortSignal.timeout(TIME_LIMIT_MS);
@@ -446,35 +454,48 @@ async function run(
   let ticks = 0;
   const budget = o.max_evaluations;
 
-  const progress = (label: string, within = 0) =>
+  // Progress: simulations whose results were used, plus the share done of those running now.
+  const partialTicks = new Map<number, number>();
+  const progress = (stage: Progress["stage"], label: string) => {
+    let within = 0;
+    for (const t of partialTicks.values()) within += t / o.horizon_ticks;
     hooks.onProgress?.({
+      stage,
       simulations_done: simulations,
+      simulations_running: partialTicks.size,
       simulations_budget: budget,
       label,
       fraction: Math.min(1, (simulations + within) / budget),
     });
+  };
 
-  const runHooks = (label: string): RunHooks => ({
-    signal,
-    yieldEvery: hooks.yieldEvery,
-    onTicks: (n) => progress(label, n / o.horizon_ticks),
-  });
-
-  const trajectory = async (plan: StandbyPlan, label: string, n: number): Promise<Trajectory> => {
-    progress(label);
+  /** Simulate a batch of plans (in parallel when the executor can). `n`: command-id suffix. */
+  const batch = async (
+    plans: readonly { plan: StandbyPlan; label: string; n: number }[],
+    stage: Progress["stage"],
+    label: string,
+  ): Promise<Trajectory[]> => {
+    partialTicks.clear();
+    for (const [i] of plans.entries()) partialTicks.set(i, 0);
+    progress(stage, label);
     try {
-      const t = await simulate(
-        config,
-        state,
-        planCommands(base, plan, `twin-${n}`),
-        o.horizon_ticks,
-        runHooks(label),
+      return await executor.run(
+        plans.map((p) => ({ commands: planCommands(base, p.plan, `twin-${p.n}`), label: p.label })),
+        {
+          config,
+          state,
+          stateHash: snapshot.state_hash,
+          horizon: o.horizon_ticks,
+          signal,
+          yieldEvery: hooks.yieldEvery,
+          onTicks: (i, n) => {
+            partialTicks.set(i, n);
+            progress(stage, plans[i]?.label ?? label);
+          },
+        },
       );
-      simulations += 1;
-      ticks += o.horizon_ticks;
-      return t;
     } catch (e) {
-      if (e instanceof EvaluationAborted)
+      if (e instanceof EvaluationAborted || signal.aborted)
         throw timeout.aborted
           ? new TwinError(
               "EVALUATION_TIMEOUT",
@@ -482,76 +503,147 @@ async function run(
             )
           : new TwinError("CANCELLED", "The evaluation was cancelled.");
       throw e;
+    } finally {
+      partialTicks.clear();
     }
   };
 
-  const baseT = await trajectory(base, "Baseline: the standby plan in effect", 0);
+  type Entry = {
+    seed: Seed;
+    id: string;
+    constraints: ConstraintResult[];
+    trajectory: Trajectory | null;
+  };
   const seen = new Set<string>([hashValue(base)]);
-  const scored: Scored[] = [];
+  const scored: Entry[] = [];
   let considered = 1;
+  const labelOf = (seed: Seed) => seed.label ?? countsLabel(net, seed.plan);
 
-  const score = async (seed: Seed): Promise<Scored | null> => {
+  // Phase 1: the baseline and the initial candidates, decided without any result, run together.
+  // The bookkeeping (ids, duplicates, budget) is exactly that of evaluating them one by one.
+  let planned = 1;
+  const firstJobs: Entry[] = [];
+  for (const seed of seedsOrSearch.seeds) {
+    if (planned >= budget) break;
     const key = hashValue(seed.plan);
     considered += 1;
     // Operators' own plans are always shown, even one equal to the baseline or to another.
-    if (seen.has(key) && seed.origin !== "user") return null;
+    if (seen.has(key) && seed.origin !== "user") continue;
     seen.add(key);
-    const id = `c${scored.length + 1}`;
-    const constraints = validatePlan(config, state, seed.plan);
-    if (constraints.some((c) => !c.satisfied)) {
-      const s = { seed, id, constraints, trajectory: null };
-      scored.push(s);
-      return s;
-    }
-    if (simulations >= budget) return null;
-    const t = await trajectory(
-      seed.plan,
-      seed.label ?? countsLabel(net, seed.plan),
-      scored.length + 1,
-    );
-    const s = {
+    const entry: Entry = {
       seed,
-      id,
-      constraints: [...constraints, ...simulationConstraints(t, baseT.metrics, o)],
-      trajectory: t,
+      id: `c${scored.length + 1}`,
+      constraints: validatePlan(config, state, seed.plan),
+      trajectory: null,
     };
-    scored.push(s);
-    return s;
-  };
-
-  const feasible = (s: Scored) => s.trajectory !== null && s.constraints.every((c) => c.satisfied);
-
-  for (const seed of seedsOrSearch.seeds) {
-    if (simulations >= budget) break;
-    await score(seed);
+    scored.push(entry);
+    if (entry.constraints.some((c) => !c.satisfied)) continue;
+    firstJobs.push(entry);
+    planned += 1;
   }
+  const first = await batch(
+    [
+      { plan: base, label: "Baseline: the standby plan in effect", n: 0 },
+      ...firstJobs.map((e) => ({
+        plan: e.seed.plan,
+        label: labelOf(e.seed),
+        n: Number(e.id.slice(1)),
+      })),
+    ],
+    "simulating",
+    `Baseline and ${firstJobs.length} candidate plan${firstJobs.length === 1 ? "" : "s"}`,
+  );
+  const baseT = first[0] as Trajectory;
+  for (const [i, e] of firstJobs.entries()) {
+    const t = first[i + 1] as Trajectory;
+    e.trajectory = t;
+    e.constraints = [...e.constraints, ...simulationConstraints(t, baseT.metrics, o)];
+  }
+  simulations = planned;
+  ticks = planned * o.horizon_ticks;
+
+  const feasible = (s: Entry) => s.trajectory !== null && s.constraints.every((c) => c.satisfied);
+  const objectiveOf = (s: Entry) => objective(s.trajectory?.metrics ?? null);
+
   if (seedsOrSearch.search) {
-    // First-improvement hill climbing from the best feasible plan so far.
-    let best = scored
-      .filter(feasible)
-      .sort(
-        (a, b) =>
-          objective(a.trajectory?.metrics ?? null) - objective(b.trajectory?.metrics ?? null),
-      )[0];
+    // Phase 2: first-improvement hill climbing from the best feasible plan so far. Neighbours
+    // are simulated in windows of up to `parallelism` plans, then taken in order exactly as a
+    // one-by-one search would: results after the first improvement are discarded unused.
+    let best = scored.filter(feasible).sort((a, b) => objectiveOf(a) - objectiveOf(b))[0];
     let improved = true;
     while (best && improved && simulations < budget) {
       improved = false;
-      for (const plan of neighbours(net, demand, best.seed.plan)) {
+      const list = neighbours(net, demand, best.seed.plan);
+      let i = 0;
+      while (i < list.length && !improved) {
         if (simulations >= budget) break;
-        const s = await score({ plan, origin: "local_search" });
-        if (
-          s &&
-          feasible(s) &&
-          objective(s.trajectory?.metrics ?? null) < objective(best.trajectory?.metrics ?? null)
-        ) {
-          best = s;
-          improved = true;
-          break;
+        const room = Math.min(executor.parallelism, budget - simulations);
+        type Item =
+          | { kind: "dup"; plan: StandbyPlan; key: string }
+          | {
+              kind: "invalid" | "sim";
+              plan: StandbyPlan;
+              key: string;
+              constraints: ConstraintResult[];
+            };
+        const window: Item[] = [];
+        const keys = new Set<string>();
+        let sims = 0;
+        for (let j = i; j < list.length && sims < room; j++) {
+          const plan = list[j] as StandbyPlan;
+          const key = hashValue(plan);
+          if (seen.has(key) || keys.has(key)) {
+            window.push({ kind: "dup", plan, key });
+            continue;
+          }
+          keys.add(key);
+          const constraints = validatePlan(config, state, plan);
+          const ok = constraints.every((c) => c.satisfied);
+          window.push({ kind: ok ? "sim" : "invalid", plan, key, constraints });
+          if (ok) sims += 1;
+        }
+        // Command-id suffixes as a one-by-one search would number them.
+        let pushes = scored.length;
+        const toRun: { plan: StandbyPlan; label: string; n: number; item: Item }[] = [];
+        for (const item of window) {
+          if (item.kind === "dup") continue;
+          pushes += 1;
+          if (item.kind === "sim")
+            toRun.push({ plan: item.plan, label: countsLabel(net, item.plan), n: pushes, item });
+        }
+        const results = toRun.length
+          ? await batch(toRun, "searching", "Local search: single-truck moves")
+          : [];
+        const resultOf = new Map(toRun.map((r, k) => [r.item, results[k] as Trajectory]));
+        for (const item of window) {
+          if (simulations >= budget) break;
+          i += 1;
+          considered += 1;
+          if (item.kind === "dup") continue;
+          seen.add(item.key);
+          const entry: Entry = {
+            seed: { plan: item.plan, origin: "local_search" },
+            id: `c${scored.length + 1}`,
+            constraints: item.constraints,
+            trajectory: null,
+          };
+          scored.push(entry);
+          if (item.kind === "invalid") continue;
+          const t = resultOf.get(item) as Trajectory;
+          entry.trajectory = t;
+          entry.constraints = [...item.constraints, ...simulationConstraints(t, baseT.metrics, o)];
+          simulations += 1;
+          ticks += o.horizon_ticks;
+          if (feasible(entry) && objectiveOf(entry) < objectiveOf(best)) {
+            best = entry;
+            improved = true;
+            break;
+          }
         }
       }
     }
   }
-  progress("Done", 0);
+  progress("ranking", "Checking constraints and ranking plans");
 
   // Rank, choose and explain.
   const ranked = scored
@@ -623,6 +715,7 @@ async function run(
     noReason = `No plan beat the current one by at least ${o.min_improvement_pct} % and ${o.min_improvement_s} s of mean pickup wait. Best evaluated: ${best?.label} (${best?.reasons.at(-1) ?? ""})`;
   }
 
+  progress("done", "Done");
   const evaluated = {
     kind,
     strategy: STANDBY_STRATEGY,

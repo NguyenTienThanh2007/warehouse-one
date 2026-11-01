@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/build-twin-worker.mjs && next dev",
+    "build": "node scripts/build-twin-worker.mjs && next build",
     "start": "next start",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:worker": "node scripts/build-twin-worker.mjs"
   },
   "dependencies": {
     "@react-three/drei": "10.7.9",
@@ -32,6 +33,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@types/three": "0.186.0",
+    "esbuild": "0.28.2",
     "tailwindcss": "4.3.3",
     "vitest": "5.0.3"
   }

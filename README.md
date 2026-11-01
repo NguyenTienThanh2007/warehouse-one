@@ -6,9 +6,9 @@ A browser-based 3D warehouse digital twin built on a deterministic simulation en
 data engineering pipeline and a decision-support layer that optimises with the engine itself. Every number on screen comes
 from authoritative simulation state, and every state change is a typed, replayable domain event.
 
-> **Project status: Phases 0–5 are merged into `main` (Phase 4 operations analytics: PR #9, with
-> the connection fix PR #10). Phase 6, the AI and digital-twin layer, is in review on
-> `feature/p6-ai-digital-twin`.** See
+> **Project status: Phases 0–6 are merged into `main` (Phase 6, AI and digital twin: PR #11,
+> `72a2a0f`). Phase 6.1, which moves twin evaluations to background workers, is in review on
+> `feature/p6-1-evaluation-worker`.** See
 > [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for what is verified and what is not.
 
 ![WAREHOUSE ONE: the logistics park, world view](docs/phases/evidence/phase-5/1-world.jpg)
@@ -51,13 +51,14 @@ from authoritative simulation state, and every state change is a typed, replayab
   an immutable snapshot and served read-only (`/api/v1/analytics`); the Analytics mode shows run
   KPIs, task, order, pallet and transfer flows over simulated time, data quality, freshness and
   pipeline health, and says so when data is stale, degraded or missing.
-- **Fleet decision support** (Phase 6, on its branch). The AI mode proposes where idle line-haul
+- **Fleet decision support** (Phase 6). The AI mode proposes where idle line-haul
   trucks should wait between jobs: a deterministic optimiser simulates candidate standby plans
   with the engine from a frozen snapshot of the live run and compares them with the plan in
   effect (pickup wait, empty driving, deliveries, hard constraints). Proposals are re-validated by
   the API, approved by a person, applied once through the operator command path and audited
   (`/api/v1/twin`). Optional AI explanations (Anthropic, server-side) are checked against the
-  computed figures and labelled as AI-generated.
+  computed figures and labelled as AI-generated. Evaluations run on a pool of background workers
+  (Phase 6.1, in review), so the page and the live simulation keep their thread.
 - **Event store and data platform** (Phase 3). Runs recorded from the browser or
   headless go into PostgreSQL in one transaction per batch (append-only event log + transactional
   outbox). From there:
@@ -124,6 +125,8 @@ pnpm test:e2e                   # browser tests against the production build
 cd apps/api && uv sync --all-extras && uv run pytest && uv run pytest -m "integration and not kafka"
 pnpm bench:sim                  # simulation throughput
 pnpm bench:twin                 # optimiser: baseline vs recommendation from fixed start points
+pnpm bench:twin-browser         # evaluation in the browser: workers vs main thread (needs next start)
+pnpm bench:twin-frames          # where frames go during an evaluation (ablations; needs next start)
 ```
 
 Measured Phase 0 results are recorded with their hardware context in
@@ -133,7 +136,7 @@ Measured Phase 0 results are recorded with their hardware context in
 ## Roadmap
 
 0 Foundation ✔ · 1 Premium 3D world ✔ · 2 Living simulation ✔ · 3 Data engineering ✔ ·
-4 Operations analytics ✔ · 5 Multi-site world ✔ · 6 AI and digital twin (first slice in review) ·
+4 Operations analytics ✔ · 5 Multi-site world ✔ · 6 AI and digital twin ✔ (6.1 worker pool in review) ·
 7 Production release.
 
 ## Licence

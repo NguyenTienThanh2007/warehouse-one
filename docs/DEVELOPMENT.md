@@ -117,9 +117,21 @@ Override ports with `API_PORT`, `KAFKA_PORT`, `MINIO_PORT`, `MINIO_CONSOLE_PORT`
 - **AI mode:** `/?mode=ai` (or the AI tab). It needs the logistics park (the default scenario) and
   the API with migration `0004_twin` (`docker compose up -d --build --wait` rebuilds and migrates);
   an older API image is reported as "has no route … built before Phase 6".
-- **Evaluations run in the browser** on a frozen snapshot of the live run, in 400-tick slices; a
-  30-minute horizon with the default budget (8 simulations) takes about 10–15 s on an Apple M2.
-  `pnpm bench:twin` runs the same optimiser headless.
+- **Evaluations run in background workers** (Phase 6.1, DEC-042) on a frozen snapshot of the live
+  run: a 30-minute horizon with the default budget takes about 5 s on an Apple M2 (12 s on the main
+  thread). The worker is bundled by esbuild into `apps/web/public/workers/twin-evaluation.js`
+  (git-ignored) by `pnpm --filter @warehouse-one/web build:worker`, which `dev` and `build` run
+  first. `pnpm bench:twin` runs the optimiser headless (one thread); `pnpm bench:twin-browser`
+  compares workers and the main thread in the browser (start `next start -p 3100` first);
+  `pnpm bench:twin-frames` attributes frame time during an evaluation (live run, CPU load,
+  progress messages, main thread). Keep the machine awake and otherwise idle while they run: a
+  sleep mid-run (laptop lid, battery idle sleep) produces nonsense timings.
+- **Troubleshooting the worker:**
+  - *"The evaluation worker could not be loaded"*: `public/workers/twin-evaluation.js` is missing
+    or stale. Run `pnpm --filter @warehouse-one/web build:worker` (or restart `pnpm dev`, which
+    builds it once at start: restart after changing `packages/twin` or `packages/simulation`).
+  - The workspace then offers "Run on the main thread instead"; results computed that way are
+    labelled *Main thread (fallback)*. `/?mode=ai&twinExecution=main-thread` forces that mode.
 - **AI explanations (optional):** set `WAREHOUSE_AI_PROVIDER=anthropic` and
   `WAREHOUSE_AI_API_KEY` for the API (server-side only; never a `NEXT_PUBLIC_*` variable), then
   `docker compose up -d api`. `WAREHOUSE_AI_MODEL` defaults to `claude-opus-5-5`. Without a key the

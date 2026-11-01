@@ -1,6 +1,7 @@
 # Architecture
 
-**Status:** describes what exists after Phase 6's first slice (on `feature/p6-ai-digital-twin`);
+**Status:** describes what exists after Phase 6 (merged, PR #11) and Phase 6.1 (on
+`feature/p6-1-evaluation-worker`);
 sections 1–7 date from Phase 3 and are extended by 5a (Phase 5), 7a (Phase 4) and 7b (Phase 6).
 Components marked *(planned)* do not exist yet.
 
@@ -207,8 +208,14 @@ through pydantic-settings.
 - **AI** (DEC-041): optional, server-side (official `anthropic` SDK, structured outputs). It
   explains a stored proposal; its answer is schema-validated and policy-checked against the stored
   figures and can change nothing.
-- **Web:** AI mode (`components/twin`, `lib/twin`) covers the 3D view; evaluations run in the
-  page in 400-tick slices; execution submits `linehaul.set_standby` through the live runner.
+- **Web:** AI mode (`components/twin`, `lib/twin`) covers the 3D view; execution submits
+  `linehaul.set_standby` through the live runner.
+- **Evaluation workers** (Phase 6.1, DEC-042): the optimiser keeps its decisions on the main thread
+  and hands trajectories to a `TrajectoryExecutor`. In the browser that is a `WorkerPool` of up to
+  `min(4, cores − 1)` module workers (bundled by esbuild into `public/workers/`), with a typed,
+  zod-validated protocol (request and job ids, progress, cancel, failure codes), limits, a stall
+  watchdog and crash recovery. Results are identical to the inline executor at any pool size; the
+  main thread is used only as an explicit, labelled fallback.
 
 ## 8. Cross-cutting
 

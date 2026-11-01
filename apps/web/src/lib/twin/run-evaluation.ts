@@ -1,5 +1,6 @@
 import {
   compareStandbyPlans,
+  inlineExecutor,
   optimizeStandby,
   TwinError,
   type Evaluation,
@@ -8,17 +9,20 @@ import {
   type TwinErrorCode,
 } from "@warehouse-one/twin";
 import type { EvaluationRequest } from "./protocol";
+import { PoolError, WorkerPool, type PoolErrorCode } from "./worker-pool";
+
+export type EvaluationErrorCode = TwinErrorCode | PoolErrorCode | "EVALUATION_FAILED";
 
 export class EvaluationFailed extends Error {
   constructor(
-    readonly code: TwinErrorCode | "EVALUATION_FAILED",
+    readonly code: EvaluationErrorCode,
     message: string,
   ) {
     super(message);
   }
 }
 
-/** Run one request in the current thread (the worker's body, and the fallback without workers). */
+/** Run one request with the given hooks (executor included). */
 export function evaluate(request: EvaluationRequest, hooks: EvaluateHooks): Promise<Evaluation> {
   return request.kind === "optimize"
     ? optimizeStandby(request.snapshot, request.options, hooks)
@@ -27,34 +31,81 @@ export function evaluate(request: EvaluationRequest, hooks: EvaluateHooks): Prom
 
 export function toFailure(e: unknown): EvaluationFailed {
   if (e instanceof EvaluationFailed) return e;
-  if (e instanceof TwinError) return new EvaluationFailed(e.code, e.message);
+  if (e instanceof TwinError || e instanceof PoolError)
+    return new EvaluationFailed(e.code, e.message);
   return new EvaluationFailed(
     "EVALUATION_FAILED",
     e instanceof Error ? e.message : "The evaluation failed.",
   );
 }
 
-/** Ticks per slice of work before the evaluation yields to the page (about 35 ms each). */
+/** Where an evaluation ran, shown with its result. */
+export type ExecutionMode = "worker" | "main_thread";
+
+export interface EvaluationRun {
+  readonly evaluation: Evaluation;
+  readonly mode: ExecutionMode;
+  /** Background workers used (0 on the main thread). */
+  readonly workers: number;
+  /** Wall-clock duration of the whole evaluation. */
+  readonly elapsedMs: number;
+}
+
+/** The worker bundle (scripts/build-twin-worker.mjs), served from public/. */
+export const WORKER_URL = "/workers/twin-evaluation.js";
+
+/** Workers in the pool: one core stays for the page and the live run; never more than 4. */
+export function poolSize(cores = globalThis.navigator?.hardwareConcurrency ?? 2): number {
+  return Math.max(1, Math.min(4, cores - 1));
+}
+
+let pool: WorkerPool | null = null;
+
+function workerPool(): WorkerPool {
+  pool ??= new WorkerPool(() => new Worker(WORKER_URL, { type: "module" }), { size: poolSize() });
+  return pool;
+}
+
+/** Terminate the evaluation workers (they are also stopped after a minute of idleness). */
+export function disposeWorkers(): void {
+  pool?.dispose();
+  pool = null;
+}
+
+/** Ticks per slice when an evaluation runs on the main thread (about 35 ms each). */
 const SLICE_TICKS = 400;
 
 /**
- * Evaluate in the page, in slices that yield to the event loop so the live simulation and the UI
- * keep running. Isolation does not depend on a thread: the input is a frozen snapshot and the
- * engine never mutates its input, so nothing an evaluation does can reach the live run.
- * (A module worker would also free the main thread, but Next 16.3's Turbopack copies
- * `new Worker(new URL(...))` targets as raw files instead of bundling them.)
+ * Evaluate a request. "worker" runs the trajectories on a pool of background workers (the page and
+ * the live simulation keep their thread); "main_thread" runs them in the page in short slices, as
+ * an explicit fallback when workers are not available. The result is identical either way; the
+ * mode is reported with it.
  */
-export function runEvaluation(
+export async function runEvaluation(
   request: EvaluationRequest,
   onProgress: (p: Progress) => void,
   signal: AbortSignal,
-): Promise<Evaluation> {
-  return evaluate(request, {
-    onProgress,
-    signal,
-    now: () => performance.now(),
-    yieldEvery: SLICE_TICKS,
-  }).catch((e: unknown) => {
+  mode: ExecutionMode = "worker",
+): Promise<EvaluationRun> {
+  if (mode === "worker" && typeof Worker === "undefined")
+    throw new EvaluationFailed("WORKER_UNAVAILABLE", "This browser cannot run background workers.");
+  const executor = mode === "worker" ? workerPool() : inlineExecutor;
+  const started = performance.now();
+  try {
+    const evaluation = await evaluate(request, {
+      onProgress,
+      signal,
+      now: () => performance.now(),
+      executor,
+      yieldEvery: mode === "worker" ? undefined : SLICE_TICKS,
+    });
+    return {
+      evaluation,
+      mode,
+      workers: mode === "worker" ? executor.parallelism : 0,
+      elapsedMs: Math.round(performance.now() - started),
+    };
+  } catch (e) {
     throw toFailure(e);
-  });
+  }
 }
