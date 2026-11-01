@@ -1,7 +1,7 @@
 # Architecture
 
-**Status:** describes what exists after Phase 6 (merged, PR #11) and Phase 6.1 (on
-`feature/p6-1-evaluation-worker`);
+**Status:** describes what exists after Phase 6.1 (merged, PR #12) and Phase 6.2 (on
+`feature/p6-2-multi-seed-evaluation`);
 sections 1–7 date from Phase 3 and are extended by 5a (Phase 5), 7a (Phase 4) and 7b (Phase 6).
 Components marked *(planned)* do not exist yet.
 
@@ -216,6 +216,13 @@ through pydantic-settings.
   zod-validated protocol (request and job ids, progress, cancel, failure codes), limits, a stall
   watchdog and crash recovery. Results are identical to the inline executor at any pool size; the
   main thread is used only as an explicit, labelled fallback.
+- **Multi-seed validation** (Phase 6.2, DEC-043): `evaluateRobustness` (`packages/twin`) re-runs
+  the baseline and one chosen candidate on `n` seeded copies of the evaluation's snapshot (only the
+  random-number state differs), as paired observations, in batches of 8 seeds (16 jobs, each job
+  carrying its own start state) on the same pool. `stats.ts` summarises the paired differences with
+  a 95 % Student t interval; the verdict is a pure function of the primary metric, the practical
+  thresholds and every seed's hard constraints. The result is advisory: computed in the browser,
+  not stored, and it cannot approve or apply anything.
 
 ## 8. Cross-cutting
 

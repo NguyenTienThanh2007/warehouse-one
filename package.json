@@ -20,6 +20,7 @@
     "bench:twin": "pnpm --filter @warehouse-one/twin bench",
     "bench:twin-browser": "tsx tests/performance/twin-benchmark.ts",
     "bench:twin-frames": "tsx tests/performance/twin-frame-diagnosis.ts",
+    "bench:twin-robustness": "tsx tests/performance/twin-robustness-benchmark.ts",
     "schemas:generate": "pnpm --filter @warehouse-one/contracts generate:schemas",
     "fixtures:generate": "pnpm --filter @warehouse-one/simulation generate:fixtures && pnpm --filter @warehouse-one/twin generate:fixtures",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",

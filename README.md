@@ -6,9 +6,9 @@ A browser-based 3D warehouse digital twin built on a deterministic simulation en
 data engineering pipeline and a decision-support layer that optimises with the engine itself. Every number on screen comes
 from authoritative simulation state, and every state change is a typed, replayable domain event.
 
-> **Project status: Phases 0–6 are merged into `main` (Phase 6, AI and digital twin: PR #11,
-> `72a2a0f`). Phase 6.1, which moves twin evaluations to background workers, is in review on
-> `feature/p6-1-evaluation-worker`.** See
+> **Project status: Phases 0–6.1 are merged into `main` (Phase 6.1, twin evaluations on background
+> workers: PR #12, `dd1d1a7`). Phase 6.2, multi-seed robustness validation of twin plans, is in
+> review on `feature/p6-2-multi-seed-evaluation`.** See
 > [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for what is verified and what is not.
 
 ![WAREHOUSE ONE: the logistics park, world view](docs/phases/evidence/phase-5/1-world.jpg)
@@ -58,7 +58,9 @@ from authoritative simulation state, and every state change is a typed, replayab
   the API, approved by a person, applied once through the operator command path and audited
   (`/api/v1/twin`). Optional AI explanations (Anthropic, server-side) are checked against the
   computed figures and labelled as AI-generated. Evaluations run on a pool of background workers
-  (Phase 6.1, in review), so the page and the live simulation keep their thread.
+  (Phase 6.1), so the page and the live simulation keep their thread. A plan can be validated
+  across several seeded futures with paired statistics and an honest verdict (Phase 6.2, in
+  review; advisory, never an approval).
 - **Event store and data platform** (Phase 3). Runs recorded from the browser or
   headless go into PostgreSQL in one transaction per batch (append-only event log + transactional
   outbox). From there:
@@ -127,6 +129,7 @@ pnpm bench:sim                  # simulation throughput
 pnpm bench:twin                 # optimiser: baseline vs recommendation from fixed start points
 pnpm bench:twin-browser         # evaluation in the browser: workers vs main thread (needs next start)
 pnpm bench:twin-frames          # where frames go during an evaluation (ablations; needs next start)
+pnpm bench:twin-robustness      # multi-seed validation in the browser, fixed workload (needs next start)
 ```
 
 Measured Phase 0 results are recorded with their hardware context in
@@ -136,7 +139,7 @@ Measured Phase 0 results are recorded with their hardware context in
 ## Roadmap
 
 0 Foundation ✔ · 1 Premium 3D world ✔ · 2 Living simulation ✔ · 3 Data engineering ✔ ·
-4 Operations analytics ✔ · 5 Multi-site world ✔ · 6 AI and digital twin ✔ (6.1 worker pool in review) ·
+4 Operations analytics ✔ · 5 Multi-site world ✔ · 6 AI and digital twin ✔ (6.1 worker pool ✔, 6.2 multi-seed validation in review) ·
 7 Production release.
 
 ## Licence

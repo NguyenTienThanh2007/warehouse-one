@@ -5,9 +5,9 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
 
 ## Current state
 
-- **Active phase:** 6.1 (twin evaluation off the main thread) on `feature/p6-1-evaluation-worker`.
-  Phases 0–6 are merged (Phase 6: PR #11, `72a2a0f`).
-- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_6.md` (§7 for 6.1).
+- **Active phase:** 6.2 (multi-seed robustness validation) on `feature/p6-2-multi-seed-evaluation`.
+  Phases 0–6.1 are merged (Phase 6.1: PR #12, `dd1d1a7`).
+- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_6.md` (§7 for 6.1, §8 for 6.2).
 
 ## Architecture (one screen)
 
@@ -79,6 +79,9 @@ pnpm bench:twin / pnpm twin:verify --api <url> --proposal <uuid>
   esbuild (`apps/web/scripts/build-twin-worker.mjs`) into git-ignored `public/workers/` before
   `next dev`/`next build`; restart `pnpm dev` after changing `packages/twin` or `packages/simulation`.
 - Hidden browser panes throttle rAF, so FPS from them is meaningless. Use `pnpm bench:render`.
+- Multi-seed validation (DEC-043) is advisory: never send it to the API as verified evidence, never
+  let it approve or apply. Pairing is exact only at the start (one engine random stream, draws
+  depend on state); do not claim common random numbers.
 - Twin progress arrives ~25×/s from workers: keep it out of broad store selectors (the store
   coalesces it to ≤4 updates/s; only the progress bar subscribes). `pnpm bench:twin-frames`
   attributes frame time. Benchmarks are void if the laptop sleeps mid-run (check `pmset -g log`).

@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { stateHash, type Snapshot } from "@warehouse-one/simulation";
+import { seedRng, stateHash, type Snapshot } from "@warehouse-one/simulation";
 import {
   currentPlan,
+  evaluateRobustness,
   EvaluationAborted,
   optimizeStandby,
   planCommands,
@@ -463,4 +464,73 @@ describe("worker pool", () => {
       p.run([job(null, 1)], { ...ctx(new AbortController().signal), horizon: 40_000 }),
     ).rejects.toMatchObject({ code: "RESOURCE_LIMIT" });
   });
+});
+
+describe("multi-seed jobs on the pool (Phase 6.2)", () => {
+  it("runs each job from its own start state, checked by the worker", async () => {
+    const { p, workers } = pool(2);
+    const seeded = [1, 2, 3].map((i) => {
+      const state = { ...snapshot.state, rng: seedRng(`twin-robustness:t:${i}`) };
+      return { state, stateHash: stateHash(snapshot.config, state) };
+    });
+    const out = await p.run(
+      seeded.map((start, i) => ({ ...job(null, i), start })),
+      ctx(new AbortController().signal),
+    );
+    for (const [i, start] of seeded.entries()) {
+      const direct = await simulate(snapshot.config, start.state, job(null, i).commands, 2_000);
+      expect(json(out[i])).toEqual(json(direct));
+    }
+    // Each start message carried that job's state and hash, never the context's.
+    const starts = workers.flatMap((w) => w.received).filter((m) => m.type === "start");
+    expect(starts.map((m) => m.snapshot.state_hash).sort()).toEqual(
+      seeded.map((s) => s.stateHash).sort(),
+    );
+    // A start state whose hash does not match is refused by the worker, not simulated.
+    const forged = { state: seeded[0]?.state ?? snapshot.state, stateHash: "0".repeat(32) };
+    await expect(
+      p.run([{ ...job(null, 9), start: forged }], ctx(new AbortController().signal)),
+    ).rejects.toMatchObject({ code: "INVALID_SNAPSHOT" });
+  }, 60_000);
+
+  it("a multi-seed evaluation on workers equals the inline one, whatever finishes first", async () => {
+    const discovery = await optimizeStandby(snapshot, { horizon_ticks: 3_000, max_evaluations: 3 });
+    const id = discovery.candidates.find((c) => c.feasible && c.metrics)?.candidate_id ?? "c1";
+    const inline = await evaluateRobustness(snapshot, discovery, id, { seeds: 3, root_seed: "w" });
+    const { p } = pool(3);
+    const onWorkers = await evaluateRobustness(
+      freeze(structuredClone(snapshot)),
+      discovery,
+      id,
+      { seeds: 3, root_seed: "w" },
+      { executor: p },
+    );
+    expect(json({ ...onWorkers, runtime: null })).toEqual(json({ ...inline, runtime: null }));
+  }, 120_000);
+
+  it("cancelling a multi-seed evaluation stops it and leaves another request on the pool alone", async () => {
+    const discovery = await optimizeStandby(snapshot, { horizon_ticks: 3_000, max_evaluations: 3 });
+    const id = discovery.candidates.find((c) => c.feasible && c.metrics)?.candidate_id ?? "c1";
+    const { p } = pool(2);
+    const ctl = new AbortController();
+    const validation = evaluateRobustness(
+      snapshot,
+      discovery,
+      id,
+      { seeds: 10, root_seed: "w" },
+      { executor: p, signal: ctl.signal },
+    );
+    const other = p.run([job("harbour-terminal", 1)], ctx(new AbortController().signal));
+    await new Promise((r) => setTimeout(r, 20));
+    ctl.abort();
+    await expect(validation).rejects.toMatchObject({ code: "CANCELLED" });
+    const [t] = await other;
+    const direct = await simulate(
+      snapshot.config,
+      snapshot.state,
+      job("harbour-terminal", 1).commands,
+      2_000,
+    );
+    expect(json(t)).toEqual(json(direct));
+  }, 120_000);
 });

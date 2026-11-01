@@ -5,3 +5,5 @@ export * from "./optimizer";
 export * from "./plan";
 export * from "./verify";
 export * from "./executor";
+export * from "./stats";
+export * from "./robustness";

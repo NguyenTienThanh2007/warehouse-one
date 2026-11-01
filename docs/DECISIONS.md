@@ -368,3 +368,67 @@ Progress reaches the page about 25 times a second but is published at most every
 stage at once) and only the progress bar subscribes to it: per-message re-rendering of the whole
 workspace, not CPU contention, was what made frames late while workers ran (measured,
 `docs/phases/PHASE_6.md` §7.3.2).
+
+### DEC-043 — Multi-seed robustness validation: paired seeded futures, a t interval, an honest verdict (Phase 6.2)
+**Context:** the optimiser (DEC-039) simulates every plan on one future, the live run's own random
+stream, and recommends the best by a 5 % / 2 s margin. A plan can win on that one future by
+chance, and it was *selected* on it. Measured on the golden fixture (reproducible with
+`pnpm bench:twin -- --robustness`): the recommended plan c4 shows −26 % mean pickup wait
+(67.6 s → 50 s) on its one future; over 20 validation seeds (root `bench`) it is −15.5 s
+(−22.7 %, 95 % interval −17.6 s to −13.4 s, better on 20 of 20), yet on seed 6 it delivers
+176 pallets against a floor of 181 (95 % of that seed's baseline 190), failing the service-level
+hard constraint. On an exploratory live snapshot (not reproducible) a plan recommended at −17.9 %
+held only −4.5 % over 20 seeds and failed service level on 3.
+
+**Engine facts that shape the design:** the engine has one sfc32 random stream in `state.rng`
+(captured by every snapshot). Replacing it with `seedRng(string)`, the engine's own seeding, gives
+a valid snapshot (no invariant involves it; the hash is recomputed) that is the same present with
+a different future. Several draws are conditional on the state (a lane draws only while it has
+fewer than `max_open` open transfers; quantities depend on stock and room), so two plans started
+from the same seed draw the same numbers only until their states diverge. Common random numbers
+are therefore *not* guaranteed, and changing the engine to per-system streams would change every
+recorded run (golden fixtures, replays), which this phase does not do.
+
+**Decision:**
+- **What is evaluated:** one candidate of an existing single-seed evaluation (discovery) against
+  the plan in effect, on `n` validation seeds `seedRng("twin-robustness:<root>:<i>")`, i = 1…n,
+  `root` defaulting to the snapshot hash's first 12 characters. No validation seed equals the
+  discovery stream (checked, as are duplicates). The optimiser is not re-run per seed: this is a
+  validation of a candidate found on one future, labelled as such, not a multi-seed optimiser.
+- **Pairing:** per seed, both plans start from the identical seeded state, applying the same
+  `linehaul.set_standby` commands the optimiser used (on the discovery stream they reproduce its
+  numbers exactly, tested). Each seed records whether the plans saw different demand (transfers or
+  pallets planned differ); the result reports how many did.
+- **Statistics** (`stats.ts`, pure, hand-checked fixtures): per metric, means, medians, the mean
+  and median paired difference d = candidate − baseline, its sample standard deviation and
+  standard error, the **95 % paired Student t interval** mean(d) ± t(0.975, n − 1)·s/√n from a
+  published table (df 1–29, verified against the t density by integration in tests), the relative
+  change (null when the baseline mean is not positive), and seeds better/worse/tied. Missing or
+  non-finite observations are excluded and counted, never averaged; zero variance is flagged as a
+  degenerate interval. A bootstrap was rejected: with 5–30 pairs percentile intervals under-cover.
+- **Verdict** (pure, on mean pickup wait, the optimiser's objective): `constraint_failure` if any
+  hard constraint fails on any seed (the existing ones, per seed: commands accepted, engine
+  invariants, ≥ 95 % of that seed's baseline pallets, no extra cancellations; plus the baseline's
+  invariants), whatever the averages; `insufficient_data` below 5 valid pairs; `improved` when the
+  interval lies below zero *and* the mean reduction meets the existing 5 % / 2 s thresholds;
+  `improved_below_threshold` when only the interval does; `regressed` when the interval lies above
+  zero; otherwise `inconclusive`. Other metrics that are reliably worse are listed as trade-offs,
+  never folded into a score; with a constraint failure the pickup-wait reading is reported as
+  context, explicitly not the verdict.
+- **Budget:** 1–30 seeds (tiers 5 / 20 / 30), two simulations per seed, batches of 8 seeds
+  (16 jobs, the pool's per-request cap; each job carries its own start state, a backward-compatible
+  `TrajectoryJob.start`), one pool request at a time, 600 s limit, cancellable with no partial
+  verdict. Seeded states share every branch of the frozen snapshot except `rng`.
+- **Trust boundary:** advisory. The result is computed in the browser, shown with its full
+  per-seed observations and reproducibility metadata, **not sent to or stored by the API**, and
+  cannot approve or apply anything; approval, server validation and execute-once are unchanged.
+  Storing it would need a new endpoint, table and audit entry, with the server re-deriving the
+  statistics from the per-seed observations it receives (it still could not re-simulate them):
+  a follow-up, not part of this slice.
+
+**Consequences:** an operator can see whether a recommendation holds on other futures, with the
+uncertainty stated and hard constraints never averaged away. Limits: one present state (no
+variation of the starting conditions); the t interval assumes roughly normal differences; only
+pickup wait decides (no multiple-comparison correction for the descriptive metrics); pairing is
+exact only at the start; results are not persisted, so a stored proposal cannot be validated
+later without its snapshot in the browser.

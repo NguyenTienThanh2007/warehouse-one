@@ -3,8 +3,9 @@
 **Branch:** `feature/p6-ai-digital-twin` · **Base:** `main` @ `b2ccfdc` (PR #10 merged; Phases 0–5
 merged)
 **Status:** MERGED into `main` as `72a2a0f` (PR #11, 2026-10-27; `main` CI run 40541684889: 5/5
-jobs green). Phase 6.1 (§7, evaluation off the main thread) is in review on
-`feature/p6-1-evaluation-worker`.
+jobs green). Phase 6.1 (§7, evaluation off the main thread) is MERGED as `dd1d1a7` (PR #12,
+2026-11-01; `main` CI run 41304258402: 5/5 jobs green). Phase 6.2 (§8, multi-seed robustness
+validation) is in review on `feature/p6-2-multi-seed-evaluation`.
 
 ## 1. Starting point (verified 2026-10-27)
 
@@ -206,7 +207,7 @@ through, and the live state carried exactly the approved plan.
 ## 7. Phase 6.1 — evaluation off the main thread
 
 **Branch:** `feature/p6-1-evaluation-worker` · **Base:** `main` @ `72a2a0f` (PR #11 merged)
-**Status:** IN REVIEW. Decision: DEC-042.
+**Status:** MERGED as `dd1d1a7` (PR #12, 2026-11-01). Decision: DEC-042.
 
 ### 7.1 Problem
 
@@ -386,3 +387,203 @@ Full results of every check are in the pull request.
   `packages/simulation`.
 - Benchmarks are headless on one machine (Apple M2, 8 GiB); a sleep during a run invalidates it
   (keep the machine awake).
+
+## 8. Phase 6.2 — multi-seed robustness validation
+
+**Branch:** `feature/p6-2-multi-seed-evaluation` · **Base:** `main` @ `dd1d1a7` (PR #12 merged)
+**Status:** in review. Decision: DEC-043.
+
+### 8.1 Problem
+
+The optimiser simulates every plan on one future: the live run's own random stream, frozen in the
+snapshot. It recommends the best plan on that future, so the reported gain is the gain of a plan
+*selected* on it: part of it may be luck, and nothing showed how much. Phase 6.2 re-runs one
+recommended plan and the plan in effect on many other futures of the same present and reports,
+with stated uncertainty, whether the gain holds and whether every hard constraint still holds.
+
+### 8.2 Architecture
+
+```text
+discovery: optimizeStandby(snapshot)            one future (the snapshot's own stream)
+   │ candidate cN (its plan and the optimiser's commands)
+   ▼
+evaluateRobustness(snapshot, discovery, cN, {seeds, root_seed})      packages/twin/src/robustness.ts
+   │ seed i = 1…n: state with rng = seedRng("twin-robustness:<root>:<i>")  (hash recomputed)
+   │ per seed two jobs from that identical start: baseline (no commands) and candidate
+   │ batches of 8 seeds = 16 jobs, each job carrying its own start (TrajectoryJob.start)
+   ▼
+TrajectoryExecutor: WorkerPool (Phase 6.1 workers, start hash re-verified) | inline (main thread)
+   ▼
+per seed: metrics, deltas, hard constraints, demand divergence ──► stats.ts (paired t) ──► verdict
+   ▼
+AI workspace: "Robustness across futures" panel — advisory, not sent to the API
+```
+
+- **Seeds** (`seededStarts`): seed i is `seedRng("twin-robustness:<root>:<i>")`, the engine's own
+  seeding; `root` defaults to the first 12 characters of the snapshot hash and may be set
+  (`[A-Za-z0-9_-]{1,40}`). Only `state.rng` changes: no engine invariant involves it, every other
+  branch of the frozen snapshot is shared, and the start-state hash is recomputed (the worker
+  re-checks it). Duplicate seeds and a seed equal to the discovery stream are refused.
+- **Discovery vs validation:** discovery is the existing single-seed evaluation (the snapshot's
+  stream). Validation seeds are derived from a different string space and never equal it, so the
+  validation futures are independent of the future the plan was chosen on. The optimiser is not
+  re-run per seed: this validates *one* candidate, it is not a multi-seed optimiser. Validating the
+  top candidate after choosing it is a fair test of that candidate (no selection on the validation
+  seeds); comparing several candidates on the same validation seeds and picking the best would
+  reintroduce selection bias, and the UI does not offer it.
+- **Pairing:** per seed, baseline and candidate start from the identical state and the candidate
+  applies the same `linehaul.set_standby` commands as in the optimiser (`planCommands`, same
+  command-id prefix). On the discovery stream this reproduces the optimiser's own numbers exactly
+  (tested).
+- **Random-number limits:** one sfc32 stream serves every random system, and several draws depend
+  on state (a lane draws only while below `max_open` open transfers; quantities depend on stock and
+  room). Once the plans' states diverge they consume the stream differently, so common random
+  numbers hold only at the start. Measured on the golden fixture: demand (transfers or pallets
+  planned) differed between the plans on 19 of 20 seeds; the candidate saw slightly *more* demand
+  (+0.5 transfers, +8.1 pallets planned on average over 10 seeds), because faster pickups keep
+  lanes under their cap. Every seed records `workload_diverged`; the result counts them. Per-system
+  streams would fix this but change every recorded run, so they are a follow-up (§8.8).
+- **Statistics** (`stats.ts`, pure): per metric, means and medians of both plans, the paired
+  difference d = candidate − baseline (mean, median, sample SD, standard error), the **95 % paired
+  Student t interval** mean(d) ± t(0.975, n − 1)·s/√n (table for df 1–29, checked against the t
+  density by numerical integration in tests), relative change (null when the baseline mean is not
+  positive), and seeds better / worse / tied. Missing or non-finite observations are excluded and
+  counted; zero variance is flagged (`degenerate`). Values are rounded for display only.
+- **Verdict** (`robustnessVerdict`, on mean pickup wait, the optimiser's objective), first match:
+
+  | Verdict | Condition |
+  |---------|-----------|
+  | `constraint_failure` | a hard constraint fails on any seed (commands accepted, engine invariants, ≥ 95 % of that seed's baseline pallets, no extra cancellations, baseline invariants) |
+  | `insufficient_data` | fewer than 5 valid pairs |
+  | `improved` | interval entirely below 0 **and** mean reduction ≥ 2 s and ≥ 5 % (the existing thresholds) |
+  | `improved_below_threshold` | interval entirely below 0, thresholds not met (statistically but not practically better) |
+  | `regressed` | interval entirely above 0 |
+  | `inconclusive` | otherwise |
+
+  Reliably worse secondary metrics are listed as trade-offs. With a constraint failure the reasons
+  name each failing seed, the constraint and its numbers, whether demand diverged on it, and the
+  pickup-wait reading as context, explicitly not the verdict.
+- **Budget:** 1–30 seeds (tiers Quick 5, Standard 20, Extended 30; the cost — simulations and
+  simulated minutes — is shown before starting); 2 simulations per seed; batches of 16 jobs (the
+  pool's per-request cap); one request at a time; 600 s limit (`EVALUATION_TIMEOUT`); cancel
+  rejects with `CANCELLED` and no partial verdict.
+- **Workspace** (`robustness.tsx`, store): seed tier, cost, progress by seed and stage (coalesced
+  to ≤ 1 update per 250 ms, as in Phase 6.1), cancel, verdict with reasons and trade-offs, the
+  pickup-wait interval drawn against zero and the thresholds, a per-metric table, every seed's
+  observations, method, seed derivation and divergence count, and an "advisory, not stored"
+  label. A new evaluation, opening a proposal or leaving AI mode cancels it. A proposal loaded from
+  the API has no snapshot in the browser, so the panel says validation is unavailable.
+- **Trust boundary:** the result never reaches the API, cannot approve or apply anything, and the
+  proposal's status is unchanged (tested: the only API write in the flow is the existing
+  `POST /proposals`). The API and its schema are unchanged.
+
+### 8.3 Results on the golden fixture
+
+`pnpm bench:twin -- --robustness` (Node, inline, deterministic): golden snapshot `1ab6d3065153`,
+discovery `evaluation-recommended.json` (15 simulated minutes), candidate c4, root seed `bench`.
+Discovery reports c4 at 67.6 s → 50 s mean pickup wait (−26 %).
+
+| Seeds | Verdict | Mean change in pickup wait | 95 % interval | Better / worse / tied | Failed seeds | Demand diverged |
+|-------|---------|----------------------------|---------------|-----------------------|--------------|-----------------|
+| 1 | `insufficient_data` | −9.2 s (−14.5 %) | — | 1 / 0 / 0 | — | 1 |
+| 5 | `improved` | −13.5 s (−20.7 %) | −19.2 … −7.8 s | 5 / 0 / 0 | — | 5 |
+| 10 | `constraint_failure` | −15.0 s (−22.1 %) | −18.6 … −11.4 s | 10 / 0 / 0 | 6 | 9 |
+| 20 | `constraint_failure` | −15.5 s (−22.7 %) | −17.6 … −13.4 s | 20 / 0 / 0 | 6 | 19 |
+| 30 | `constraint_failure` | −15.4 s (−22.6 %) | −17.1 … −13.7 s | 30 / 0 / 0 | 6 | 26 |
+
+- The gain is real but smaller than discovery reported (−22.7 % against −26 %), as expected for a
+  plan selected on one future.
+- On seed 6 the candidate delivers 176 pallets against a floor of 181 (baseline 190), so the plan
+  fails the service-level hard constraint; 5 seeds miss it, 10 or more find it. Averaged, the
+  pallets delivered rise (+3.6 over 10 seeds): averaging would have hidden the failure.
+- Every repetition was byte-identical (runtime field excluded).
+- An exploratory run on a live snapshot (not reproducible): a plan recommended at −17.9 % held
+  −4.5 % over 20 seeds (interval −8.4 % … −0.6 %) and failed service level on 3 seeds.
+
+### 8.4 Benchmarks (Apple M2 × 8, 8 GiB, macOS 26, headless Chromium 153, 2026-11-01)
+
+`caffeinate -i -s pnpm bench:twin-robustness -- --runs 3`: production build (`next start`), live
+app in AI mode at 1×, API stubbed; the production `evaluateRobustness` / `optimizeStandby` and the
+real `WorkerPool` (its workers load the app's own bundle, wrapped only to time jobs), injected as an
+esbuild bundle; identical workload for every row (golden snapshot, discovery and candidate c4,
+horizon 15 simulated minutes, root `bench`); a fresh page per configuration; median of 3 runs.
+Load average 5.8 before, 7.3 after (the owner's Docker data stack was running); the power log shows
+no sleep or wake during the run (21:45–21:51). Every row's result id was identical across its runs.
+
+| Configuration | Verdict | Wall time (median / min) | Per seed | Simulated ticks/s | Worker utilisation | Peak jobs | Long tasks | Frame p95 | Late frames | Renderer RSS peak |
+|---------------|---------|--------------------------|----------|-------------------|--------------------|-----------|------------|-----------|-------------|-------------------|
+| Single-seed optimisation (discovery), ×4 | recommended | 1.7 / 1.6 s | — | 31,216 | 0.79 | 4 | 0 | 16.8 ms | 0 % | 308 MB |
+| 1 seed, ×4 | `insufficient_data` | 0.8 / 0.8 s | 0.82 s | 22,045 | 0.49 | 2 | 0 | 16.8 ms | 0 % | 311 MB |
+| 5 seeds, ×4 | `improved` | 3.0 / 2.4 s | 0.59 s | 30,392 | 0.86 | 4 | 0 | 16.7 ms | 1.0 % | 323 MB |
+| 10 seeds, ×4 | `constraint_failure` | 4.9 / 4.5 s | 0.49 s | 36,522 | 0.98 | 4 | 0 | 16.7 ms | 0.4 % | 339 MB |
+| 20 seeds, ×4 | `constraint_failure` | 9.5 / 9.3 s | 0.47 s | 38,079 | 0.97 | 4 | 0 | 16.8 ms | 0.4 % | 352 MB |
+| 30 seeds, ×4 | `constraint_failure` | 13.0 / 12.0 s | 0.43 s | 41,643 | 0.98 | 4 | 0 | 16.8 ms | 0.5 % | 380 MB |
+| 20 seeds, ×1 | `constraint_failure` | 29.7 / 25.1 s | 1.49 s | 12,122 | 1.00 | 1 | 0 | 16.7 ms | 0.4 % | 343 MB |
+| 20 seeds, main thread | `constraint_failure` | 28.7 / 27.8 s | 1.43 s | 12,558 | — | 1 | 20 (1,301 ms), longest 86 ms | 33.3 ms | 8.4 % | 285 MB |
+
+| Cancellation (30 seeds, ×4, cancelled after 3 s) | Median | Max |
+|--------------------------------------------------|--------|-----|
+| Promise rejected with `CANCELLED` after abort | 0.3 ms | — |
+| Last worker quiet after abort | 71 ms | 76 ms |
+
+- **Scaling:** wall time grows linearly with seeds (≈ 0.43–0.49 s per seed on 4 workers from 10
+  seeds up); 20 seeds take 9.5 s on 4 workers against 29.7 s on one worker and 28.7 s on the main
+  thread (3.0–3.1×). Utilisation is 0.97–0.98 from 10 seeds up; 1 and 5 seeds cannot fill 4
+  workers (2 and 10 jobs).
+- **Main thread:** with workers, no long task and frame p95 16.7–16.8 ms at every seed count; the
+  main-thread fallback makes 20 long tasks (longest 86 ms) and 8.4 % late frames. The live run
+  stays at 9.9–10 ticks/s in every configuration.
+- **Memory:** renderer RSS (page and workers, `ps`) peaks at 308–380 MB with workers, growing with
+  the number of seeded states held for the result; on the main thread 285 MB.
+- **Worker start-up** (to `ready`): 31–70 ms median per configuration.
+- **Node, inline** (`pnpm bench:twin -- --robustness`, same workload, one thread): 1.37–1.51 s per
+  seed; 20 seeds 29.6 s, 30 seeds 44.0 s; load average 5.6 before, 4.2 after.
+- Variance (min against median): 1–18 % per row; the single-worker row's min (25.1 s) is 15 %
+  below its median, a sign of contention from the background load.
+
+### 8.5 Verification
+
+| Check | Result |
+|-------|--------|
+| Statistics with hand-calculated fixtures (`stats.test.ts`, 16 tests) | Mean, median, sample SD, t quantiles (table checked against the t density by integration), paired summaries (e.g. d = −1…−5: interval −4.963 … −1.037, −21.43 %), degenerate and missing observations, relative change with a non-positive baseline, every verdict branch and its order |
+| Multi-seed evaluation with the real engine (`robustness.test.ts`, 10 tests) | Seeds deterministic, distinct, never the discovery stream; invalid options refused; per-seed pairing recomputed directly with `simulate`; the optimiser's numbers reproduced on the discovery stream; frozen input untouched; byte-identical under a reversed parallel executor; batches of 16 + 4 jobs in seed order; progress stages; cancel → `CANCELLED`; stale snapshot and unknown candidate refused; metadata |
+| Worker pool (`worker-pool.test.ts`, 3 new, 20 in all) | Per-job start states reach the worker; a forged start hash → `INVALID_SNAPSHOT`; multi-seed on workers identical to inline; cancelling one request leaves the other running |
+| Workspace store (`store.test.ts`, 5 new, 7 in all) | The chosen candidate and seed count are run with coalesced progress; cancel leaves no verdict; a worker failure leaves no verdict and offers the main thread explicitly; a new evaluation stops a running validation and clears an old verdict; nothing runs without a snapshot |
+| Browser (`ai.spec.ts`, Phase 6.2 block, 4 tests) | Validate: progress, statistics, verdict, a reproducible id; the only API write is the existing `POST /proposals` and the proposal stays "Awaiting review"; cancel leaves no verdict and the live run keeps going; worker failure → explicit main-thread alternative, labelled; a proposal loaded from the API says validation is unavailable |
+| `pnpm check` (format, lint, typecheck, unit tests, build) | Exit 0; unit tests 380 passed (contracts 26, simulation 160, recorder 10, twin 52, web 132), 0 skipped |
+| `pnpm test:e2e` (full) | Exit 0; 62 passed, 3 skipped: `ai-live`, `analytics-live` and `recording` need a live API (`TWIN_API_URL`, `ANALYTICS_API_URL`, `RECORDING_API_URL`) and run in CI's data-platform job |
+| `CI=1 pnpm test:e2e ai.spec navigation.spec` | Exit 0; 22 passed |
+| `pnpm bench:twin` and `-- --robustness` | Exit 0; every robustness repetition byte-identical |
+| Python API | Unchanged (no file under `apps/api` touched); its checks run in CI's Python job |
+
+### 8.6 Persistence and API
+
+Not changed. The robustness result is advisory and stays in the browser: the API's `Evaluation`
+schema is strict (`extra="forbid"`), and storing a browser-computed statistical summary as if the
+server had verified it would cross the trust boundary. A stored version needs its own endpoint,
+table and audit entry, with the server re-deriving the statistics from the per-seed observations
+it receives (it still cannot re-simulate them; DEC-043).
+
+### 8.7 Limitations
+
+- One present state: seeds vary the future, not the starting conditions (fleet positions, stock,
+  open transfers).
+- Pairing is exact only at the start (§8.2); no variance reduction from common random numbers is
+  claimed.
+- The t interval assumes roughly normal paired differences; with 5 seeds it is wide. Seeds
+  better / worse / tied are reported as a distribution-free view.
+- Only mean pickup wait decides; secondary metrics are descriptive, without multiple-comparison
+  correction.
+- One candidate per run; the optimiser is not re-run per seed.
+- Not persisted; a proposal loaded from the API cannot be validated without its snapshot.
+- Benchmarks: headless Chromium on one machine (Apple M2, 8 GiB) with the data stack running in
+  Docker.
+
+### 8.8 Next increments
+
+- Persist validations with server-side consistency checks of the statistics against the per-seed
+  observations.
+- Multi-seed discovery (choose the plan on several seeds, validate on others).
+- Per-system random streams for true common random numbers (changes recorded runs; needs a
+  migration of golden fixtures and replays).
+- Vary the present state as well as the future.
