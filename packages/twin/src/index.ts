@@ -4,3 +4,4 @@ export * from "./metrics";
 export * from "./optimizer";
 export * from "./plan";
 export * from "./verify";
+export * from "./executor";

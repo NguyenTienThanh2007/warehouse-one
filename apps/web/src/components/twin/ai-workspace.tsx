@@ -19,6 +19,8 @@ export function AiWorkspace() {
   const simulationId = useSimulation((s) => s.config.simulation_id);
   useEffect(() => {
     void useTwin.getState().loadCapabilities();
+    // Leaving AI mode stops a running evaluation: its workers stop and nothing arrives later.
+    return () => useTwin.getState().cancel();
   }, []);
   useEffect(() => {
     void useTwin.getState().loadProposals();
@@ -106,8 +108,11 @@ function NoNetwork() {
   );
 }
 
+/** Stands in for a running evaluation, so its progress updates do not re-render the workspace. */
+const RUNNING = { kind: "running" } as const;
+
 function Workspace() {
-  const evaluation = useTwin((s) => s.evaluation);
+  const evaluation = useTwin((s) => (s.evaluation.kind === "running" ? RUNNING : s.evaluation));
   const proposal = useTwin((s) => s.proposal);
   const busy = useTwin((s) => s.busy);
   const result = evaluation.kind === "done" ? evaluation.result : null;
@@ -121,7 +126,10 @@ function Workspace() {
       <div className="flex min-w-0 flex-col gap-3">
         {result ? (
           <>
-            <EvaluationResult evaluation={result} />
+            <EvaluationResult
+              evaluation={result}
+              run={evaluation.kind === "done" ? evaluation.run : null}
+            />
             {proposal ? (
               <ProposalReview proposal={proposal} />
             ) : busy === "save" ? (
@@ -139,6 +147,14 @@ function Workspace() {
               </div>
             )}
           </>
+        ) : evaluation.kind === "cancelled" ? (
+          <div className="panel p-5" data-testid="twin-cancelled" role="status">
+            <p className="text-sm font-semibold text-fog-50">Evaluation cancelled</p>
+            <p className="mt-1 text-xs leading-5 text-fog-400">
+              The evaluation from tick {evaluation.tick.toLocaleString("en-US")} was stopped. Its
+              workers stopped too; nothing was saved and the live simulation was not changed.
+            </p>
+          </div>
         ) : evaluation.kind === "running" ? (
           <div
             className="panel grid h-64 place-items-center text-xs text-fog-400"

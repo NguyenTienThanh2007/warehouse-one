@@ -1,6 +1,7 @@
 pnpm-lock.yaml
 node_modules
 .next
+apps/web/public/workers
 dist
 coverage
 playwright-report

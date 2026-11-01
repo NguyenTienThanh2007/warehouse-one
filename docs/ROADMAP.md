@@ -11,7 +11,8 @@ Each phase is developed on `feature/p<N>-…`, reviewed through a pull request, 
 | 3 | `feature/p3-data-engineering` | Real data engineering | **Merged** (PR #5, `0b25fa4`) |
 | 4 | `feature/p4-analytics-refresh` | Operations analytics (published, reconciled) | **Merged** (PR #9, `5490c54`, 2026-10-23; follow-up PR #10, `b2ccfdc`) |
 | 5 | `feature/p5-multi-site-world` | Multi-site logistics world (first vertical slice) | **Merged** (PR #7, `5e9d0ef`; follow-up PR #8, `9459fd5`) |
-| 6 | `feature/p6-ai-digital-twin` | AI logistics brain and advanced digital twin | **In review** (first vertical slice; see `docs/phases/PHASE_6.md`) |
+| 6 | `feature/p6-ai-digital-twin` | AI logistics brain and advanced digital twin | **Merged** (PR #11, `72a2a0f`, 2026-10-27; first vertical slice) |
+| 6.1 | `feature/p6-1-evaluation-worker` | Twin evaluation off the main thread (worker pool) | **In review** (see `docs/phases/PHASE_6.md` §7) |
 | 7 | `feature/p7-production` | Production & portfolio release | Not started |
 
 ## Phase 1 — Premium 3D world (accepted)
@@ -46,13 +47,15 @@ gateway on a road network, with line-haul trucks carrying deterministic inter-si
 hand over to the DC simulation. World and facility views, site and truck inspectors, operator
 transfer requests. Record, results and next increments: `docs/phases/PHASE_5.md`.
 
-## Phase 6 — AI and digital twin (first slice in review)
+## Phase 6 — AI and digital twin (first slice merged; 6.1 in review)
 
 Fleet decision support: where idle line-haul trucks wait between jobs. A deterministic optimiser
 simulates candidate standby plans with the engine itself, from a frozen snapshot of the live run,
 and compares them with the plan in effect; proposals are re-validated by the API, approved by a
 person, applied once through the operator command path and audited; AI explanations are optional,
-server-side and policy-checked. Record, results and limitations: `docs/phases/PHASE_6.md`.
+server-side and policy-checked. Phase 6.1 runs the evaluations on a bounded pool of browser workers
+(about 2× faster, no main-thread long tasks, identical results). Record, results and limitations:
+`docs/phases/PHASE_6.md`.
 
 ## Phase 3 — Real data engineering (merged)
 
@@ -76,7 +79,7 @@ Summarised from the master brief. Detailed plans are written at the start of eac
 - **5 (as delivered):** multi-site world, see above. Next increments there: cross-site orders,
   a second detailed facility, traffic rules, network analytics.
 - **6 (first slice as delivered):** see above. Next there: more strategies on the same pipeline
-  (consolidation, depot-return policy, slotting), multi-seed evaluation, an evaluation worker or
-  service, time travel and replay UI, capacity planning, stress tests.
+  (consolidation, depot-return policy, slotting), multi-seed evaluation with confidence intervals,
+  time travel and replay UI, capacity planning, stress tests. (Evaluation workers: Phase 6.1.)
 - **7:** polish, security review, observability, deployment, documentation, demo and
   commercialisation assessment.

@@ -24,7 +24,10 @@ interface Fake {
 const OUR_HEALTH = { status: "ok", service: "warehouse-api", version: "0.1.0" };
 /** What these tests read from the read-only simulation hook (see helpers.ts). */
 interface TwinHook {
-  state(): { network?: { vehicles: Record<string, { id: string; standby_site?: string }> } };
+  state(): {
+    tick: number;
+    network?: { vehicles: Record<string, { id: string; standby_site?: string }> };
+  };
   commands(): { command_id: string; status: string }[];
 }
 type HookWindow = { __WAREHOUSE_ONE_SIM__: TwinHook };
@@ -477,5 +480,139 @@ test.describe("AI mode: fleet decision support", () => {
     await expect(text).toContainText("Waiting trucks start loading sooner");
     await expect(page.getByTestId("twin-ai")).toContainText("AI-generated · not a measurement");
     await expect(page.getByTestId("twin-ai-explanation")).toContainText("claude-opus-5-5");
+  });
+});
+
+/** The live run's tick, read from the read-only simulation hook. */
+const liveTick = (page: Page) =>
+  page.evaluate(() => (window as unknown as HookWindow).__WAREHOUSE_ONE_SIM__.state().tick);
+
+test.describe("AI mode: evaluation off the main thread (Phase 6.1)", () => {
+  test.describe.configure({ timeout: 240_000 });
+
+  test("progress, cancel, then a responsive page and a live run while workers evaluate", async ({
+    page,
+  }) => {
+    const fake = await fakeTwin(page);
+    await openAi(page);
+    await page.getByTestId("twin-horizon").selectOption("36000");
+    await page.getByTestId("twin-run").click();
+    const progress = page.getByTestId("twin-progress");
+    await expect(progress).toBeVisible();
+    await expect(page.getByTestId("twin-execution-mode")).toHaveText(/Background workers/);
+    await expect(page.getByTestId("twin-progress-stage")).toHaveText(
+      "Simulating the baseline and candidate plans",
+    );
+    await expect(page.getByTestId("twin-progress-count")).toContainText("running");
+
+    // Cancel: the workers stop and nothing arrives later.
+    await page.getByTestId("twin-cancel").click();
+    await expect(page.getByTestId("twin-cancelled")).toContainText("nothing was saved");
+    await expect(progress).toHaveCount(0);
+    await page.waitForTimeout(3_000);
+    await expect(page.getByTestId("twin-cancelled")).toBeVisible();
+    await expect(page.getByTestId("twin-result")).toHaveCount(0);
+    expect(fake.posts).toEqual([]);
+
+    // Again: while it runs, the page answers and the live simulation keeps advancing.
+    const before = await liveTick(page);
+    await page.getByTestId("twin-run").click();
+    await expect(progress).toBeVisible();
+    await page.getByTestId("twin-whatif").locator("summary").click();
+    await page.getByTestId("twin-whatif-riverside-xd").fill("2");
+    await expect(page.getByTestId("twin-whatif-riverside-xd")).toHaveValue("2");
+    await expect(page.getByTestId("twin-result")).toBeVisible({ timeout: 120_000 });
+    const after = await liveTick(page);
+    const elapsed = Number(
+      await page.getByTestId("twin-run-facts").getAttribute("data-elapsed-ms"),
+    );
+    // At 1× the live run makes 10 ticks per second; it kept (nearly) that pace throughout.
+    expect(elapsed).toBeGreaterThan(1_000);
+    expect(after - before).toBeGreaterThan((elapsed / 100) * 0.8);
+    await expect(page.getByTestId("twin-run-facts")).toHaveAttribute("data-mode", "worker");
+    await expect(page.getByTestId("twin-run-facts")).toContainText("Computed in");
+    await expect(page.getByTestId("twin-status")).toHaveText("Awaiting review");
+    expect(fake.posts).toEqual(["/proposals"]);
+  });
+
+  test("leaving AI mode stops a running evaluation; no late result arrives", async ({ page }) => {
+    const fake = await fakeTwin(page);
+    await openAi(page);
+    await page.getByTestId("twin-horizon").selectOption("36000");
+    await page.getByTestId("twin-run").click();
+    await expect(page.getByTestId("twin-progress")).toBeVisible();
+    await page.getByTestId("mode-explore").click();
+    await expect(page.getByTestId("ai-workspace")).toHaveCount(0);
+    await page.waitForTimeout(15_000); // longer than the evaluation would have taken
+    await page.getByTestId("mode-ai").click();
+    await expect(page.getByTestId("twin-cancelled")).toBeVisible();
+    await expect(page.getByTestId("twin-result")).toHaveCount(0);
+    expect(fake.posts).toEqual([]);
+  });
+
+  test("workers and the main thread compute the identical evaluation from one snapshot", async ({
+    page,
+  }) => {
+    const fake = await fakeTwin(page);
+    await openAi(page);
+    // Pause the live run so both evaluations start from the same state.
+    await page.locator("body").press("Space");
+    await page.getByTestId("twin-horizon").selectOption("9000");
+    await page.getByTestId("twin-run").click();
+    await expect(page.getByTestId("twin-run-facts")).toHaveAttribute("data-mode", "worker", {
+      timeout: 120_000,
+    });
+    await expect(page.getByTestId("twin-status")).toHaveText("Awaiting review");
+    await page.evaluate(() =>
+      history.replaceState(null, "", `${location.pathname}?mode=ai&twinExecution=main-thread`),
+    );
+    await page.getByTestId("twin-run").click();
+    await expect(page.getByTestId("twin-run-facts")).toHaveAttribute("data-mode", "main_thread", {
+      timeout: 120_000,
+    });
+    await expect(page.getByTestId("twin-execution-mode")).toHaveText("Main thread (fallback)");
+    await expect.poll(() => fake.proposals.size).toBe(2);
+    const [a, b] = [...fake.proposals.values()].map((p) => ({ ...p.evaluation, runtime: null }));
+    expect(a.evaluation_id).toBe(b.evaluation_id);
+    expect(a).toEqual(b);
+  });
+
+  test("a worker that cannot load is reported; the main thread is offered, never silent", async ({
+    page,
+  }) => {
+    await fakeTwin(page);
+    await page.route("**/workers/twin-evaluation.js", (route) => route.fulfill({ status: 404 }));
+    await openAi(page);
+    await page.getByTestId("twin-horizon").selectOption("9000");
+    await page.getByTestId("twin-run").click();
+    const failure = page.getByTestId("twin-failure");
+    await expect(failure).toHaveAttribute("data-kind", "WORKER_UNAVAILABLE", { timeout: 30_000 });
+    await expect(page.getByTestId("twin-result")).toHaveCount(0);
+    await page.getByTestId("twin-alternative").click();
+    await expect(page.getByTestId("twin-run-facts")).toHaveAttribute("data-mode", "main_thread", {
+      timeout: 120_000,
+    });
+    await expect(page.getByTestId("twin-execution-mode")).toHaveText("Main thread (fallback)");
+  });
+
+  test("a worker that crashes mid-evaluation fails the evaluation with a stable code", async ({
+    page,
+  }) => {
+    await fakeTwin(page);
+    // Loads and says it is ready, then dies on the first job.
+    await page.route("**/workers/twin-evaluation.js", (route) =>
+      route.fulfill({
+        contentType: "text/javascript",
+        body: 'self.postMessage({ type: "ready" }); self.onmessage = () => { throw new Error("boom"); };',
+      }),
+    );
+    await openAi(page);
+    await page.getByTestId("twin-horizon").selectOption("9000");
+    await page.getByTestId("twin-run").click();
+    const failure = page.getByTestId("twin-failure");
+    await expect(failure).toHaveAttribute("data-kind", "WORKER_CRASHED", { timeout: 30_000 });
+    await expect(failure).toContainText("crashed");
+    await expect(page.getByTestId("twin-alternative")).toBeVisible();
+    await expect(page.getByTestId("twin-retry")).toBeVisible();
   });
 });

@@ -5,9 +5,9 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
 
 ## Current state
 
-- **Active phase:** 6 (AI and digital twin, first slice: fleet standby) on
-  `feature/p6-ai-digital-twin`. Phases 0–5 are merged (Phase 4: PR #9, connection fix PR #10).
-- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_6.md`.
+- **Active phase:** 6.1 (twin evaluation off the main thread) on `feature/p6-1-evaluation-worker`.
+  Phases 0–6 are merged (Phase 6: PR #11, `72a2a0f`).
+- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_6.md` (§7 for 6.1).
 
 ## Architecture (one screen)
 
@@ -27,6 +27,8 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
   lifecycle (approve → execute once → applied/failed, append-only audit) and optional AI
   explanations, which may only explain stored figures. Execution = `linehaul.set_standby` commands
   through the live runner. AI mode: `apps/web/src/components/twin`, `lib/twin`.
+  Phase 6.1 (DEC-042): trajectories run on a `WorkerPool` (`TrajectoryExecutor`); results must stay
+  identical to `inlineExecutor` (parity tests vs the golden fixture).
 - `packages/contracts`: Zod schemas for commands and events → `data/schemas/*.json` (generated).
 - `apps/web`: Next.js 16 + R3F. Zustand is a *read-only projection* of the runner. Rendering never writes state.
   `src/world/derive.ts` maps config + state to instances (pure, tested); `components/world/*` draws them.
@@ -73,7 +75,13 @@ pnpm bench:twin / pnpm twin:verify --api <url> --proposal <uuid>
 ## Known blockers / gotchas
 
 - Local ports 3000/8000/5432 may be taken on the dev machine (another app answers on 8000); use `WEB_PORT`, `API_PORT`, `POSTGRES_PORT`. The web app reads `NEXT_PUBLIC_API_URL`/`API_PORT` from the root `.env` (src/lib/api/base-url.ts).
+- Turbopack (Next 16.3) does not bundle `new Worker(new URL(...))`: the twin worker is bundled by
+  esbuild (`apps/web/scripts/build-twin-worker.mjs`) into git-ignored `public/workers/` before
+  `next dev`/`next build`; restart `pnpm dev` after changing `packages/twin` or `packages/simulation`.
 - Hidden browser panes throttle rAF, so FPS from them is meaningless. Use `pnpm bench:render`.
+- Twin progress arrives ~25×/s from workers: keep it out of broad store selectors (the store
+  coalesces it to ≤4 updates/s; only the progress bar subscribes). `pnpm bench:twin-frames`
+  attributes frame time. Benchmarks are void if the laptop sleeps mid-run (check `pmset -g log`).
 - TypeScript is pinned to 6.0 and ESLint to 9 (DEC-008).
 - Playwright uses the real GPU on macOS and SwiftShader in CI; the app starts on Low quality under software WebGL (DEC-017).
 - Keep per-asset triangle budgets (`world/geometry.test.ts`); measure before and after any rendering change.

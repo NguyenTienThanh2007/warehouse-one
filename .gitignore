@@ -3,6 +3,7 @@ node_modules/
 .pnpm-store/
 
 # Build output
+/apps/web/public/workers/
 .next/
 out/
 dist/
