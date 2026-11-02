@@ -54,7 +54,14 @@ import {
   type ConstraintResult,
   type StandbyPlan,
 } from "./plan";
-import { MIN_PAIRS_FOR_VERDICT, pairedSummary, type PairedSummary } from "./stats";
+import {
+  evidenceOf,
+  MIN_PAIRS_FOR_VERDICT,
+  pairedStats,
+  roundForDisplay,
+  type PairedStats,
+  type PairedSummary,
+} from "./stats";
 
 export const ROBUSTNESS_METHOD = {
   id: "paired-t-95",
@@ -237,10 +244,21 @@ export function seededStarts(
 const signed = (x: number, digits = 1): string =>
   `${x < 0 ? "−" : x > 0 ? "+" : "±"}${Math.abs(x).toFixed(digits)}`;
 
+/**
+ * `x` with one decimal, or more when one decimal would put it on the other side of `limit` than
+ * it is (1.9996 s against 2 s reads "1.9996", not "2.0"): text never contradicts the decision.
+ */
+const against = (x: number, limit: number): string => {
+  for (let digits = 1; digits <= 6; digits++) {
+    const shown = x.toFixed(digits);
+    if (Number(shown) >= limit === x >= limit) return shown;
+  }
+  return String(x);
+};
+
 const deltaOf = (b: number | null, c: number | null): number | null =>
   b === null || c === null ? null : c - b;
 
-/** The verdict on the primary metric, with its reasons. Pure; documented in DEC-043. */
 /** A seed on which the candidate broke a hard constraint. */
 export interface SeedFailure {
   readonly index: number;
@@ -249,8 +267,14 @@ export interface SeedFailure {
   readonly workload_diverged: boolean;
 }
 
+/**
+ * The verdict on the primary metric, with its reasons. Pure; documented in DEC-043. `primary` must
+ * be the unrounded statistics (`pairedStats`), never the display summary: every comparison with
+ * zero and with the thresholds is made on exact values, and the direction comes from
+ * `evidenceOf`, so the verdict always agrees with the primary metric's evidence.
+ */
 export function robustnessVerdict(
-  primary: PairedSummary,
+  primary: PairedStats,
   failures: readonly SeedFailure[],
   o: { readonly min_improvement_pct: number; readonly min_improvement_s: number },
 ): { verdict: RobustnessVerdict; reasons: string[] } {
@@ -279,37 +303,40 @@ export function robustnessVerdict(
       ],
     };
   const ci = `95 % interval of the change in mean pickup wait: ${signed(primary.ci95.low)} s to ${signed(primary.ci95.high)} s`;
-  const degenerate = primary.degenerate
-    ? [
-        "Every seed gave exactly the same difference: the interval has zero width and is not a statistical estimate.",
-      ]
-    : [];
-  if (primary.ci95.high < 0) {
+  if (primary.degenerate)
+    return {
+      verdict: "inconclusive",
+      reasons: [
+        `Every one of the ${primary.n} seeds gave the same change in mean pickup wait (${signed(primary.mean_diff)} s): the interval has zero width and is not a statistical estimate, so it is no evidence either way.`,
+        `Seeds better / worse / tied: ${primary.seeds_better} / ${primary.seeds_worse} / ${primary.seeds_tied}.`,
+      ],
+    };
+  const evidence = evidenceOf(primary.ci95, "lower", primary.n, primary.degenerate);
+  if (evidence === "better") {
     const s = -primary.mean_diff;
     const pct = primary.relative_pct === null ? null : -primary.relative_pct;
     const practical = s >= o.min_improvement_s && pct !== null && pct >= o.min_improvement_pct;
+    const amount = `${against(s, o.min_improvement_s)} s (${pct === null ? "no baseline to compare" : `${against(pct, o.min_improvement_pct)} %`})`;
     return practical
       ? {
           verdict: "improved",
           reasons: [
             `${ci}, entirely below zero, over ${primary.n} seeds.`,
-            `Mean reduction ${s.toFixed(1)} s (${pct?.toFixed(1)} %), at least the ${o.min_improvement_pct} % / ${o.min_improvement_s} s practical threshold.`,
-            ...degenerate,
+            `Mean reduction ${amount}, at least the ${o.min_improvement_pct} % / ${o.min_improvement_s} s practical threshold.`,
           ],
         }
       : {
           verdict: "improved_below_threshold",
           reasons: [
             `${ci}, entirely below zero, over ${primary.n} seeds: the candidate is reliably better.`,
-            `But the mean reduction, ${s.toFixed(1)} s (${pct === null ? "no baseline to compare" : `${pct.toFixed(1)} %`}), is below the ${o.min_improvement_pct} % / ${o.min_improvement_s} s practical threshold.`,
-            ...degenerate,
+            `But the mean reduction, ${amount}, is below the ${o.min_improvement_pct} % / ${o.min_improvement_s} s practical threshold.`,
           ],
         };
   }
-  if (primary.ci95.low > 0)
+  if (evidence === "worse")
     return {
       verdict: "regressed",
-      reasons: [`${ci}, entirely above zero: the candidate is reliably worse.`, ...degenerate],
+      reasons: [`${ci}, entirely above zero: the candidate is reliably worse.`],
     };
   return {
     verdict: "inconclusive",
@@ -482,20 +509,27 @@ export async function evaluateRobustness(
     label: "Computing paired statistics",
     fraction: 0.99,
   });
+  // Decisions on the unrounded statistics; the result carries them rounded for display.
+  const exact = new Map<MetricKey, PairedStats>(
+    METRICS.map((m) => [
+      m.key,
+      pairedStats(
+        perSeed.map((s) => ({
+          baseline: s.baseline.metrics[m.key],
+          candidate: s.candidate.metrics[m.key],
+        })),
+        m.better,
+      ),
+    ]),
+  );
   const metrics: MetricSummary[] = METRICS.map((m) => ({
     key: m.key,
     label: m.label,
     unit: m.unit,
     better: m.better,
-    ...pairedSummary(
-      perSeed.map((s) => ({
-        baseline: s.baseline.metrics[m.key],
-        candidate: s.candidate.metrics[m.key],
-      })),
-      m.better,
-    ),
+    ...roundForDisplay(exact.get(m.key) as PairedStats),
   }));
-  const primary = metrics.find((m) => m.key === PRIMARY_METRIC) as MetricSummary;
+  const primary = exact.get(PRIMARY_METRIC) as PairedStats;
   const failed: SeedFailure[] = perSeed
     .filter((s) => !s.passed)
     .map((s) => ({

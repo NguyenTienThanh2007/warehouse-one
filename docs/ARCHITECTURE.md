@@ -1,7 +1,7 @@
 # Architecture
 
-**Status:** describes what exists after Phase 6.1 (merged, PR #12) and Phase 6.2 (on
-`feature/p6-2-multi-seed-evaluation`);
+**Status:** describes what exists after Phase 6.1 (merged, PR #12) and Phase 6.2 (merged,
+PR #13);
 sections 1–7 date from Phase 3 and are extended by 5a (Phase 5), 7a (Phase 4) and 7b (Phase 6).
 Components marked *(planned)* do not exist yet.
 

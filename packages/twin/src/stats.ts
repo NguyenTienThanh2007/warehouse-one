@@ -9,6 +9,10 @@
  * roughly normal; with 5–30 seeds a percentile bootstrap would under-cover, which is why it is not
  * used. The counts of seeds where the candidate was better, worse or tied are a distribution-free
  * view of the same pairs.
+ *
+ * When every difference is the same, s_d is zero and the interval collapses to a point: the t
+ * method does not apply, so such an interval is never evidence (`degenerate`, `no_evidence`).
+ * Decisions use `pairedStats` (unrounded); `pairedSummary` rounds the same numbers for display.
  */
 import { round } from "./metrics";
 
@@ -66,7 +70,24 @@ export type Better = "lower" | "higher" | "info";
 /** What the interval says about one metric, in the metric's own direction of improvement. */
 export type Evidence = "better" | "worse" | "no_evidence" | "not_applicable";
 
-export interface PairedSummary {
+/**
+ * Differences equal up to floating-point error count as identical: d = c − b of values that
+ * differ by the same decimal amount (0.3 − 0.1, 0.7 − 0.5, …) gives a sample SD of ~1e-16, not 0,
+ * and a t interval of near-zero width that would look like certainty. This is a numerical
+ * tolerance on the subtraction, far below any metric's display precision (≥ 0.001), not a
+ * statistical threshold.
+ */
+export const IDENTICAL_DIFF_TOLERANCE = 1e-9;
+
+/** Type-only marker of unrounded statistics; no such property exists at run time. */
+declare const unrounded: unique symbol;
+
+/**
+ * Paired statistics, unrounded: the only input to evidence and verdicts. The marker makes passing
+ * a display summary where exact values are needed a type error.
+ */
+export interface PairedStats {
+  readonly [unrounded]: true;
   /** Pairs where both values are finite numbers. */
   readonly n: number;
   /** Pairs left out because a value was missing (no transfer to measure) or not finite. */
@@ -84,7 +105,10 @@ export interface PairedSummary {
   readonly se_diff: number | null;
   /** 95 % paired t interval of the mean difference; null below two pairs. */
   readonly ci95: { readonly low: number; readonly high: number } | null;
-  /** Every difference is the same: the interval has zero width and its method does not apply. */
+  /**
+   * Every difference is the same (up to floating-point error): the interval has zero width, the t
+   * method does not apply, and the evidence is `no_evidence`.
+   */
   readonly degenerate: boolean;
   /** Mean difference relative to the baseline mean, in %; null when that mean is not > 0. */
   readonly relative_pct: number | null;
@@ -94,6 +118,9 @@ export interface PairedSummary {
   readonly seeds_tied: number;
   readonly evidence: Evidence;
 }
+
+/** The same fields rounded for display (3 decimals; relative change 2). Never decide on these. */
+export type PairedSummary = Omit<PairedStats, typeof unrounded>;
 
 const finite = (x: number | null): x is number => x !== null && Number.isFinite(x);
 
@@ -128,25 +155,34 @@ export function tCritical975(df: number): number {
   return t;
 }
 
-/** Interval evidence in the metric's direction: entirely on the improving side, or the other. */
+/**
+ * Interval evidence in the metric's direction: entirely on the improving side, or the other. A
+ * degenerate (zero-width) interval is never evidence. Pass unrounded values.
+ */
 export function evidenceOf(
   ci: { readonly low: number; readonly high: number } | null,
   better: Better,
   n: number,
+  degenerate: boolean,
 ): Evidence {
   if (better === "info") return "not_applicable";
-  if (ci === null || n < MIN_PAIRS_FOR_VERDICT) return "no_evidence";
+  if (ci === null || n < MIN_PAIRS_FOR_VERDICT || degenerate) return "no_evidence";
   const below = ci.high < 0;
   const above = ci.low > 0;
   if (better === "lower") return below ? "better" : above ? "worse" : "no_evidence";
   return above ? "better" : below ? "worse" : "no_evidence";
 }
 
-/**
- * Summarise paired observations. Values are rounded for output (3 decimals); evidence and every
- * comparison are computed on the unrounded numbers.
- */
-export function pairedSummary(pairs: readonly Pair[], better: Better): PairedSummary {
+/** Every difference is the same, up to floating-point error of the subtraction. */
+function allIdentical(d: readonly number[]): boolean {
+  if (d.length < 2) return false;
+  const lo = Math.min(...d);
+  const hi = Math.max(...d);
+  return hi - lo <= IDENTICAL_DIFF_TOLERANCE * Math.max(1, Math.abs(lo), Math.abs(hi));
+}
+
+/** Summarise paired observations, unrounded. Evidence and verdicts are decided on these. */
+export function pairedStats(pairs: readonly Pair[], better: Better): PairedStats {
   if (pairs.length > MAX_PAIRS)
     throw new RangeError(`at most ${MAX_PAIRS} pairs are supported, got ${pairs.length}`);
   const valid = pairs.filter(
@@ -157,7 +193,9 @@ export function pairedSummary(pairs: readonly Pair[], better: Better): PairedSum
   const c = valid.map((p) => p.candidate);
   const d = valid.map((p) => p.candidate - p.baseline);
   const md = mean(d);
-  const sd = sampleSd(d);
+  const degenerate = allIdentical(d);
+  // Identical differences have no spread; floating-point noise is not one.
+  const sd = degenerate ? 0 : sampleSd(d);
   const se = sd === null ? null : sd / Math.sqrt(n);
   const ci =
     md !== null && se !== null
@@ -172,24 +210,46 @@ export function pairedSummary(pairs: readonly Pair[], better: Better): PairedSum
     if (sign * x < 0) seedsBetter += 1;
     else seedsWorse += 1;
   }
-  const r = (x: number | null) => (x === null ? null : round(x, 3));
   return {
     n,
     missing: pairs.length - n,
-    baseline_mean: r(bm),
-    candidate_mean: r(mean(c)),
-    baseline_median: r(median(b)),
-    candidate_median: r(median(c)),
-    mean_diff: r(md),
-    median_diff: r(median(d)),
-    sd_diff: r(sd),
-    se_diff: r(se),
-    ci95: ci && { low: round(ci.low, 3), high: round(ci.high, 3) },
-    degenerate: sd === 0,
-    relative_pct: md !== null && bm !== null && bm > 0 ? round((md / bm) * 100, 2) : null,
+    baseline_mean: bm,
+    candidate_mean: mean(c),
+    baseline_median: median(b),
+    candidate_median: median(c),
+    mean_diff: md,
+    median_diff: median(d),
+    sd_diff: sd,
+    se_diff: se,
+    ci95: ci,
+    degenerate,
+    relative_pct: md !== null && bm !== null && bm > 0 ? (md / bm) * 100 : null,
     seeds_better: better === "info" ? 0 : seedsBetter,
     seeds_worse: better === "info" ? 0 : seedsWorse,
     seeds_tied: better === "info" ? 0 : n - seedsBetter - seedsWorse,
-    evidence: evidenceOf(ci, better, n),
+    evidence: evidenceOf(ci, better, n, degenerate),
+  } as PairedStats;
+}
+
+/** Rounds statistics for display. Evidence and counts are carried over, never recomputed. */
+export function roundForDisplay(s: PairedStats): PairedSummary {
+  const r = (x: number | null) => (x === null ? null : round(x, 3));
+  return {
+    ...s,
+    baseline_mean: r(s.baseline_mean),
+    candidate_mean: r(s.candidate_mean),
+    baseline_median: r(s.baseline_median),
+    candidate_median: r(s.candidate_median),
+    mean_diff: r(s.mean_diff),
+    median_diff: r(s.median_diff),
+    sd_diff: r(s.sd_diff),
+    se_diff: r(s.se_diff),
+    ci95: s.ci95 && { low: round(s.ci95.low, 3), high: round(s.ci95.high, 3) },
+    relative_pct: s.relative_pct === null ? null : round(s.relative_pct, 2),
   };
+}
+
+/** Paired statistics rounded for display: `roundForDisplay(pairedStats(pairs, better))`. */
+export function pairedSummary(pairs: readonly Pair[], better: Better): PairedSummary {
+  return roundForDisplay(pairedStats(pairs, better));
 }

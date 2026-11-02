@@ -10,11 +10,13 @@ import {
   checkRobustnessOptions,
   defaultRootSeed,
   evaluateRobustness,
+  robustnessVerdict,
   SEEDS_PER_BATCH,
   seededStarts,
   seedString,
   type RobustnessEvaluation,
 } from "./robustness";
+import { pairedStats, roundForDisplay } from "./stats";
 
 const dir = resolve(__dirname, "../../../data/fixtures/twin-standby");
 const snapshot = JSON.parse(readFileSync(resolve(dir, "snapshot.json"), "utf8")) as Snapshot;
@@ -199,6 +201,51 @@ describe("multi-seed evaluation with the real engine", () => {
     await expect(run).rejects.toMatchObject({ code: "CANCELLED" });
   }, 60_000);
 
+  it("constant per-seed differences give no evidence, no trade-off and no improvement", async () => {
+    // The candidate's trajectory is the baseline's with pickup wait exactly 2 s lower and empty
+    // driving exactly 0.5 km higher on every seed: zero-variance differences.
+    const constant: TrajectoryExecutor = {
+      mode: "worker",
+      parallelism: 1,
+      async run(jobs: readonly TrajectoryJob[], ctx) {
+        const out = [];
+        for (let i = 0; i < jobs.length; i += 2) {
+          const b = await simulate(ctx.config, jobs[i]?.start?.state ?? ctx.state, [], ctx.horizon);
+          const m = b.metrics;
+          out.push(b, {
+            ...b,
+            metrics: {
+              ...m,
+              pickup_wait_s: m.pickup_wait_s === null ? null : m.pickup_wait_s - 2,
+              empty_km: m.empty_km + 0.5,
+            },
+          });
+        }
+        return out;
+      },
+    };
+    const r = await evaluateRobustness(
+      snapshot,
+      discovery,
+      candidateId,
+      { seeds: 5, root_seed: "t" },
+      { executor: constant },
+    );
+    const wait = r.metrics.find((m) => m.key === "pickup_wait_s");
+    const empty = r.metrics.find((m) => m.key === "empty_km");
+    expect(wait).toMatchObject({
+      n: 5,
+      degenerate: true,
+      evidence: "no_evidence",
+      seeds_better: 5,
+    });
+    expect(empty).toMatchObject({ degenerate: true, evidence: "no_evidence", seeds_worse: 5 });
+    expect(r.per_seed.every((s) => s.passed)).toBe(true);
+    expect(r.verdict).toBe("inconclusive");
+    expect(r.reasons[0]).toContain("zero width");
+    expect(r.tradeoffs).toEqual([]);
+  }, 120_000);
+
   it("refuses a snapshot the evaluation did not start from, or an unknown candidate", async () => {
     const moved = { ...snapshot, state_hash: "0".repeat(32) };
     await expect(evaluateRobustness(moved, discovery, candidateId)).rejects.toMatchObject({
@@ -207,6 +254,34 @@ describe("multi-seed evaluation with the real engine", () => {
     await expect(evaluateRobustness(snapshot, discovery, "c99")).rejects.toMatchObject({
       code: "INVALID_PLAN",
     });
+  });
+
+  it("decides on unrounded statistics and shows them rounded; verdict and evidence agree", () => {
+    const primary = first.metrics.find((m) => m.key === "pickup_wait_s");
+    const exact = pairedStats(
+      first.per_seed.map((s) => ({
+        baseline: s.baseline.metrics.pickup_wait_s,
+        candidate: s.candidate.metrics.pickup_wait_s,
+      })),
+      "lower",
+    );
+    expect(json(primary)).toEqual(json({ ...primary, ...roundForDisplay(exact) }));
+    // Recomputed from the per-seed observations, the verdict and its reasons are the same.
+    const failures = first.per_seed
+      .filter((s) => !s.passed)
+      .map((s) => ({
+        index: s.index,
+        failed: s.constraints.filter((c) => !c.satisfied).map((c) => `${c.label}: ${c.detail}`),
+        workload_diverged: s.workload_diverged,
+      }));
+    expect(robustnessVerdict(exact, failures, first.options)).toEqual({
+      verdict: first.verdict,
+      reasons: first.reasons,
+    });
+    // Trade-offs are exactly the other judged metrics with evidence "worse".
+    expect(first.tradeoffs).toHaveLength(
+      first.metrics.filter((m) => m.key !== "pickup_wait_s" && m.evidence === "worse").length,
+    );
   });
 
   it("records what was evaluated, how, and its limits", () => {
