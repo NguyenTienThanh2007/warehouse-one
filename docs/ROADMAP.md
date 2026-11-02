@@ -13,7 +13,7 @@ Each phase is developed on `feature/p<N>-…`, reviewed through a pull request, 
 | 5 | `feature/p5-multi-site-world` | Multi-site logistics world (first vertical slice) | **Merged** (PR #7, `5e9d0ef`; follow-up PR #8, `9459fd5`) |
 | 6 | `feature/p6-ai-digital-twin` | AI logistics brain and advanced digital twin | **Merged** (PR #11, `72a2a0f`, 2026-10-27; first vertical slice) |
 | 6.1 | `feature/p6-1-evaluation-worker` | Twin evaluation off the main thread (worker pool) | **Merged** (PR #12, `dd1d1a7`, 2026-11-01) |
-| 6.2 | `feature/p6-2-multi-seed-evaluation` | Multi-seed robustness validation with paired statistics | **In review** (see `docs/phases/PHASE_6.md` §8) |
+| 6.2 | `feature/p6-2-multi-seed-evaluation` | Multi-seed robustness validation with paired statistics | **Merged** (PR #13, `61c67d5`, 2026-11-01; verdict correction in review, §8.9) |
 | 7 | `feature/p7-production` | Production & portfolio release | Not started |
 
 ## Phase 1 — Premium 3D world (accepted)
@@ -48,14 +48,16 @@ gateway on a road network, with line-haul trucks carrying deterministic inter-si
 hand over to the DC simulation. World and facility views, site and truck inspectors, operator
 transfer requests. Record, results and next increments: `docs/phases/PHASE_5.md`.
 
-## Phase 6 — AI and digital twin (first slice and 6.1 merged; 6.2 in review)
+## Phase 6 — AI and digital twin (first slice, 6.1 and 6.2 merged)
 
 Fleet decision support: where idle line-haul trucks wait between jobs. A deterministic optimiser
 simulates candidate standby plans with the engine itself, from a frozen snapshot of the live run,
 and compares them with the plan in effect; proposals are re-validated by the API, approved by a
 person, applied once through the operator command path and audited; AI explanations are optional,
 server-side and policy-checked. Phase 6.1 runs the evaluations on a bounded pool of browser workers
-(about 2× faster, no main-thread long tasks, identical results). Record, results and limitations:
+(about 2× faster, no main-thread long tasks, identical results). Phase 6.2 validates a plan on
+several seeded futures with paired statistics and an advisory verdict. Record, results and
+limitations:
 `docs/phases/PHASE_6.md`.
 
 ## Phase 3 — Real data engineering (merged)

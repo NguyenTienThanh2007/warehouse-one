@@ -1,12 +1,12 @@
 # Project Status
 
-_Last updated: 2026-11-01_
+_Last updated: 2026-11-02_
 
 | Item | State |
 |------|-------|
-| Active phase | **Phase 6.2: multi-seed robustness validation** of twin plans, in review on `feature/p6-2-multi-seed-evaluation` (base `dd1d1a7`) |
-| `main` | `dd1d1a7`: Phases 0–6.1 merged (PR #1–#5, #7–#12); `main` CI run 41304258402: 5/5 jobs green |
-| Last merged | PR #12, Phase 6.1 twin evaluation off the main thread (`dd1d1a7`, 2026-11-01); before it PR #11, Phase 6 AI and digital twin (`72a2a0f`, 2026-10-27) |
+| Active work | **Post-merge correction of the Phase 6.2 statistical verdict** (degenerate intervals, unrounded decisions), in review on `fix/p6-2-statistical-verdict` (base `61c67d5`); no new phase started |
+| `main` | `61c67d5`: Phases 0–6.2 merged (PR #1–#5, #7–#13); `main` CI run 41322552933: 5/5 jobs green |
+| Last merged | PR #13, Phase 6.2 multi-seed robustness validation (`61c67d5`, 2026-11-01); before it PR #12, Phase 6.1 twin evaluation off the main thread (`dd1d1a7`, 2026-11-01) |
 | Closed unmerged | PR #6 (Phase 4 planning docs); not used as a basis |
 
 ## Phase status
@@ -19,19 +19,19 @@ _Last updated: 2026-11-01_
 | 3 Data engineering | merged (PR #5) | `docs/phases/PHASE_3.md` |
 | 4 Operations analytics | merged (PR #9), follow-up PR #10 | `docs/phases/PHASE_4.md` |
 | 5 Multi-site world | merged (PR #7), follow-up PR #8 | `docs/phases/PHASE_5.md` |
-| 6 AI and digital twin | merged (PR #11; first slice: fleet standby); 6.1 merged (PR #12); **6.2 in review** on `feature/p6-2-multi-seed-evaluation` | `docs/phases/PHASE_6.md` |
+| 6 AI and digital twin | merged (PR #11; first slice: fleet standby); 6.1 merged (PR #12); 6.2 merged (PR #13); **verdict correction in review** on `fix/p6-2-statistical-verdict` | `docs/phases/PHASE_6.md` |
 | 7 Production | not started | — |
 
 ## Modes in the app
 
 Explore, Operate, Analytics and AI (fleet decision support: optimiser, what-if, review and
 approval, optional AI explanations) are available on `main`, with evaluations on background workers
-(Phase 6.1). Phase 6.2 adds advisory multi-seed validation of a plan. Build (layout editing) is
+(Phase 6.1) and advisory multi-seed validation of a plan (Phase 6.2). Build (layout editing) is
 planned but not scheduled.
 
 ## Pending
 
-- Phase 6.2 review and merge decision (owner)
+- Review and merge decision on the Phase 6.2 verdict correction (owner)
 - Owner decisions: repository licence, public-demo hosting (Phase 7)
 - Optional: an AI provider key for the API (`WAREHOUSE_AI_PROVIDER`, `WAREHOUSE_AI_API_KEY`) to try
   AI explanations; everything else works without it

@@ -5,7 +5,9 @@ merged)
 **Status:** MERGED into `main` as `72a2a0f` (PR #11, 2026-10-27; `main` CI run 40541684889: 5/5
 jobs green). Phase 6.1 (§7, evaluation off the main thread) is MERGED as `dd1d1a7` (PR #12,
 2026-11-01; `main` CI run 41304258402: 5/5 jobs green). Phase 6.2 (§8, multi-seed robustness
-validation) is in review on `feature/p6-2-multi-seed-evaluation`.
+validation) is MERGED as `61c67d5` (PR #13, 2026-11-01; `main` CI run 41322552933: 5/5 jobs
+green); a post-merge correction of its verdict (§8.9) is in review on
+`fix/p6-2-statistical-verdict`.
 
 ## 1. Starting point (verified 2026-10-27)
 
@@ -391,7 +393,8 @@ Full results of every check are in the pull request.
 ## 8. Phase 6.2 — multi-seed robustness validation
 
 **Branch:** `feature/p6-2-multi-seed-evaluation` · **Base:** `main` @ `dd1d1a7` (PR #12 merged)
-**Status:** in review. Decision: DEC-043.
+**Status:** MERGED as `61c67d5` (PR #13, 2026-11-01). Decision: DEC-043. Post-merge
+correction: §8.9.
 
 ### 8.1 Problem
 
@@ -448,7 +451,9 @@ AI workspace: "Robustness across futures" panel — advisory, not sent to the AP
   Student t interval** mean(d) ± t(0.975, n − 1)·s/√n (table for df 1–29, checked against the t
   density by numerical integration in tests), relative change (null when the baseline mean is not
   positive), and seeds better / worse / tied. Missing or non-finite observations are excluded and
-  counted; zero variance is flagged (`degenerate`). Values are rounded for display only.
+  counted. Identical differences (zero variance, up to floating-point error) are flagged
+  `degenerate` and are never evidence (§8.9). Decisions use the unrounded statistics; values are
+  rounded for display only.
 - **Verdict** (`robustnessVerdict`, on mean pickup wait, the optimiser's objective), first match:
 
   | Verdict | Condition |
@@ -458,7 +463,7 @@ AI workspace: "Robustness across futures" panel — advisory, not sent to the AP
   | `improved` | interval entirely below 0 **and** mean reduction ≥ 2 s and ≥ 5 % (the existing thresholds) |
   | `improved_below_threshold` | interval entirely below 0, thresholds not met (statistically but not practically better) |
   | `regressed` | interval entirely above 0 |
-  | `inconclusive` | otherwise |
+  | `inconclusive` | otherwise, including a degenerate (zero-width) interval |
 
   Reliably worse secondary metrics are listed as trade-offs. With a constraint failure the reasons
   name each failing seed, the constraint and its numbers, whether demand diverged on it, and the
@@ -587,3 +592,67 @@ it receives (it still cannot re-simulate them; DEC-043).
 - Per-system random streams for true common random numbers (changes recorded runs; needs a
   migration of golden fixtures and replays).
 - Vary the present state as well as the future.
+
+### 8.9 Post-merge correction: degenerate intervals and unrounded decisions
+
+**Branch:** `fix/p6-2-statistical-verdict` · **Base:** `main` @ `61c67d5` (PR #13 merged).
+
+**Root cause.** Two defects in the merged verdict, plus one numerical gap:
+
+1. `evidenceOf` ignored `degenerate`. When every seed gives the same difference, the sample SD is
+   zero and the t interval collapses to a point. That point was used as evidence and as a
+   verdict, although the method does not apply.
+2. `robustnessVerdict` read the display summary, so it compared values rounded to 3 decimals
+   (mean change, interval bounds) and to 2 decimals (relative change) against zero and the
+   thresholds. Evidence was computed unrounded, so the two could disagree.
+3. `degenerate` was `sd === 0`. Differences that are equal in decimal (0.3 − 0.1, 0.7 − 0.5, …)
+   differ by ~1e-16 in binary. They gave an SD of 1.2e-16 and an interval about 3e-16 wide that
+   claimed certainty.
+
+**Fix.**
+- `pairedStats` returns the unrounded statistics. `roundForDisplay` rounds them for the result
+  and the UI. `pairedSummary` is now `roundForDisplay(pairedStats(…))`, so the displayed values
+  are unchanged.
+- `robustnessVerdict` takes `PairedStats`. A type-only marker makes passing a display summary a
+  compile error.
+- The verdict branches on `evidenceOf(…)`, so verdict and evidence cannot disagree.
+- `evidenceOf` returns `no_evidence` for a degenerate interval. The verdict for a degenerate
+  primary metric with at least 5 pairs is `inconclusive`, and its reasons give the constant
+  change and the seeds better / worse / tied.
+- Differences equal up to a 1e-9 relative tolerance count as identical. This is a numerical
+  tolerance on the subtraction, far below any metric's display precision, not a statistical
+  threshold.
+- Reason text shows more decimals when one decimal would cross a threshold: "1.9996 s", not
+  "2.0 s".
+- The method, thresholds and verdict order are unchanged. `constraint_failure` still comes first
+  and `insufficient_data` second. Trade-offs still list only metrics with evidence "worse", which
+  now excludes degenerate intervals.
+
+**Before and after** (same inputs; "before" run against the `61c67d5` code):
+
+| Paired differences (5 seeds, lower is better) | Before: evidence / verdict | After: evidence / verdict |
+|---|---|---|
+| −2 s on every seed | better / `improved_below_threshold` | no evidence / `inconclusive` |
+| −30 s on every seed | better / `improved` | no evidence / `inconclusive` |
+| +3 s on every seed | worse / `regressed` | no evidence / `inconclusive` |
+| +0.2 on every seed, with floating-point noise | worse / `regressed` | no evidence / `inconclusive` |
+| mean −1.9996 s (displays −2.0), 20 % | better / `improved` | better / `improved_below_threshold` |
+| mean −2.5 s, −4.996 % (displays −5.0 %) | better / `improved` | better / `improved_below_threshold` |
+| interval high −0.0004 (displays 0) | better / `inconclusive` | better / `improved_below_threshold` |
+| interval low +0.0004 (displays 0) | worse / `inconclusive` | worse / `regressed` |
+
+On the golden fixture no metric is degenerate and no value lies within rounding of a threshold or
+of zero, so the §8.3 results and §8.4 benchmarks are unchanged (re-checked with
+`pnpm bench:twin -- --robustness`).
+
+**Verification.**
+
+| Check | Result |
+|-------|--------|
+| `stats.test.ts` (28 tests, 12 new) | Constant negative and constant positive differences: degenerate, `no_evidence` in both directions, verdict `inconclusive`; floating-point-equal differences degenerate, genuinely different ones not; `evidenceOf` truth table; 2 s and 5 % boundaries (exactly at the threshold: `improved`; 1.9996 s and 4.996 %, which display as 2 and 5: `improved_below_threshold`); interval bounds within 0.0005 of zero on either side; verdict always agrees with evidence; constraint failure still overrides a degenerate reading; insufficient data still first; display rounding equals the previous output |
+| `robustness.test.ts` (12 tests, 2 new) | With the real engine, the verdict and reasons recomputed from the per-seed observations equal the result's; trade-offs are exactly the "worse" metrics; an executor giving constant per-seed differences (−2 s wait, +0.5 km empty) yields `inconclusive`, no evidence and no trade-off |
+| Focused runs | twin `stats`, `robustness`, `executor`: 47 passed; web `worker-pool`, `store`: 27 passed |
+| `pnpm check` | Exit 0; 394 unit tests passed (contracts 26, simulation 160, recorder 10, twin 66, web 132), 0 skipped |
+| `pnpm test:e2e` (full) | Exit 0; 62 passed, 3 skipped (`ai-live`, `analytics-live`, `recording`: need a live API; run in CI's data-platform job) |
+| `pnpm bench:twin -- --robustness` | Exit 0; verdicts, intervals, failed seeds and divergence counts for 1, 5, 10, 20, 30 seeds identical to §8.3; repeats byte-identical |
+| Golden fixtures | Unchanged |

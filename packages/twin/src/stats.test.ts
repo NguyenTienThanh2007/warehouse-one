@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { robustnessVerdict } from "./robustness";
 import {
+  evidenceOf,
   MAX_PAIRS,
   mean,
   median,
+  pairedStats,
   pairedSummary,
+  roundForDisplay,
   sampleSd,
   T_975,
   tCritical975,
   type Pair,
-  type PairedSummary,
+  type PairedStats,
 } from "./stats";
 
 const pairs = (b: readonly number[], c: readonly number[]): Pair[] =>
@@ -97,9 +100,26 @@ describe("paired summary", () => {
     expect([s.seeds_better, s.seeds_worse, s.seeds_tied]).toEqual([3, 2, 0]);
   });
 
-  it("zero variance is flagged as a degenerate interval, not hidden", () => {
+  it("zero variance is flagged as a degenerate interval and is never evidence", () => {
+    // d = −2 on every seed: a zero-width interval below zero, which the t method cannot support.
     const same = pairedSummary(pairs([5, 6, 7, 8, 9], [3, 4, 5, 6, 7]), "lower");
-    expect(same).toMatchObject({ sd_diff: 0, ci95: { low: -2, high: -2 }, degenerate: true });
+    expect(same).toMatchObject({
+      sd_diff: 0,
+      ci95: { low: -2, high: -2 },
+      degenerate: true,
+      evidence: "no_evidence",
+      seeds_better: 5,
+    });
+    // The same pairs where higher is better, and constant increases: no evidence either way.
+    expect(pairedSummary(pairs([5, 6, 7, 8, 9], [3, 4, 5, 6, 7]), "higher").evidence).toBe(
+      "no_evidence",
+    );
+    expect(pairedSummary(pairs([5, 6, 7, 8, 9], [8, 9, 10, 11, 12]), "lower")).toMatchObject({
+      ci95: { low: 3, high: 3 },
+      degenerate: true,
+      evidence: "no_evidence",
+      seeds_worse: 5,
+    });
     const identical = pairedSummary(pairs([5, 6, 7, 8, 9], [5, 6, 7, 8, 9]), "lower");
     expect(identical).toMatchObject({
       mean_diff: 0,
@@ -108,6 +128,42 @@ describe("paired summary", () => {
       evidence: "no_evidence",
       seeds_tied: 5,
     });
+  });
+
+  it("differences equal up to floating-point error are degenerate, not a near-zero-width interval", () => {
+    // 0.3 − 0.1, 0.7 − 0.5, … are all 0.2 in decimal, but differ by ~1e-16 in binary: a naive
+    // sample SD of 1.2e-16 would give an interval of width ~3e-16 and claim "worse".
+    const pairsOf = pairs([0.1, 0.5, 1.1, 2.2, 0.7], [0.3, 0.7, 1.3, 2.4, 0.9]);
+    expect(sampleSd(pairsOf.map((p) => (p.candidate as number) - (p.baseline as number)))).not.toBe(
+      0,
+    );
+    const s = pairedStats(pairsOf, "lower");
+    expect(s).toMatchObject({ degenerate: true, sd_diff: 0, evidence: "no_evidence" });
+    // Genuinely different differences, however small in display terms, are not degenerate.
+    expect(
+      pairedStats(pairs([10, 10, 10, 10, 10], [10.001, 10.002, 10.001, 10.002, 10.001]), "lower")
+        .degenerate,
+    ).toBe(false);
+  });
+
+  it("evidence ignores a degenerate interval, a short sample and informational metrics", () => {
+    const below = { low: -3, high: -1 };
+    expect(evidenceOf(below, "lower", 5, false)).toBe("better");
+    expect(evidenceOf(below, "lower", 5, true)).toBe("no_evidence");
+    expect(evidenceOf(below, "higher", 5, true)).toBe("no_evidence");
+    expect(evidenceOf(below, "lower", 4, false)).toBe("no_evidence");
+    expect(evidenceOf(null, "lower", 5, false)).toBe("no_evidence");
+    expect(evidenceOf(below, "info", 5, false)).toBe("not_applicable");
+  });
+
+  it("display rounding is applied after evidence, and changes nothing but the digits", () => {
+    const exact = pairedStats(pairs([10, 12, 14, 16, 18], [9, 10, 11, 12, 13]), "lower");
+    expect(exact.ci95?.low).toBeCloseTo(-4.963211, 6);
+    expect(exact.sd_diff).toBeCloseTo(Math.sqrt(2.5), 12);
+    const shown = roundForDisplay(exact);
+    expect(shown).toEqual(pairedSummary(pairs([10, 12, 14, 16, 18], [9, 10, 11, 12, 13]), "lower"));
+    expect(shown).toMatchObject({ ci95: { low: -4.963, high: -1.037 }, relative_pct: -21.43 });
+    expect(shown.evidence).toBe(exact.evidence);
   });
 
   it("no relative change against a zero or missing baseline", () => {
@@ -158,7 +214,8 @@ describe("paired summary", () => {
 
 describe("robustness verdict", () => {
   const thresholds = { min_improvement_pct: 5, min_improvement_s: 2 };
-  const summary = (b: number[], c: number[]): PairedSummary => pairedSummary(pairs(b, c), "lower");
+  // The verdict takes the unrounded statistics (a display summary does not type-check).
+  const summary = (b: number[], c: number[]): PairedStats => pairedStats(pairs(b, c), "lower");
   const reduction = summary([10, 12, 14, 16, 18], [9, 10, 11, 12, 13]); // −3 s, −21 %
 
   it("improved: interval below zero and the practical threshold met", () => {
@@ -200,5 +257,131 @@ describe("robustness verdict", () => {
     expect(v.reasons[1]).toContain("different demand");
     // The statistical reading is context, labelled as not the verdict.
     expect(v.reasons.at(-1)).toContain('would read "improved"');
+  });
+
+  it("a constant reduction on every seed is inconclusive, never improved", () => {
+    // d = −2 s on five seeds: the interval is the point −2, not a statistical estimate.
+    const v = robustnessVerdict(
+      summary([50, 51, 52, 53, 54], [48, 49, 50, 51, 52]),
+      [],
+      thresholds,
+    );
+    expect(v.verdict).toBe("inconclusive");
+    expect(v.reasons[0]).toContain("zero width");
+    expect(v.reasons[1]).toContain("5 / 0 / 0");
+    // Even far above both thresholds.
+    const big = summary([60, 60, 60, 60, 60], [30, 30, 30, 30, 30]);
+    expect(robustnessVerdict(big, [], thresholds).verdict).toBe("inconclusive");
+  });
+
+  it("a constant increase on every seed is inconclusive, never regressed", () => {
+    const v = robustnessVerdict(
+      summary([50, 51, 52, 53, 54], [53, 54, 55, 56, 57]),
+      [],
+      thresholds,
+    );
+    expect(v.verdict).toBe("inconclusive");
+    expect(v.reasons[1]).toContain("0 / 5 / 0");
+  });
+
+  it("a constraint failure still overrides a degenerate reading; too few pairs stay insufficient", () => {
+    const constant = summary([50, 51, 52, 53, 54], [48, 49, 50, 51, 52]);
+    const v = robustnessVerdict(
+      constant,
+      [{ index: 2, failed: ["Service level: 170 pallets, floor 177"], workload_diverged: false }],
+      thresholds,
+    );
+    expect(v.verdict).toBe("constraint_failure");
+    expect(v.reasons.at(-1)).toContain('would read "inconclusive"');
+    const fourConstant = summary([50, 51, 52, 53], [48, 49, 50, 51]);
+    expect(fourConstant.degenerate).toBe(true);
+    expect(robustnessVerdict(fourConstant, [], thresholds).verdict).toBe("insufficient_data");
+  });
+});
+
+describe("verdict precision: decisions on unrounded values", () => {
+  const thresholds = { min_improvement_pct: 5, min_improvement_s: 2 };
+  // d = m + k·(−2, −1, 0, 1, 2): mean m; s = k·√2.5; half-width t(0.975, 4)·s/√5 = 1.963211·k.
+  const spread = (base: number, m: number, k: number) =>
+    pairs(
+      [base, base, base, base, base],
+      [-2, -1, 0, 1, 2].map((u) => base + m + k * u),
+    );
+
+  it("2 s threshold: exactly 2 s is met; 1.9996 s is not, although it displays as −2", () => {
+    const at = pairedStats(spread(10, -2, 0.1), "lower");
+    expect(at.mean_diff).toBeCloseTo(-2, 12);
+    expect(robustnessVerdict(at, [], thresholds).verdict).toBe("improved");
+    const under = pairedStats(spread(10, -1.9996, 0.1), "lower");
+    expect(roundForDisplay(under).mean_diff).toBe(-2);
+    const v = robustnessVerdict(under, [], thresholds);
+    expect(v.verdict).toBe("improved_below_threshold");
+    // The text shows enough digits not to contradict the decision.
+    expect(v.reasons[1]).toContain("1.9996 s");
+    expect(v.reasons[1]).not.toContain("2.0 s");
+  });
+
+  it("5 % threshold: exactly 5 % is met; 4.996 % is not, although it displays as −5 %", () => {
+    // −2.5 s against a 50 s baseline is −5 %; against 50.04 s it is −4.996 %.
+    const at = pairedStats(spread(50, -2.5, 0.1), "lower");
+    expect(at.relative_pct).toBeCloseTo(-5, 12);
+    expect(robustnessVerdict(at, [], thresholds).verdict).toBe("improved");
+    const under = pairedStats(spread(50.04, -2.5, 0.1), "lower");
+    expect(under.relative_pct).toBeCloseTo(-4.996003, 6);
+    expect(roundForDisplay(under).relative_pct).toBe(-5);
+    const v = robustnessVerdict(under, [], thresholds);
+    expect(v.verdict).toBe("improved_below_threshold");
+    expect(v.reasons[1]).toContain("4.996 %");
+  });
+
+  it("an interval ending just below zero is evidence, though it displays as 0", () => {
+    // m = −1.9636, k = 1: high = −1.9636 + 1.963211 = −0.000389.
+    const s = pairedStats(spread(100, -1.9636, 1), "lower");
+    expect(s.ci95?.high).toBeLessThan(0);
+    expect(s.ci95?.high).toBeGreaterThan(-0.0005);
+    expect(roundForDisplay(s).ci95?.high).toBeCloseTo(0, 12);
+    expect(s.evidence).toBe("better");
+    // Verdict and evidence agree (before, the rounded bound read "includes zero").
+    expect(robustnessVerdict(s, [], thresholds).verdict).toBe("improved_below_threshold");
+  });
+
+  it("an interval ending just above zero is no evidence, and no improvement", () => {
+    // m = −1.9628: high = +0.000411, which displays as 0.
+    const s = pairedStats(spread(100, -1.9628, 1), "lower");
+    expect(s.ci95?.high).toBeGreaterThan(0);
+    expect(roundForDisplay(s).ci95?.high).toBeCloseTo(0, 12);
+    expect(s.evidence).toBe("no_evidence");
+    expect(robustnessVerdict(s, [], thresholds).verdict).toBe("inconclusive");
+  });
+
+  it("an interval starting just above zero is a regression, though it displays as 0", () => {
+    const s = pairedStats(spread(100, 1.9636, 1), "lower");
+    expect(s.ci95?.low).toBeGreaterThan(0);
+    expect(roundForDisplay(s).ci95?.low).toBeCloseTo(0, 12);
+    expect(s.evidence).toBe("worse");
+    expect(robustnessVerdict(s, [], thresholds).verdict).toBe("regressed");
+  });
+
+  it("the verdict always agrees with the primary metric's evidence", () => {
+    const cases = [
+      spread(10, -2, 0.1),
+      spread(10, -1.9996, 0.1),
+      spread(100, -1.9636, 1),
+      spread(100, -1.9628, 1),
+      spread(100, 1.9636, 1),
+      spread(100, 0, 1),
+      pairs([50, 51, 52, 53, 54], [48, 49, 50, 51, 52]),
+      pairs([50, 51, 52, 53, 54], [53, 54, 55, 56, 57]),
+    ];
+    const expected = {
+      better: ["improved", "improved_below_threshold"],
+      worse: ["regressed"],
+      no_evidence: ["inconclusive"],
+    } as const;
+    for (const p of cases) {
+      const s = pairedStats(p, "lower");
+      const allowed: readonly string[] = expected[s.evidence as keyof typeof expected];
+      expect(allowed).toContain(robustnessVerdict(s, [], thresholds).verdict);
+    }
   });
 });

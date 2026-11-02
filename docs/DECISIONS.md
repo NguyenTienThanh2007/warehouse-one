@@ -404,15 +404,19 @@ recorded run (golden fixtures, replays), which this phase does not do.
   standard error, the **95 % paired Student t interval** mean(d) ± t(0.975, n − 1)·s/√n from a
   published table (df 1–29, verified against the t density by integration in tests), the relative
   change (null when the baseline mean is not positive), and seeds better/worse/tied. Missing or
-  non-finite observations are excluded and counted, never averaged; zero variance is flagged as a
-  degenerate interval. A bootstrap was rejected: with 5–30 pairs percentile intervals under-cover.
+  non-finite observations are excluded and counted, never averaged; identical differences (zero
+  variance, up to floating-point error of the subtraction) are flagged as a degenerate interval,
+  which is never evidence. A bootstrap was rejected: with 5–30 pairs percentile intervals
+  under-cover.
 - **Verdict** (pure, on mean pickup wait, the optimiser's objective): `constraint_failure` if any
   hard constraint fails on any seed (the existing ones, per seed: commands accepted, engine
   invariants, ≥ 95 % of that seed's baseline pallets, no extra cancellations; plus the baseline's
   invariants), whatever the averages; `insufficient_data` below 5 valid pairs; `improved` when the
   interval lies below zero *and* the mean reduction meets the existing 5 % / 2 s thresholds;
   `improved_below_threshold` when only the interval does; `regressed` when the interval lies above
-  zero; otherwise `inconclusive`. Other metrics that are reliably worse are listed as trade-offs,
+  zero; otherwise `inconclusive` (also when the interval is degenerate). Every comparison with
+  zero and with the thresholds is made on unrounded values; rounding is for display only. Other
+  metrics that are reliably worse are listed as trade-offs,
   never folded into a score; with a constraint failure the pickup-wait reading is reported as
   context, explicitly not the verdict.
 - **Budget:** 1–30 seeds (tiers 5 / 20 / 30), two simulations per seed, batches of 8 seeds
@@ -432,3 +436,12 @@ variation of the starting conditions); the t interval assumes roughly normal dif
 pickup wait decides (no multiple-comparison correction for the descriptive metrics); pairing is
 exact only at the start; results are not persisted, so a stored proposal cannot be validated
 later without its snapshot in the browser.
+
+**Amendment (2026-11-02, after PR #13; `fix/p6-2-statistical-verdict`):** as merged, the verdict
+read the rounded display summary and a zero-width interval counted as evidence, so constant
+differences gave `improved` / `regressed`, a 1.9996 s or 4.996 % reduction passed the 2 s / 5 %
+thresholds, and verdict and evidence could disagree near zero. Corrected: degenerate intervals are
+`no_evidence` (verdict `inconclusive`), decisions use unrounded statistics (`pairedStats`; the
+display type cannot be passed to the verdict), and the verdict's direction comes from the
+primary metric's evidence. The method (paired t interval, thresholds, verdict order) is
+unchanged; this restores what the decision above already stated. Details: `PHASE_6.md` §8.9.

@@ -6,9 +6,9 @@ A browser-based 3D warehouse digital twin built on a deterministic simulation en
 data engineering pipeline and a decision-support layer that optimises with the engine itself. Every number on screen comes
 from authoritative simulation state, and every state change is a typed, replayable domain event.
 
-> **Project status: Phases 0–6.1 are merged into `main` (Phase 6.1, twin evaluations on background
-> workers: PR #12, `dd1d1a7`). Phase 6.2, multi-seed robustness validation of twin plans, is in
-> review on `feature/p6-2-multi-seed-evaluation`.** See
+> **Project status: Phases 0–6.2 are merged into `main` (Phase 6.2, multi-seed robustness
+> validation of twin plans: PR #13, `61c67d5`). A post-merge correction of its statistical verdict
+> is in review on `fix/p6-2-statistical-verdict`.** See
 > [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for what is verified and what is not.
 
 ![WAREHOUSE ONE: the logistics park, world view](docs/phases/evidence/phase-5/1-world.jpg)
@@ -59,8 +59,8 @@ from authoritative simulation state, and every state change is a typed, replayab
   (`/api/v1/twin`). Optional AI explanations (Anthropic, server-side) are checked against the
   computed figures and labelled as AI-generated. Evaluations run on a pool of background workers
   (Phase 6.1), so the page and the live simulation keep their thread. A plan can be validated
-  across several seeded futures with paired statistics and an honest verdict (Phase 6.2, in
-  review; advisory, never an approval).
+  across several seeded futures with paired statistics and an honest verdict (Phase 6.2;
+  advisory, never an approval).
 - **Event store and data platform** (Phase 3). Runs recorded from the browser or
   headless go into PostgreSQL in one transaction per batch (append-only event log + transactional
   outbox). From there:
@@ -139,7 +139,7 @@ Measured Phase 0 results are recorded with their hardware context in
 ## Roadmap
 
 0 Foundation ✔ · 1 Premium 3D world ✔ · 2 Living simulation ✔ · 3 Data engineering ✔ ·
-4 Operations analytics ✔ · 5 Multi-site world ✔ · 6 AI and digital twin ✔ (6.1 worker pool ✔, 6.2 multi-seed validation in review) ·
+4 Operations analytics ✔ · 5 Multi-site world ✔ · 6 AI and digital twin ✔ (6.1 worker pool ✔, 6.2 multi-seed validation ✔) ·
 7 Production release.
 
 ## Licence
