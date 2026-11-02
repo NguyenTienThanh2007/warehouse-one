@@ -13,7 +13,7 @@
     "generate:schemas": "tsx scripts/generate-json-schemas.ts"
   },
   "dependencies": {
-    "zod": "4.6.5"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "tsx": "4.23.15",

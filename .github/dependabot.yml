@@ -1,0 +1,39 @@
+# Dependency updates (Phase 7.1.1). Weekly version updates, grouped to keep the PR count low;
+# security updates are never grouped here (every group applies to version updates only), so each
+# advisory fix stays its own visible PR. Major version bumps are not grouped either: each needs its
+# own review. CI's dependency-audit job enforces the same rule on every pull request.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns: ["*"]
+
+  # pnpm workspace (pnpm-lock.yaml at the root covers apps/web and packages/*).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  # uv projects: the API and pipeline (apps/api/uv.lock) and dbt (analytics/uv.lock).
+  - package-ecosystem: uv
+    directories: [/apps/api, /analytics]
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      python-minor-and-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
