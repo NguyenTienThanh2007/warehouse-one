@@ -446,5 +446,5 @@ thresholds, and verdict and evidence could disagree near zero. Corrected: degene
 display type cannot be passed to the verdict), and the verdict's direction comes from the
 primary metric's evidence. The method (paired t interval, thresholds, verdict order) is
 unchanged; this restores what the decision above already stated. Merged as `2117d38` (PR #14).
-A follow-up keeps the display consistent with these decisions: an interval bound is never shown
-as zero when it is not (more decimals near zero, up to six). Details: `PHASE_6.md` §8.9–§8.10.
+A follow-up (PR #15, `6b1794b`) keeps the display consistent with these decisions: an interval
+bound is never shown as zero when it is not (more decimals near zero, up to six). Details: `PHASE_6.md` §8.9–§8.10.

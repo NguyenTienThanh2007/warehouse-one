@@ -4,9 +4,9 @@ _Last updated: 2026-11-02_
 
 | Item | State |
 |------|-------|
-| Active work | **Display follow-up to the Phase 6.2 verdict correction** (interval bounds near zero shown with their sign), in review on `fix/p6-2-statistical-verdict` (base `2117d38`); no new phase started |
-| `main` | `2117d38`: Phases 0–6.2 merged (PR #1–#5, #7–#14) |
-| Last merged | PR #14, Phase 6.2 verdict correction (`2117d38`, 2026-11-02); before it PR #13, Phase 6.2 multi-seed robustness validation (`61c67d5`, 2026-11-01; `main` CI run 41322552933: 5/5 jobs green) |
+| Active work | None. Phase 6.2 and its statistical corrections (PR #14, PR #15) are complete; Phase 7 has not started |
+| `main` | `6b1794b`: Phases 0–6.2 merged (PR #1–#5, #7–#15); `main` CI run 41460371089: 5/5 jobs green |
+| Last merged | PR #15, Phase 6.2 confidence-interval display precision (`6b1794b`, 2026-11-02); PR #14, Phase 6.2 statistical verdict correction (`2117d38`, 2026-11-02; `main` CI run 41453506465: 5/5 jobs green); PR #13, Phase 6.2 multi-seed robustness validation (`61c67d5`, 2026-11-01; `main` CI run 41322552933: 5/5 jobs green) |
 | Closed unmerged | PR #6 (Phase 4 planning docs); not used as a basis |
 
 ## Phase status
@@ -19,7 +19,7 @@ _Last updated: 2026-11-02_
 | 3 Data engineering | merged (PR #5) | `docs/phases/PHASE_3.md` |
 | 4 Operations analytics | merged (PR #9), follow-up PR #10 | `docs/phases/PHASE_4.md` |
 | 5 Multi-site world | merged (PR #7), follow-up PR #8 | `docs/phases/PHASE_5.md` |
-| 6 AI and digital twin | merged (PR #11; first slice: fleet standby); 6.1 merged (PR #12); 6.2 merged (PR #13), verdict correction merged (PR #14); **display follow-up in review** on `fix/p6-2-statistical-verdict` | `docs/phases/PHASE_6.md` |
+| 6 AI and digital twin | merged (PR #11; first slice: fleet standby); 6.1 merged (PR #12); 6.2 merged (PR #13) with its statistical corrections (PR #14 verdict, PR #15 interval display): complete | `docs/phases/PHASE_6.md` |
 | 7 Production | not started | — |
 
 ## Modes in the app
@@ -31,7 +31,6 @@ planned but not scheduled.
 
 ## Pending
 
-- Review and merge decision on the Phase 6.2 display follow-up (owner)
 - Owner decisions: repository licence, public-demo hosting (Phase 7)
 - Optional: an AI provider key for the API (`WAREHOUSE_AI_PROVIDER`, `WAREHOUSE_AI_API_KEY`) to try
   AI explanations; everything else works without it
