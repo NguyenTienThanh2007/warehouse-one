@@ -6,8 +6,10 @@ merged)
 jobs green). Phase 6.1 (§7, evaluation off the main thread) is MERGED as `dd1d1a7` (PR #12,
 2026-11-01; `main` CI run 41304258402: 5/5 jobs green). Phase 6.2 (§8, multi-seed robustness
 validation) is MERGED as `61c67d5` (PR #13, 2026-11-01; `main` CI run 41322552933: 5/5 jobs
-green). Its post-merge verdict correction (§8.9) is MERGED as `2117d38` (PR #14, 2026-11-02); a
-display follow-up (§8.10) is in review on `fix/p6-2-statistical-verdict`.
+green). Its statistical corrections are MERGED: the verdict correction (§8.9) as `2117d38`
+(PR #14, 2026-11-02; `main` CI run 41453506465: 5/5 jobs green) and the confidence-interval display
+precision (§8.10) as `6b1794b` (PR #15, 2026-11-02; `main` CI run 41460371089: 5/5 jobs green).
+Phase 6.2 is complete; Phase 7 has not started.
 
 ## 1. Starting point (verified 2026-10-27)
 
@@ -581,6 +583,8 @@ it receives (it still cannot re-simulate them; DEC-043).
   correction.
 - One candidate per run; the optimiser is not re-run per seed.
 - Not persisted; a proposal loaded from the API cannot be validated without its snapshot.
+- Advisory only: a verdict never approves or applies a plan. Human approval and the API's
+  server-side validation and execute-once remain mandatory (§8.2, trust boundary).
 - Benchmarks: headless Chromium on one machine (Apple M2, 8 GiB) with the data stack running in
   Docker.
 
@@ -663,6 +667,7 @@ of zero, so the §8.3 results and §8.4 benchmarks are unchanged (re-checked wit
 
 **Branch:** `fix/p6-2-statistical-verdict` (continued after PR #14) · **Base:** `main` @
 `2117d38`.
+**Status:** MERGED as `6b1794b` (PR #15, 2026-11-02; branch CI 5/5 jobs green).
 
 **Problem.** After §8.9, verdicts use unrounded statistics, but the result still carried interval
 bounds rounded to 3 decimals, and the UI showed them with 1 decimal. An exact upper bound of
