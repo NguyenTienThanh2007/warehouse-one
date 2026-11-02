@@ -8,7 +8,13 @@ import {
 } from "@warehouse-one/twin";
 import { useEffect, useState } from "react";
 import { useTwin, type RobustnessState } from "@/lib/twin/store";
-import { horizonMinutes, type Tone } from "@/lib/twin/view";
+import {
+  formatInterval,
+  formatSignedStat,
+  formatStat,
+  horizonMinutes,
+  type Tone,
+} from "@/lib/twin/view";
 import { ExecutionBadge } from "./evaluation";
 import { Badge, Button, Panel } from "./parts";
 
@@ -41,19 +47,6 @@ const STAGE_LABEL = {
   aggregating: "Computing paired statistics",
   done: "Finishing",
 } as const;
-
-/** Statistics keep more decimals than single results: a mean of counts is not a count. */
-function stat(value: number | null | undefined, unit: string): string {
-  if (value === null || value === undefined) return "—";
-  const digits = unit === "km" ? 2 : 1;
-  return `${value.toFixed(digits)}${unit === "s" ? " s" : unit === "km" ? " km" : ""}`;
-}
-
-function signed(value: number | null | undefined, unit: string): string {
-  if (value === null || value === undefined) return "—";
-  const sign = value > 0 ? "+" : value < 0 ? "−" : "±";
-  return `${sign}${stat(Math.abs(value), unit)}`;
-}
 
 const EVIDENCE_TEXT = {
   better: "text-ok-400",
@@ -356,7 +349,7 @@ function IntervalChart({
   const W = 560;
   const x = (v: number) => ((v - min) / (max - min)) * (W - 20) + 10;
   const summary = ci
-    ? `Change in mean pickup wait per seed; 95 % interval ${ci.low} to ${ci.high} s, mean ${primary.mean_diff} s, zero at ${0}, practical threshold at ${threshold} s.`
+    ? `Change in mean pickup wait per seed; 95 % interval ${formatInterval(ci, "s")}, mean ${formatSignedStat(primary.mean_diff, "s")}, zero at 0 s, practical threshold at ${formatSignedStat(threshold, "s")}.`
     : "Not enough seeds with a value for an interval.";
   return (
     <figure data-testid="twin-robustness-ci" data-low={ci?.low} data-high={ci?.high}>
@@ -486,18 +479,18 @@ function MetricTable({ metrics }: { metrics: readonly MetricSummary[] }) {
                 {m.missing ? ` (+${m.missing} n/a)` : ""}
               </td>
               <td className="py-1 pr-2 text-right text-fog-50 tabular-nums">
-                {stat(m.baseline_mean, m.unit)} / {stat(m.baseline_median, m.unit)}
+                {formatStat(m.baseline_mean, m.unit)} / {formatStat(m.baseline_median, m.unit)}
               </td>
               <td className="py-1 pr-2 text-right text-fog-50 tabular-nums">
-                {stat(m.candidate_mean, m.unit)} / {stat(m.candidate_median, m.unit)}
+                {formatStat(m.candidate_mean, m.unit)} / {formatStat(m.candidate_median, m.unit)}
               </td>
               <td className="py-1 pr-2 text-right text-fog-50 tabular-nums">
-                {signed(m.mean_diff, m.unit)}
-                {m.relative_pct !== null && ` (${signed(m.relative_pct, "")} %)`}
-                <span className="text-fog-400"> · sd {stat(m.sd_diff, m.unit)}</span>
+                {formatSignedStat(m.mean_diff, m.unit)}
+                {m.relative_pct !== null && ` (${formatSignedStat(m.relative_pct, "")} %)`}
+                <span className="text-fog-400"> · sd {formatStat(m.sd_diff, m.unit)}</span>
               </td>
               <td className="py-1 pr-2 text-right text-fog-200 tabular-nums">
-                {m.ci95 ? `${signed(m.ci95.low, m.unit)} … ${signed(m.ci95.high, m.unit)}` : "—"}
+                {formatInterval(m.ci95, m.unit)}
               </td>
               <td className={`py-1 text-right ${EVIDENCE_TEXT[m.evidence]}`}>
                 {EVIDENCE_LABEL[m.evidence]}
@@ -564,22 +557,22 @@ function SeedTable({ result }: { result: RobustnessEvaluation }) {
                   {s.index}
                 </th>
                 <td className="py-1 pr-2 text-right text-fog-50 tabular-nums">
-                  {stat(s.baseline.metrics.pickup_wait_s, "s")}
+                  {formatStat(s.baseline.metrics.pickup_wait_s, "s")}
                 </td>
                 <td className="py-1 pr-2 text-right text-fog-50 tabular-nums">
-                  {stat(s.candidate.metrics.pickup_wait_s, "s")}
+                  {formatStat(s.candidate.metrics.pickup_wait_s, "s")}
                 </td>
                 <td className="py-1 pr-2 text-right text-fog-50 tabular-nums">
-                  {signed(s.deltas.pickup_wait_s, "s")}
+                  {formatSignedStat(s.deltas.pickup_wait_s, "s")}
                 </td>
                 <td className="py-1 pr-2 text-right text-fog-200 tabular-nums">
-                  {signed(s.deltas.empty_km, "km")}
+                  {formatSignedStat(s.deltas.empty_km, "km")}
                 </td>
                 <td className="py-1 pr-2 text-right text-fog-200 tabular-nums">
-                  {signed(s.deltas.pallets_delivered, "pallets")}
+                  {formatSignedStat(s.deltas.pallets_delivered, "pallets")}
                 </td>
                 <td className="py-1 pr-2 text-right text-fog-400 tabular-nums">
-                  {signed(s.deltas.pallets_planned, "pallets")}
+                  {formatSignedStat(s.deltas.pallets_planned, "pallets")}
                 </td>
                 <td className={`py-1 ${s.passed ? "text-ok-400" : "text-critical-400"}`}>
                   {s.passed

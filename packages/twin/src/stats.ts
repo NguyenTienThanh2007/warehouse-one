@@ -73,9 +73,11 @@ export type Evidence = "better" | "worse" | "no_evidence" | "not_applicable";
 /**
  * Differences equal up to floating-point error count as identical: d = c − b of values that
  * differ by the same decimal amount (0.3 − 0.1, 0.7 − 0.5, …) gives a sample SD of ~1e-16, not 0,
- * and a t interval of near-zero width that would look like certainty. This is a numerical
- * tolerance on the subtraction, far below any metric's display precision (≥ 0.001), not a
- * statistical threshold.
+ * and a t interval of near-zero width that would look like certainty. The differences count as
+ * identical when max(d) − min(d) ≤ 1e-9 · max(1, |min(d)|, |max(d)|): a combined tolerance,
+ * absolute (1e-9) for differences of magnitude up to 1 and relative (1e-9 of the largest
+ * magnitude) above. It is a numerical tolerance on the subtraction, far below any metric's
+ * display precision (≥ 0.001), not a statistical threshold.
  */
 export const IDENTICAL_DIFF_TOLERANCE = 1e-9;
 
@@ -119,7 +121,10 @@ export interface PairedStats {
   readonly evidence: Evidence;
 }
 
-/** The same fields rounded for display (3 decimals; relative change 2). Never decide on these. */
+/**
+ * The same fields rounded for display (3 decimals; relative change 2; interval bounds 3, or more
+ * near zero: `roundBound`). Never decide on these.
+ */
 export type PairedSummary = Omit<PairedStats, typeof unrounded>;
 
 const finite = (x: number | null): x is number => x !== null && Number.isFinite(x);
@@ -173,7 +178,7 @@ export function evidenceOf(
   return above ? "better" : below ? "worse" : "no_evidence";
 }
 
-/** Every difference is the same, up to floating-point error of the subtraction. */
+/** Every difference is the same, up to floating-point error (combined absolute/relative tolerance). */
 function allIdentical(d: readonly number[]): boolean {
   if (d.length < 2) return false;
   const lo = Math.min(...d);
@@ -231,6 +236,23 @@ export function pairedStats(pairs: readonly Pair[], better: Better): PairedStats
   } as PairedStats;
 }
 
+/** Most decimals a confidence-interval bound keeps for display. */
+export const BOUND_MAX_DECIMALS = 6;
+
+/**
+ * A confidence-interval bound for display: 3 decimals, or more (up to 6) when 3 would make a
+ * non-zero bound zero, since its sign decides the evidence; below 1e-6 the exact value is kept.
+ * Never returns −0.
+ */
+export function roundBound(x: number): number {
+  if (x === 0) return 0;
+  for (let digits = 3; digits <= BOUND_MAX_DECIMALS; digits++) {
+    const r = round(x, digits);
+    if (r !== 0) return r;
+  }
+  return x;
+}
+
 /** Rounds statistics for display. Evidence and counts are carried over, never recomputed. */
 export function roundForDisplay(s: PairedStats): PairedSummary {
   const r = (x: number | null) => (x === null ? null : round(x, 3));
@@ -244,7 +266,7 @@ export function roundForDisplay(s: PairedStats): PairedSummary {
     median_diff: r(s.median_diff),
     sd_diff: r(s.sd_diff),
     se_diff: r(s.se_diff),
-    ci95: s.ci95 && { low: round(s.ci95.low, 3), high: round(s.ci95.high, 3) },
+    ci95: s.ci95 && { low: roundBound(s.ci95.low), high: roundBound(s.ci95.high) },
     relative_pct: s.relative_pct === null ? null : round(s.relative_pct, 2),
   };
 }

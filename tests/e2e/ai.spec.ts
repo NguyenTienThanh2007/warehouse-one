@@ -665,9 +665,17 @@ test.describe("AI mode: multi-seed robustness validation (Phase 6.2)", () => {
     const high = Number(await ci.getAttribute("data-high"));
     expect(Number.isFinite(low) && Number.isFinite(high) && low <= high).toBe(true);
     await expect(page.getByTestId("twin-robustness-metric")).toHaveCount(11);
-    await expect(
-      page.locator('[data-testid="twin-robustness-metric"][data-key="pickup_wait_s"]'),
-    ).toHaveAttribute("data-evidence", /better|worse|no_evidence/);
+    const waitRow = page.locator(
+      '[data-testid="twin-robustness-metric"][data-key="pickup_wait_s"]',
+    );
+    await expect(waitRow).toHaveAttribute("data-evidence", /better|worse|no_evidence/);
+    // The table and the chart's accessible label show the interval with the same signed bounds.
+    const interval = ((await waitRow.locator("td").nth(4).textContent()) ?? "").trim();
+    expect(interval).toMatch(/^[−+±](<?[\d.]+) s … [−+±](<?[\d.]+) s$/);
+    await expect(ci.getByRole("img")).toHaveAttribute(
+      "aria-label",
+      new RegExp(`95 % interval ${interval.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")},`),
+    );
     // Every seed is shown, with its own observations.
     await page.getByTestId("twin-robustness-seeds").locator("summary").click();
     await expect(page.getByTestId("twin-robustness-seed")).toHaveCount(5);

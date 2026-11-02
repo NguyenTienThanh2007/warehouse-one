@@ -3,7 +3,10 @@ import { PROPOSAL_STATUSES } from "./api";
 import {
   allowedActions,
   deltaTone,
+  formatBound,
   formatDelta,
+  formatInterval,
+  formatSignedStat,
   formatValue,
   planRows,
   STATUS_LABEL,
@@ -71,5 +74,36 @@ describe("AI workspace presentation", () => {
       ["Cross-dock", 2],
       ["Depot (home stalls)", 1],
     ]);
+  });
+
+  describe("confidence-interval bounds (Phase 6.2)", () => {
+    it("near zero, a bound keeps enough decimals to show its sign", () => {
+      expect(formatBound(-0.000389, "s")).toBe("−0.0004 s"); // upper bound below zero
+      expect(formatBound(0.000411, "s")).toBe("+0.0004 s"); // upper bound above zero
+      expect(formatBound(0.000389, "s")).toBe("+0.0004 s"); // lower bound above zero
+      expect(formatBound(-0.04, "s")).toBe("−0.04 s");
+      expect(formatBound(0.0004, "km")).toBe("+0.0004 km");
+      expect(formatBound(2e-7, "s")).toBe("+<0.000001 s");
+      expect(formatBound(-2e-7, "")).toBe("−<0.000001");
+    });
+
+    it("an exact zero reads as zero; ordinary bounds keep the compact format", () => {
+      expect(formatBound(0, "s")).toBe("±0.0 s");
+      expect(formatBound(-0, "s")).toBe("±0.0 s");
+      expect(formatBound(-17.575, "s")).toBe("−17.6 s");
+      expect(formatBound(-13.425, "s")).toBe("−13.4 s");
+      expect(formatBound(0.257, "km")).toBe("+0.26 km");
+      expect(formatBound(-1.037, "")).toBe("−1.0");
+      for (const v of [-17.575, -13.425, 0.257, 3])
+        expect(formatBound(v, "s")).toBe(formatSignedStat(v, "s"));
+      expect(formatBound(null, "s")).toBe("—");
+    });
+
+    it("an interval is two bounds, each formatted on its own", () => {
+      expect(formatInterval({ low: -17.575, high: -13.425 }, "s")).toBe("−17.6 s … −13.4 s");
+      expect(formatInterval({ low: -3.927, high: -0.000389 }, "s")).toBe("−3.9 s … −0.0004 s");
+      expect(formatInterval({ low: 0.000389, high: 3.927 }, "s")).toBe("+0.0004 s … +3.9 s");
+      expect(formatInterval(null, "s")).toBe("—");
+    });
   });
 });

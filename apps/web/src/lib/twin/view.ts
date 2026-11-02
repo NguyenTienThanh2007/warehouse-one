@@ -30,6 +30,49 @@ export function formatDelta(d: Pick<MetricDelta, "abs" | "pct" | "unit">): strin
   return `${sign}${value} (${pct})`;
 }
 
+/** Statistics keep more decimals than single results: a mean of counts is not a count. */
+export function formatStat(value: number | null | undefined, unit: string): string {
+  if (value === null || value === undefined) return "—";
+  const digits = unit === "km" ? 2 : 1;
+  return `${value.toFixed(digits)}${unit === "s" ? " s" : unit === "km" ? " km" : ""}`;
+}
+
+/** "−15.5 s", "+0.42 km", "±0.0 s". */
+export function formatSignedStat(value: number | null | undefined, unit: string): string {
+  if (value === null || value === undefined) return "—";
+  const sign = value > 0 ? "+" : value < 0 ? "−" : "±";
+  return `${sign}${formatStat(Math.abs(value), unit)}`;
+}
+
+/** Most decimals a confidence-interval bound is shown with. */
+export const BOUND_MAX_DIGITS = 6;
+
+/**
+ * A confidence-interval bound, signed. Compact like `formatSignedStat` ("−17.6 s"), except that a
+ * non-zero bound is never shown as zero: its sign decides the evidence, so near zero it gets more
+ * decimals, up to six ("−0.0004 s"), then "<0.000001". Only an exact zero reads "±0.0 s".
+ */
+export function formatBound(value: number | null | undefined, unit: string): string {
+  if (value === null || value === undefined) return "—";
+  if (value === 0) return formatSignedStat(0, unit);
+  const sign = value > 0 ? "+" : "−";
+  const suffix = unit === "s" ? " s" : unit === "km" ? " km" : "";
+  const abs = Math.abs(value);
+  for (let digits = unit === "km" ? 2 : 1; digits <= BOUND_MAX_DIGITS; digits++) {
+    const shown = abs.toFixed(digits);
+    if (Number(shown) !== 0) return `${sign}${shown}${suffix}`;
+  }
+  return `${sign}<${(10 ** -BOUND_MAX_DIGITS).toFixed(BOUND_MAX_DIGITS)}${suffix}`;
+}
+
+/** "−17.6 s … −13.4 s"; "—" without an interval. */
+export function formatInterval(
+  ci: { readonly low: number; readonly high: number } | null,
+  unit: string,
+): string {
+  return ci ? `${formatBound(ci.low, unit)} … ${formatBound(ci.high, unit)}` : "—";
+}
+
 /** Text tone of a delta: better, worse, or neutral (workload metrics and no change). */
 export function deltaTone(
   d: Pick<MetricDelta, "improved" | "abs">,

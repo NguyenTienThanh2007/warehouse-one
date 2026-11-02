@@ -7,8 +7,8 @@ data engineering pipeline and a decision-support layer that optimises with the e
 from authoritative simulation state, and every state change is a typed, replayable domain event.
 
 > **Project status: Phases 0–6.2 are merged into `main` (Phase 6.2, multi-seed robustness
-> validation of twin plans: PR #13, `61c67d5`). A post-merge correction of its statistical verdict
-> is in review on `fix/p6-2-statistical-verdict`.** See
+> validation of twin plans: PR #13, `61c67d5`; verdict correction: PR #14, `2117d38`). A display
+> follow-up is in review on `fix/p6-2-statistical-verdict`.** See
 > [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for what is verified and what is not.
 
 ![WAREHOUSE ONE: the logistics park, world view](docs/phases/evidence/phase-5/1-world.jpg)

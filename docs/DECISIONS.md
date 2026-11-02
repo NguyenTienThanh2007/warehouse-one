@@ -405,8 +405,9 @@ recorded run (golden fixtures, replays), which this phase does not do.
   published table (df 1–29, verified against the t density by integration in tests), the relative
   change (null when the baseline mean is not positive), and seeds better/worse/tied. Missing or
   non-finite observations are excluded and counted, never averaged; identical differences (zero
-  variance, up to floating-point error of the subtraction) are flagged as a degenerate interval,
-  which is never evidence. A bootstrap was rejected: with 5–30 pairs percentile intervals
+  variance, up to floating-point error of the subtraction: max(d) − min(d) ≤ 1e-9 · max(1,
+  |min(d)|, |max(d)|), a combined absolute/relative tolerance) are flagged as a degenerate
+  interval, which is never evidence. A bootstrap was rejected: with 5–30 pairs percentile intervals
   under-cover.
 - **Verdict** (pure, on mean pickup wait, the optimiser's objective): `constraint_failure` if any
   hard constraint fails on any seed (the existing ones, per seed: commands accepted, engine
@@ -444,4 +445,6 @@ thresholds, and verdict and evidence could disagree near zero. Corrected: degene
 `no_evidence` (verdict `inconclusive`), decisions use unrounded statistics (`pairedStats`; the
 display type cannot be passed to the verdict), and the verdict's direction comes from the
 primary metric's evidence. The method (paired t interval, thresholds, verdict order) is
-unchanged; this restores what the decision above already stated. Details: `PHASE_6.md` §8.9.
+unchanged; this restores what the decision above already stated. Merged as `2117d38` (PR #14).
+A follow-up keeps the display consistent with these decisions: an interval bound is never shown
+as zero when it is not (more decimals near zero, up to six). Details: `PHASE_6.md` §8.9–§8.10.
