@@ -6,8 +6,8 @@ merged)
 jobs green). Phase 6.1 (§7, evaluation off the main thread) is MERGED as `dd1d1a7` (PR #12,
 2026-11-01; `main` CI run 41304258402: 5/5 jobs green). Phase 6.2 (§8, multi-seed robustness
 validation) is MERGED as `61c67d5` (PR #13, 2026-11-01; `main` CI run 41322552933: 5/5 jobs
-green); a post-merge correction of its verdict (§8.9) is in review on
-`fix/p6-2-statistical-verdict`.
+green). Its post-merge verdict correction (§8.9) is MERGED as `2117d38` (PR #14, 2026-11-02); a
+display follow-up (§8.10) is in review on `fix/p6-2-statistical-verdict`.
 
 ## 1. Starting point (verified 2026-10-27)
 
@@ -596,6 +596,7 @@ it receives (it still cannot re-simulate them; DEC-043).
 ### 8.9 Post-merge correction: degenerate intervals and unrounded decisions
 
 **Branch:** `fix/p6-2-statistical-verdict` · **Base:** `main` @ `61c67d5` (PR #13 merged).
+**Status:** MERGED as `2117d38` (PR #14, 2026-11-02).
 
 **Root cause.** Two defects in the merged verdict, plus one numerical gap:
 
@@ -619,9 +620,10 @@ it receives (it still cannot re-simulate them; DEC-043).
 - `evidenceOf` returns `no_evidence` for a degenerate interval. The verdict for a degenerate
   primary metric with at least 5 pairs is `inconclusive`, and its reasons give the constant
   change and the seeds better / worse / tied.
-- Differences equal up to a 1e-9 relative tolerance count as identical. This is a numerical
-  tolerance on the subtraction, far below any metric's display precision, not a statistical
-  threshold.
+- Differences count as identical when max(d) − min(d) ≤ 1e-9 · max(1, |min(d)|, |max(d)|): a
+  combined tolerance, absolute (1e-9) for differences up to 1 in magnitude and relative (1e-9 of
+  the largest magnitude) above. It is a numerical tolerance on the subtraction, far below any
+  metric's display precision, not a statistical threshold.
 - Reason text shows more decimals when one decimal would cross a threshold: "1.9996 s", not
   "2.0 s".
 - The method, thresholds and verdict order are unchanged. `constraint_failure` still comes first
@@ -656,3 +658,36 @@ of zero, so the §8.3 results and §8.4 benchmarks are unchanged (re-checked wit
 | `pnpm test:e2e` (full) | Exit 0; 62 passed, 3 skipped (`ai-live`, `analytics-live`, `recording`: need a live API; run in CI's data-platform job) |
 | `pnpm bench:twin -- --robustness` | Exit 0; verdicts, intervals, failed seeds and divergence counts for 1, 5, 10, 20, 30 seeds identical to §8.3; repeats byte-identical |
 | Golden fixtures | Unchanged |
+
+### 8.10 Follow-up: interval bounds shown with their sign
+
+**Branch:** `fix/p6-2-statistical-verdict` (continued after PR #14) · **Base:** `main` @
+`2117d38`.
+
+**Problem.** After §8.9, verdicts use unrounded statistics, but the result still carried interval
+bounds rounded to 3 decimals, and the UI showed them with 1 decimal. An exact upper bound of
+−0.000389 s became `-0` (and `0` in JSON). Because `-0 < 0` is false, the UI showed "±0.0 s"
+while the evidence read "reliably better".
+
+**Fix (presentation only).**
+- `roundBound` (`stats.ts`) keeps 3 decimals. When that would make a non-zero bound zero, it uses
+  more decimals, up to 6. Below 1e-6 it keeps the exact value. It never returns −0.
+- `formatBound` / `formatInterval` (`apps/web/src/lib/twin/view.ts`) keep the compact format
+  ("−17.6 s"). Near zero they add decimals, up to 6, until the bound is non-zero ("−0.0004 s").
+  Beyond that they show "−<0.000001 s". Only an exact zero reads "±0.0 s".
+- The metric table and the chart's accessible label both use `formatInterval`.
+
+The paired t method, the thresholds, the verdicts and the golden-fixture results are unchanged:
+no bound there is within 0.0005 of zero.
+
+**Verification.**
+
+| Check | Result |
+|-------|--------|
+| `stats.test.ts` (29 tests, 1 new; 3 strengthened) | `roundBound`: −0.000389 → −0.0004, +0.000411 → 0.0004, +0.000389 → 0.0004, 4.1e-6 → 0.000004, −3e-8 kept, 0 and −0 → 0, ordinary bounds at 3 decimals, sign always preserved; the three near-zero interval tests now assert the displayed bound (−0.0004 / +0.0004) instead of 0 |
+| `view.test.ts` (8 tests, 3 new) | `formatBound`: −0.000389 → "−0.0004 s", +0.000411 → "+0.0004 s", +0.000389 → "+0.0004 s", exact 0 and −0 → "±0.0 s", ordinary bounds identical to the compact format ("−17.6 s", "+0.26 km"), < 1e-6 → "+<0.000001 s"; `formatInterval` |
+| Browser (`ai.spec.ts`, Phase 6.2 validation test) | The metric table's interval cell is two signed bounds, and the chart's accessible label contains the same text |
+| Focused runs | twin `stats`, `robustness`, `executor`: 48 passed; web `lib/twin` (`store`, `view`, `worker-pool`): 35 passed |
+| `pnpm check` | Exit 0; 398 unit tests passed (contracts 26, simulation 160, recorder 10, twin 67, web 135), 0 skipped |
+| `pnpm test:e2e` (full) | Exit 0; 62 passed, 3 skipped (`ai-live`, `analytics-live`, `recording`: need a live API; run in CI's data-platform job) |
+| Golden fixtures and benchmark results | Unchanged (no fixture file touched; the golden bounds are at least 7 s from zero, so their 3-decimal display is unchanged) |

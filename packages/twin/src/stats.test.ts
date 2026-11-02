@@ -7,6 +7,7 @@ import {
   median,
   pairedStats,
   pairedSummary,
+  roundBound,
   roundForDisplay,
   sampleSd,
   T_975,
@@ -334,32 +335,50 @@ describe("verdict precision: decisions on unrounded values", () => {
     expect(v.reasons[1]).toContain("4.996 %");
   });
 
-  it("an interval ending just below zero is evidence, though it displays as 0", () => {
+  it("an interval ending just below zero is evidence, and is not displayed as 0", () => {
     // m = −1.9636, k = 1: high = −1.9636 + 1.963211 = −0.000389.
     const s = pairedStats(spread(100, -1.9636, 1), "lower");
     expect(s.ci95?.high).toBeLessThan(0);
     expect(s.ci95?.high).toBeGreaterThan(-0.0005);
-    expect(roundForDisplay(s).ci95?.high).toBeCloseTo(0, 12);
+    // Three decimals would give −0; the display keeps the sign that decides the evidence.
+    expect(roundForDisplay(s).ci95?.high).toBe(-0.0004);
     expect(s.evidence).toBe("better");
     // Verdict and evidence agree (before, the rounded bound read "includes zero").
     expect(robustnessVerdict(s, [], thresholds).verdict).toBe("improved_below_threshold");
   });
 
   it("an interval ending just above zero is no evidence, and no improvement", () => {
-    // m = −1.9628: high = +0.000411, which displays as 0.
+    // m = −1.9628: high = +0.000411, displayed +0.0004, not 0.
     const s = pairedStats(spread(100, -1.9628, 1), "lower");
     expect(s.ci95?.high).toBeGreaterThan(0);
-    expect(roundForDisplay(s).ci95?.high).toBeCloseTo(0, 12);
+    expect(roundForDisplay(s).ci95?.high).toBe(0.0004);
     expect(s.evidence).toBe("no_evidence");
     expect(robustnessVerdict(s, [], thresholds).verdict).toBe("inconclusive");
   });
 
-  it("an interval starting just above zero is a regression, though it displays as 0", () => {
+  it("an interval starting just above zero is a regression, and is not displayed as 0", () => {
     const s = pairedStats(spread(100, 1.9636, 1), "lower");
     expect(s.ci95?.low).toBeGreaterThan(0);
-    expect(roundForDisplay(s).ci95?.low).toBeCloseTo(0, 12);
+    expect(roundForDisplay(s).ci95?.low).toBe(0.0004);
     expect(s.evidence).toBe("worse");
     expect(robustnessVerdict(s, [], thresholds).verdict).toBe("regressed");
+  });
+
+  it("display rounding of interval bounds: compact, but never a non-zero bound as zero", () => {
+    expect(roundBound(-17.57512)).toBe(-17.575);
+    expect(roundBound(1.0367891)).toBe(1.037);
+    expect(roundBound(-0.000389)).toBe(-0.0004);
+    expect(roundBound(0.000411)).toBe(0.0004);
+    expect(roundBound(0.000389)).toBe(0.0004);
+    expect(roundBound(0.0000041)).toBe(0.000004);
+    // Below the sixth decimal the exact value is kept rather than shown as zero.
+    expect(roundBound(-3e-8)).toBe(-3e-8);
+    // Exact zero stays zero, and never becomes −0.
+    expect(Object.is(roundBound(0), 0)).toBe(true);
+    expect(Object.is(roundBound(-0), 0)).toBe(true);
+    // The sign of every displayed bound is the sign of the exact bound.
+    for (const x of [-0.000389, 0.000411, -0.0004999, 0.0005, -2e-7, 12.3456])
+      expect(Math.sign(roundBound(x))).toBe(Math.sign(x));
   });
 
   it("the verdict always agrees with the primary metric's evidence", () => {

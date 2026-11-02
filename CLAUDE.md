@@ -5,9 +5,9 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
 
 ## Current state
 
-- **Active work:** post-merge correction of the Phase 6.2 statistical verdict on
-  `fix/p6-2-statistical-verdict`. Phases 0–6.2 are merged (Phase 6.2: PR #13, `61c67d5`); no new
-  phase has started.
+- **Active work:** display follow-up to the Phase 6.2 verdict correction (interval bounds near
+  zero) on `fix/p6-2-statistical-verdict`. Phases 0–6.2 are merged (Phase 6.2: PR #13, `61c67d5`;
+  verdict correction: PR #14, `2117d38`); no new phase has started.
 - Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_6.md` (§7 for 6.1, §8 for 6.2).
 
 ## Architecture (one screen)
