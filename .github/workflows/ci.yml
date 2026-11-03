@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.1.0
-      - uses: actions/setup-node@v7.0.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -47,12 +47,12 @@ jobs:
       # pnpm comes from package.json "packageManager"; the audit reads pnpm-lock.yaml, so nothing is
       # installed and no dependency can change here.
       - uses: pnpm/action-setup@v6.1.0
-      - uses: actions/setup-node@v7.0.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
       - name: pnpm audit (production dependencies; fails on high or critical)
         run: pnpm audit --prod --audit-level high
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           version: "0.12.21"
       # Exactly what the lockfiles pin for the runtime images (API + pipeline extra; dbt), with
@@ -96,7 +96,7 @@ jobs:
       WAREHOUSE_DATABASE_URL: postgresql+psycopg://warehouse:warehouse_ci@localhost:5432/warehouse_one
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           version: "0.12.21"
           enable-cache: true
@@ -121,7 +121,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.1.0
-      - uses: actions/setup-node@v7.0.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -131,7 +131,7 @@ jobs:
       # The API is not started here, so the status panel is expected to report "offline".
       - run: pnpm test:e2e
       - if: failure()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: playwright-report
           path: |
@@ -154,12 +154,12 @@ jobs:
       WAREHOUSE_S3_SECRET_KEY: warehouse_dev_minio
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           version: "0.12.21"
           enable-cache: true
       - uses: pnpm/action-setup@v6.1.0
-      - uses: actions/setup-node@v7.0.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
