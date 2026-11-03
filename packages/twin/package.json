@@ -17,10 +17,10 @@
   "dependencies": {
     "@warehouse-one/contracts": "workspace:*",
     "@warehouse-one/simulation": "workspace:*",
-    "zod": "4.6.6"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "tsx": "4.23.15",
-    "vitest": "5.0.3"
+    "vitest": "5.0.5"
   }
 }
