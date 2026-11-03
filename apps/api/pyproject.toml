@@ -21,7 +21,7 @@ dependencies = [
 pipeline = [
   "confluent-kafka==2.15.1",
   "pyarrow==25.0.1",
-  "duckdb==1.5.5",
+  "duckdb==2.0.0",
 ]
 
 [project.scripts]
