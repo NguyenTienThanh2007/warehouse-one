@@ -111,6 +111,39 @@ Override ports with `API_PORT`, `KAFKA_PORT`, `MINIO_PORT`, `MINIO_CONSOLE_PORT`
 | Visual bookmarks | `pnpm capture:bookmarks` (needs `next start -p 3100`) → `docs/phases/evidence/phase-1/` |
 | Multi-site captures | `pnpm capture:network` (needs `next start -p 3100`) → `docs/phases/evidence/phase-5/` |
 | Scenario / quality | open `/?scenario=bench-1000&quality=low` (scenarios: network (default), showcase, empty, bench-100/300/1000) |
+| Dependency audits | `pnpm audit --prod --audit-level high`; Python: see *Dependency security* below |
+
+## Dependency security (Phase 7.1.1)
+
+CI's **Dependency audit** job fails the build on a known vulnerability:
+
+- **npm (pnpm workspace):** `pnpm audit --prod --audit-level high` reads `pnpm-lock.yaml` and fails
+  on high or critical advisories in production dependencies. Moderate and low advisories are
+  printed but do not fail the job; development-only packages are not audited (as with
+  `pip-audit` below).
+- **Python (uv):** the runtime dependency sets are exported from the lockfiles with hashes and
+  audited by `pip-audit` 2.10.1 (pinned) without resolving or installing anything; `--strict`
+  fails if any package cannot be audited, and any reported vulnerability fails the job. Locally:
+
+  ```bash
+  uv export --project apps/api --locked --no-dev --all-extras --no-emit-project --format requirements.txt -o /tmp/api.txt
+  uvx --from pip-audit==2.10.1 pip-audit --strict --require-hashes --disable-pip -r /tmp/api.txt
+  ```
+
+  (same for `--project analytics`, without `--all-extras`). Covered: `apps/api/uv.lock` (API and
+  the `pipeline` extra: relay, consumers, bronze writer) and `analytics/uv.lock` (dbt). Not
+  covered: the Python packages of the `apache/airflow` base image, which this repository does not
+  lock, and OS packages in container images (no image scanner yet). Platform markers are evaluated
+  for the runner (Linux, like the images).
+- **Dependabot** (`.github/dependabot.yml`): weekly version updates for GitHub Actions, the pnpm
+  workspace and both uv projects; minor and patch updates are grouped per ecosystem, majors and
+  security updates are separate PRs. Security-update PRs also need *Dependabot security updates*
+  enabled in the repository settings.
+- **Upgrading:** `pnpm --filter <package> add -E <name>@<version>` (exact pins, lockfile updated by
+  pnpm; never edit `pnpm-lock.yaml` by hand); Python: `uv lock --upgrade-package <name>`.
+
+Phase 7.1.1 upgraded `next` 16.3.8 → 16.4.1 (GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr critical;
+GHSA-p3m5-59mp-jv5r high) and `zod` 4.6.5 → 4.6.6 (GHSA-mrhx-c7xc-m3w5 high).
 
 ## Digital twin and AI (Phase 6)
 

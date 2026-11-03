@@ -38,6 +38,41 @@ jobs:
       - name: Simulation benchmark (informational, CI hardware)
         run: pnpm bench:sim -- --ticks 1000
 
+  dependency-audit:
+    name: Dependency audit · pnpm audit, pip-audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      # pnpm comes from package.json "packageManager"; the audit reads pnpm-lock.yaml, so nothing is
+      # installed and no dependency can change here.
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: pnpm audit (production dependencies; fails on high or critical)
+        run: pnpm audit --prod --audit-level high
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.12.21"
+      # Exactly what the lockfiles pin for the runtime images (API + pipeline extra; dbt), with
+      # hashes, audited without resolving or installing anything. Development tools are excluded,
+      # like --prod above. pip-audit is pinned; --strict fails if a package cannot be audited.
+      - name: pip-audit (apps/api uv.lock, analytics uv.lock)
+        run: |
+          uv export --project apps/api --locked --no-dev --all-extras --no-emit-project \
+            --format requirements.txt --quiet -o "$RUNNER_TEMP/api.txt"
+          uv export --project analytics --locked --no-dev --no-emit-project \
+            --format requirements.txt --quiet -o "$RUNNER_TEMP/analytics.txt"
+          status=0
+          for env in api analytics; do
+            echo "::group::pip-audit $env"
+            uvx --from pip-audit==2.10.1 pip-audit --strict --require-hashes --disable-pip \
+              --progress-spinner off -r "$RUNNER_TEMP/$env.txt" || status=1
+            echo "::endgroup::"
+          done
+          exit "$status"
+
   python:
     name: Python API · ruff, mypy, pytest, migrations
     runs-on: ubuntu-24.04

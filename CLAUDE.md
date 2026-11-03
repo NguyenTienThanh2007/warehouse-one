@@ -6,8 +6,9 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
 ## Current state
 
 - **Current state:** Phases 0–6.2 are merged and complete (Phase 6.2: PR #13, `61c67d5`;
-  statistical corrections: PR #14, `2117d38`, and PR #15, `6b1794b`). No phase is in progress;
-  Phase 7 (production) has not started.
+  statistical corrections: PR #14, `2117d38`, and PR #15, `6b1794b`). Phase 7 has started:
+  7.1.1 dependency security (Next.js/Zod upgrades, CI dependency audits, Dependabot) is in review
+  on `fix/p7-1-1-dependency-security`. Authentication (rest of 7.1) is not implemented yet.
 - Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_6.md` (§7 for 6.1, §8 for 6.2).
 
 ## Architecture (one screen)

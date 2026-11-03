@@ -14,7 +14,7 @@ Each phase is developed on `feature/p<N>-…`, reviewed through a pull request, 
 | 6 | `feature/p6-ai-digital-twin` | AI logistics brain and advanced digital twin | **Merged** (PR #11, `72a2a0f`, 2026-10-27; first vertical slice) |
 | 6.1 | `feature/p6-1-evaluation-worker` | Twin evaluation off the main thread (worker pool) | **Merged** (PR #12, `dd1d1a7`, 2026-11-01) |
 | 6.2 | `feature/p6-2-multi-seed-evaluation` | Multi-seed robustness validation with paired statistics | **Merged** (PR #13, `61c67d5`, 2026-11-01; statistical corrections PR #14, `2117d38`, and PR #15, `6b1794b`, 2026-11-02; complete) |
-| 7 | `feature/p7-production` | Production & portfolio release | Not started |
+| 7 | `feature/p7-production` | Production & portfolio release | **Started**: 7.0 audit done; 7.1.1 dependency security in review (`fix/p7-1-1-dependency-security`) |
 
 ## Phase 1 — Premium 3D world (accepted)
 

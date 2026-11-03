@@ -4,9 +4,9 @@ _Last updated: 2026-11-02_
 
 | Item | State |
 |------|-------|
-| Active work | None. Phase 6.2 and its statistical corrections (PR #14, PR #15) are complete; Phase 7 has not started |
-| `main` | `6b1794b`: Phases 0–6.2 merged (PR #1–#5, #7–#15); `main` CI run 41460371089: 5/5 jobs green |
-| Last merged | PR #15, Phase 6.2 confidence-interval display precision (`6b1794b`, 2026-11-02); PR #14, Phase 6.2 statistical verdict correction (`2117d38`, 2026-11-02; `main` CI run 41453506465: 5/5 jobs green); PR #13, Phase 6.2 multi-seed robustness validation (`61c67d5`, 2026-11-01; `main` CI run 41322552933: 5/5 jobs green) |
+| Active work | **Phase 7.1.1: dependency security** (Next.js and Zod upgrades, CI dependency audits, Dependabot), in review on `fix/p7-1-1-dependency-security`. Phase 7.0 (production-readiness audit) was delivered as a report; the rest of Phase 7 has not started |
+| `main` | `b4285aa`: Phases 0–6.2 merged (PR #1–#5, #7–#16); `main` CI run 41473060803: 5/5 jobs green |
+| Last merged | PR #16, Phase 6.2 documentation completion (`b4285aa`, 2026-11-02); PR #15, Phase 6.2 confidence-interval display precision (`6b1794b`, 2026-11-02); PR #14, Phase 6.2 statistical verdict correction (`2117d38`, 2026-11-02; `main` CI run 41453506465: 5/5 jobs green); PR #13, Phase 6.2 multi-seed robustness validation (`61c67d5`, 2026-11-01; `main` CI run 41322552933: 5/5 jobs green) |
 | Closed unmerged | PR #6 (Phase 4 planning docs); not used as a basis |
 
 ## Phase status
@@ -20,7 +20,7 @@ _Last updated: 2026-11-02_
 | 4 Operations analytics | merged (PR #9), follow-up PR #10 | `docs/phases/PHASE_4.md` |
 | 5 Multi-site world | merged (PR #7), follow-up PR #8 | `docs/phases/PHASE_5.md` |
 | 6 AI and digital twin | merged (PR #11; first slice: fleet standby); 6.1 merged (PR #12); 6.2 merged (PR #13) with its statistical corrections (PR #14 verdict, PR #15 interval display): complete | `docs/phases/PHASE_6.md` |
-| 7 Production | not started | — |
+| 7 Production | 7.0 audit done (report); **7.1.1 dependency security in review**; 7.1 (security and identity) otherwise not started | `docs/DEVELOPMENT.md` (dependency security) |
 
 ## Modes in the app
 
