@@ -5,12 +5,12 @@ description = "WAREHOUSE ONE backend API (FastAPI)."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "fastapi==0.142.2",
+  "fastapi==0.162.0",
   "uvicorn==0.54.0",
-  "pydantic==2.13.5",
-  "pydantic-settings==2.15.0",
-  "sqlalchemy==2.1.3",
-  "alembic==1.20.0",
+  "pydantic==2.14.2",
+  "pydantic-settings==2.16.2",
+  "sqlalchemy==2.1.6",
+  "alembic==1.20.1",
   "psycopg[binary]==3.3.6",
   "anthropic==1.17.0",
 ]
@@ -19,7 +19,7 @@ dependencies = [
 # Data-platform services (outbox relay, consumers, bronze writer, reconciliation). Not needed by
 # the API process; installed in the pipeline image and for development (uv sync --all-extras).
 pipeline = [
-  "confluent-kafka==2.15.1",
+  "confluent-kafka==2.16.1",
   "pyarrow==25.0.1",
   "duckdb==1.5.5",
 ]
@@ -29,15 +29,15 @@ warehouse-pipeline = "warehouse_pipeline.cli:main"
 
 [dependency-groups]
 dev = [
-  "pytest==9.1.1",
-  "httpx2==2.13.1",
+  "pytest==9.2.0",
+  "httpx2==2.16.0",
   "jsonschema==4.26.0",
-  "ruff==0.16.10",
-  "mypy==2.4.0",
+  "ruff==0.17.3",
+  "mypy==2.4.1",
 ]
 
 [build-system]
-requires = ["hatchling==1.32.4"]
+requires = ["hatchling==1.33.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
