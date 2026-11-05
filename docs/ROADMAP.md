@@ -14,7 +14,26 @@ Each phase is developed on `feature/p<N>-…`, reviewed through a pull request, 
 | 6 | `feature/p6-ai-digital-twin` | AI logistics brain and advanced digital twin | **Merged** (PR #11, `72a2a0f`, 2026-10-27; first vertical slice) |
 | 6.1 | `feature/p6-1-evaluation-worker` | Twin evaluation off the main thread (worker pool) | **Merged** (PR #12, `dd1d1a7`, 2026-11-01) |
 | 6.2 | `feature/p6-2-multi-seed-evaluation` | Multi-seed robustness validation with paired statistics | **Merged** (PR #13, `61c67d5`, 2026-11-01; statistical corrections PR #14, `2117d38`, and PR #15, `6b1794b`, 2026-11-02; complete) |
-| 7 | `feature/p7-production` | Production & portfolio release | **Started**: 7.0 audit done; 7.1.1 dependency security in review (`fix/p7-1-1-dependency-security`) |
+| 7 | `feature/p7-production` | Production & portfolio release | **Started**: 7.0 audit complete; 7.1.1 dependency security merged (PR #17, `ea4ebd7`, CI 6/6); next 7.1.2 security-hardening audit |
+
+## Phase 7 — Production & portfolio release (in progress)
+
+The production track is deliberately audit-first. Do not start broad feature work or implement
+security changes from assumptions; record evidence, review findings, then create focused PRs.
+
+| Slice | Scope | State |
+|---|---|---|
+| 7.0 | Production-readiness audit | **Complete**; report delivered |
+| 7.1.1 | Dependency security: Next.js/Zod fixes, pnpm and pip audits in CI, Dependabot configuration | **Merged** (PR #17, `ea4ebd7`; CI run 41571508901, 6/6 jobs passed) |
+| 7.1.2 | Security-hardening audit: identity/authentication and authorization boundaries, API, secrets, persistence/data platform, browser/workers, AI integration and CI/CD supply chain | **Next**; audit only, no implementation until findings are triaged |
+| 7.2 | Observability & reliability | Planned after security findings are triaged |
+| 7.3 | Deployment & release | Planned |
+| 7.4 | Demo & portfolio | Planned |
+
+Dependabot follow-up is separate from the security audit: PRs #18 and #19 duplicate dependency
+versions already merged by #17 and should be closed after confirming their diffs contain no extra
+changes. Review PRs #20–#28 individually; major-version upgrades and grouped updates must pass
+compatibility checks before merge. Never merge the queue wholesale.
 
 ## Phase 1 — Premium 3D world (accepted)
 
