@@ -5,11 +5,19 @@ brief governs scope; phases are in `docs/ROADMAP.md`.
 
 ## Current state
 
-- **Current state:** Phases 0–6.2 are merged and complete (Phase 6.2: PR #13, `61c67d5`;
-  statistical corrections: PR #14, `2117d38`, and PR #15, `6b1794b`). Phase 7 has started:
-  7.1.1 dependency security (Next.js/Zod upgrades, CI dependency audits, Dependabot) is in review
-  on `fix/p7-1-1-dependency-security`. Authentication (rest of 7.1) is not implemented yet.
-- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/phases/PHASE_6.md` (§7 for 6.1, §8 for 6.2).
+- **Current state:** Phases 0–6.2 are merged and complete. Phase 7.0 production-readiness audit
+  is complete. Phase 7.1.1 dependency security is merged as PR #17 (`ea4ebd7`): Next.js 16.4.1,
+  Zod 4.6.6, pnpm/pip dependency audits in CI, and Dependabot configuration. PR #17 CI run
+  41571508901 passed all 6 jobs.
+- **Next:** Phase 7.1.2 security-hardening audit. Audit only: inspect identity/authentication and
+  authorization, API boundaries, secrets, persistence/data platform, browser/workers, AI
+  integration and CI/CD supply chain. Do not implement findings until the owner has reviewed and
+  prioritised evidence-backed findings. Authentication/authorization implementation has not started.
+- **Dependabot queue:** PRs #18 and #19 duplicate dependency versions already present on `main`
+  after #17; do not merge them. Confirm their diffs contain no extra changes before closing.
+  Review PRs #20–#28 individually; do not batch-merge or assume major updates are compatible.
+- Status and evidence: `docs/PROJECT_STATUS.md`, `docs/ROADMAP.md`, and
+  `docs/phases/PHASE_6.md` (§7 for 6.1, §8 for 6.2).
 
 ## Architecture (one screen)
 
@@ -77,7 +85,7 @@ pnpm bench:twin / pnpm twin:verify --api <url> --proposal <uuid>
 ## Known blockers / gotchas
 
 - Local ports 3000/8000/5432 may be taken on the dev machine (another app answers on 8000); use `WEB_PORT`, `API_PORT`, `POSTGRES_PORT`. The web app reads `NEXT_PUBLIC_API_URL`/`API_PORT` from the root `.env` (src/lib/api/base-url.ts).
-- Turbopack (Next 16.3) does not bundle `new Worker(new URL(...))`: the twin worker is bundled by
+- Turbopack (Next.js 16.4) does not bundle `new Worker(new URL(...))`: the twin worker is bundled by
   esbuild (`apps/web/scripts/build-twin-worker.mjs`) into git-ignored `public/workers/` before
   `next dev`/`next build`; restart `pnpm dev` after changing `packages/twin` or `packages/simulation`.
 - Hidden browser panes throttle rAF, so FPS from them is meaningless. Use `pnpm bench:render`.
