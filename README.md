@@ -6,11 +6,11 @@ A browser-based 3D warehouse digital twin built on a deterministic simulation en
 data engineering pipeline and a decision-support layer that optimises with the engine itself. Every number on screen comes
 from authoritative simulation state, and every state change is a typed, replayable domain event.
 
-> **Project status: Phases 0–6.2 are merged into `main` (Phase 6.2, multi-seed robustness
-> validation of twin plans: PR #13, `61c67d5`; statistical corrections: PR #14, `2117d38`, and
-> PR #15, `6b1794b`). Phase 7 (production) has started: dependency security (7.1.1) is in
-> review.** See
-> [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for what is verified and what is not.
+> **Project status: Phases 0–6.2 and Phase 7.1.1 (dependency security) are merged into `main`.
+> PR #17 (`ea4ebd7`) upgraded Next.js and Zod and added dependency audits to CI; its six CI jobs
+> passed. Next: Phase 7.1.2, a security-hardening audit (audit only; implementation follows after
+> findings are reviewed).** See [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for the
+> verified state and remaining work.
 
 ![WAREHOUSE ONE: the logistics park, world view](docs/phases/evidence/phase-5/1-world.jpg)
 
