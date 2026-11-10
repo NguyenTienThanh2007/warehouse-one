@@ -25,6 +25,19 @@ updates:
       npm-minor-and-patch:
         applies-to: version-updates
         update-types: [minor, patch]
+    # three r187 crashes the High quality tier: n8ao 2.0.1 (via @react-three/postprocessing) gives
+    # its half-resolution multiple-render-target an Array `texture`, and three 0.187.0 removed the
+    # `texture.mipmaps &&` guard in WebGLTextures.setupRenderTarget, so every frame throws
+    # "Cannot read properties of undefined (reading 'length')" and the 3D world shows its error
+    # state (found in PR #32). Upstream: n8ao issue #57 and fix PR #56
+    # (https://github.com/N8python/n8ao/issues/57, https://github.com/N8python/n8ao/pull/56).
+    # Remove both entries once an n8ao release after 2.0.1 fixes three r187 compatibility; then
+    # take three and @types/three together and run the browser end-to-end tests.
+    ignore:
+      - dependency-name: three
+        versions: [">=0.187.0"]
+      - dependency-name: "@types/three"
+        versions: [">=0.187.0"]
 
   # uv projects: the API and pipeline (apps/api/uv.lock) and dbt (analytics/uv.lock).
   - package-ecosystem: uv
